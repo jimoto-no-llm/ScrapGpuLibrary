@@ -7,6 +7,7 @@
 #include "scrapgpu/stream.h"
 
 #include <cmath>
+#include <cstddef>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -496,6 +497,52 @@ void test_device_batched() {
             }
         }
         scrapgpu_buffer_free(ws);
+    }
+
+    // a workspace that overlaps one of the attention tensors is rejected before anything is enqueued
+    {
+        OwnedTensor output = make_output_tensor(dv, q, hq, b);
+        scrapgpu_attention_params p{};
+        p.struct_size = sizeof(p);
+        p.query = &query.desc;
+        p.key = &key.desc;
+        p.value = &value.desc;
+        p.mask = &mask.desc;
+        p.output = &output.desc;
+        p.scale = 1.0f / std::sqrt(static_cast<float>(d));
+        p.flags = SCRAPGPU_ATTENTION_FLAG_DEVICE_BATCHED;
+        uint64_t need = 0;
+        CHECK_OK(scrapgpu_attention_batched_workspace_bytes(&p, &need));
+        p.workspace_bytes = need;
+        const scrapgpu_tensor_desc * aliased[] = {&query.desc, &value.desc, &mask.desc, &output.desc};
+        for (const scrapgpu_tensor_desc * t : aliased) {
+            p.workspace = t->buffer;
+            CHECK(scrapgpu_scaled_dot_product_attention(g_device, g_stream, &p) == SCRAPGPU_STATUS_INVALID_ARGUMENT);
+        }
+    }
+
+    // callers built against the header before flags / workspace were appended pass the shorter struct_size;
+    // the tail they do not cover must read as 0 (tiled path), whatever the bytes after it hold
+    {
+        OwnedTensor output = make_output_tensor(dv, q, hq, b);
+        scrapgpu_attention_params p{};
+        p.query = &query.desc;
+        p.key = &key.desc;
+        p.value = &value.desc;
+        p.mask = &mask.desc;
+        p.output = &output.desc;
+        p.max_workspace_bytes = 64u << 20;
+        p.scale = 1.0f / std::sqrt(static_cast<float>(d));
+        p.flags = SCRAPGPU_ATTENTION_FLAG_DEVICE_BATCHED;   // outside the old struct: must be ignored
+        p.workspace = query.desc.buffer;                    // likewise
+        p.workspace_bytes = 1;
+        p.struct_size = offsetof(scrapgpu_attention_params, scale) + sizeof(float);
+        CHECK_OK(scrapgpu_scaled_dot_product_attention(g_device, g_stream, &p));
+        CHECK_OK(scrapgpu_stream_sync(g_stream));
+        download_tensor(output);
+        expect_close("v1_struct_size", output.host, expected);
+        p.struct_size = offsetof(scrapgpu_attention_params, scale);  // shorter than the v1 prefix
+        CHECK(scrapgpu_scaled_dot_product_attention(g_device, g_stream, &p) == SCRAPGPU_STATUS_INVALID_ARGUMENT);
     }
 
     // causal is not supported by the batched path

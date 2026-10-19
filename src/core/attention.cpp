@@ -43,14 +43,37 @@ const scrapgpu_backend_vtable * backend_of(const void * object) {
     return object == nullptr ? nullptr : static_cast<const scrapgpu_object_header *>(object)->backend;
 }
 
+// struct_size of callers built before flags / workspace / workspace_bytes were appended
+constexpr size_t kAttentionParamsV1Size = offsetof(scrapgpu_attention_params, scale) + sizeof(float);
+
+template <typename T>
+constexpr size_t field_end(size_t offset) {
+    return offset + sizeof(T);
+}
+
 scrapgpu_attention_params load_params(const scrapgpu_attention_params & in, bool * ok) {
-    *ok = in.struct_size >= sizeof(scrapgpu_attention_params);
+    *ok = in.struct_size >= kAttentionParamsV1Size;
     scrapgpu_attention_params out = {};
     if (*ok) {
         std::memcpy(&out, &in, std::min(in.struct_size, sizeof(out)));
+        // appended fields the caller's struct does not fully cover read as 0 / NULL
+        if (in.struct_size < field_end<uint32_t>(offsetof(scrapgpu_attention_params, flags))) {
+            out.flags = 0;
+        }
+        if (in.struct_size < field_end<scrapgpu_buffer_t *>(offsetof(scrapgpu_attention_params, workspace))) {
+            out.workspace = nullptr;
+        }
+        if (in.struct_size < field_end<uint64_t>(offsetof(scrapgpu_attention_params, workspace_bytes))) {
+            out.workspace_bytes = 0;
+        }
         out.struct_size = sizeof(out);
     }
     return out;
+}
+
+// true when [a_off, a_off + a_len) and [b_off, b_off + b_len) intersect
+bool ranges_overlap(uint64_t a_off, uint64_t a_len, uint64_t b_off, uint64_t b_len) {
+    return a_off < b_off + b_len && b_off < a_off + a_len;
 }
 
 scrapgpu_tensor_desc load_desc(const scrapgpu_tensor_desc & in, bool * ok) {
@@ -623,6 +646,19 @@ scrapgpu_status execute_batched(scrapgpu_device_t * device, scrapgpu_stream_t * 
         }
         if (backend_of(workspace) != setup.backend) {
             return invalid("attention workspace belongs to a different backend");
+        }
+        // the V^T and score writes would clobber a tensor that a later op of this call still reads
+        const struct { const scrapgpu_tensor_desc * d; const char * name; } tensors[] = {
+            {&setup.query, "query"}, {&setup.key, "key"}, {&setup.value, "value"},
+            {setup.has_mask ? &setup.mask : nullptr, "mask"}, {&setup.output, "output"},
+        };
+        for (const auto & t : tensors) {
+            if (t.d != nullptr && t.d->buffer == workspace &&
+                ranges_overlap(0, total, t.d->offset, sgt::nbytes(sgt::desc_of(*t.d)))) {
+                char buf[160];
+                std::snprintf(buf, sizeof(buf), "attention workspace overlaps the %s tensor", t.name);
+                return invalid(buf);
+            }
         }
     } else {
         const scrapgpu_status st = scrapgpu_buffer_alloc(device, static_cast<size_t>(total), &owned.buffer);
