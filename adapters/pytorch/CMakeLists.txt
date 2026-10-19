@@ -15,7 +15,7 @@ find_package(Torch REQUIRED)
 
 set(SCRAPGPU_TORCH_EXT_NAME "_C")
 
-add_library(${SCRAPGPU_TORCH_EXT_NAME} SHARED src/torch_api.cpp)
+add_library(${SCRAPGPU_TORCH_EXT_NAME} SHARED src/torch_api.cpp src/device_tensor.cpp)
 target_compile_features(${SCRAPGPU_TORCH_EXT_NAME} PRIVATE cxx_std_20)
 target_include_directories(${SCRAPGPU_TORCH_EXT_NAME} PRIVATE
     "${CMAKE_SOURCE_DIR}/include"
@@ -43,7 +43,7 @@ endif ()
 
 if (SCRAPGPU_BUILD_TESTS)
     enable_testing()
-    foreach (_test ops attention backend_config)
+    foreach (_test ops attention backend_config device_tensor)
         add_test(NAME scrapgpu_pytorch_${_test}_cpu
             COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_${_test}.py")
         set_tests_properties(scrapgpu_pytorch_${_test}_cpu PROPERTIES
