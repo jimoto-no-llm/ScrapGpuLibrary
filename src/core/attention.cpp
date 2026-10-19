@@ -130,6 +130,7 @@ struct AttentionSetup {
     int64_t heads_per_kv = 0;
     float scale = 0.0f;
     bool need_mask_workspace = false;
+    bool batched = false;
     int64_t tile_q = 0;
     uint64_t v_t_bytes = 0;
     uint64_t score_tile_bytes = 0;
@@ -275,6 +276,14 @@ scrapgpu_status validate_setup(scrapgpu_device_t * device, scrapgpu_stream_t * s
 
     if (!std::isfinite(out->params.scale)) return invalid("attention scale must be finite");
     out->scale = out->params.scale;
+    out->batched = (out->params.flags & SCRAPGPU_ATTENTION_FLAG_DEVICE_BATCHED) != 0;
+    if (out->batched) {
+        if (out->params.causal != 0) {
+            return unsupported("DEVICE_BATCHED attention does not support causal; pass an additive mask");
+        }
+        // the tiling / budget computation below belongs to the tiled path
+        return SCRAPGPU_STATUS_OK;
+    }
     out->need_mask_workspace = out->params.causal != 0 || out->has_mask;
     out->v_t_bytes = sgt::mul_sat_u64(static_cast<uint64_t>(out->k), sgt::mul_sat_u64(static_cast<uint64_t>(out->dv), sizeof(float)));
     out->score_tile_bytes = sgt::mul_sat_u64(static_cast<uint64_t>(out->k), sizeof(float));
@@ -347,8 +356,8 @@ scrapgpu_status support_cpy_transpose(scrapgpu_device_t * device, const scrapgpu
 
 scrapgpu_status support_mul_mat(scrapgpu_device_t * device, const scrapgpu_tensor_desc & a,
                                 const scrapgpu_tensor_desc & b, const scrapgpu_tensor_desc & d,
-                                const char * what) {
-    scrapgpu_mul_mat_params params{sizeof(params), 0};
+                                const char * what, int allow_broadcast = 0) {
+    scrapgpu_mul_mat_params params{sizeof(params), allow_broadcast};
     std::array<scrapgpu_tensor_desc, 2> inputs = {a, b};
     std::array<scrapgpu_tensor_desc, 1> outputs = {d};
     scrapgpu_op_desc desc{};
@@ -399,8 +408,8 @@ scrapgpu_status run_cpy_transpose(scrapgpu_stream_t * stream, const scrapgpu_ten
 }
 
 scrapgpu_status run_mul_mat(scrapgpu_stream_t * stream, const scrapgpu_tensor_desc & a,
-                            const scrapgpu_tensor_desc & b, const scrapgpu_tensor_desc & d) {
-    scrapgpu_mul_mat_params params{sizeof(params), 0};
+                            const scrapgpu_tensor_desc & b, const scrapgpu_tensor_desc & d, int allow_broadcast = 0) {
+    scrapgpu_mul_mat_params params{sizeof(params), allow_broadcast};
     std::array<scrapgpu_tensor_desc, 2> inputs = {a, b};
     std::array<scrapgpu_tensor_desc, 1> outputs = {d};
     scrapgpu_op_desc desc{};
@@ -555,6 +564,164 @@ scrapgpu_status check_supported_tiles(scrapgpu_device_t * device, const Attentio
     return SCRAPGPU_STATUS_OK;
 }
 
+constexpr uint64_t kBatchedAlign = 256;
+
+uint64_t align_up_sat(uint64_t v, uint64_t a) {
+    const uint64_t r = sgt::add_sat_u64(v, a - 1);
+    return r == std::numeric_limits<uint64_t>::max() ? r : r / a * a;
+}
+
+// [V^T: Dv*K*Hkv*B floats][scores: K*Q*Hq*B floats], each part aligned
+bool batched_layout(const AttentionSetup & setup, uint64_t * vt_bytes, uint64_t * scores_offset, uint64_t * total) {
+    const uint64_t vt = sgt::mul_sat_u64(sgt::mul_sat_u64(static_cast<uint64_t>(setup.k), static_cast<uint64_t>(setup.dv)),
+                                         sgt::mul_sat_u64(static_cast<uint64_t>(setup.hkv), static_cast<uint64_t>(setup.batches)));
+    const uint64_t sc = sgt::mul_sat_u64(sgt::mul_sat_u64(static_cast<uint64_t>(setup.k), static_cast<uint64_t>(setup.q)),
+                                         sgt::mul_sat_u64(static_cast<uint64_t>(setup.hq), static_cast<uint64_t>(setup.batches)));
+    const uint64_t vt_b = sgt::mul_sat_u64(vt, sizeof(float));
+    const uint64_t sc_b = sgt::mul_sat_u64(sc, sizeof(float));
+    if (vt_b == std::numeric_limits<uint64_t>::max() || sc_b == std::numeric_limits<uint64_t>::max()) {
+        return false;
+    }
+    const uint64_t off = align_up_sat(vt_b, kBatchedAlign);
+    const uint64_t end = sgt::add_sat_u64(off, sc_b);
+    if (end == std::numeric_limits<uint64_t>::max() || end > static_cast<uint64_t>(std::numeric_limits<size_t>::max())) {
+        return false;
+    }
+    *vt_bytes = vt_b;
+    *scores_offset = off;
+    *total = end;
+    return true;
+}
+
+scrapgpu_tensor_desc make_4d_desc(scrapgpu_buffer_t * buffer, uint64_t offset, int64_t n0, int64_t n1, int64_t n2, int64_t n3) {
+    const int64_t ne[4] = {n0, n1, n2, n3};
+    const sgt::TensorDesc td = sgt::make_contiguous(SCRAPGPU_DTYPE_F32, ne, SCRAPGPU_LAYOUT_NATURAL);
+    scrapgpu_tensor_desc out{};
+    out.struct_size = sizeof(out);
+    out.dtype = td.dtype;
+    out.buffer = buffer;
+    out.offset = offset;
+    out.layout = td.layout;
+    for (int i = 0; i < sgt::kMaxDims; ++i) {
+        out.ne[i] = td.ne[i];
+        out.nb[i] = td.nb[i];
+    }
+    return out;
+}
+
+scrapgpu_status execute_batched(scrapgpu_device_t * device, scrapgpu_stream_t * stream, const AttentionSetup & setup) {
+    uint64_t vt_bytes = 0, scores_offset = 0, total = 0;
+    if (!batched_layout(setup, &vt_bytes, &scores_offset, &total)) {
+        return unsupported("attention workspace size overflowed");
+    }
+
+    BufferOwner owned;
+    scrapgpu_buffer_t * workspace = setup.params.workspace;
+    if (workspace != nullptr) {
+        if (setup.params.workspace_bytes < total) {
+            return invalid("attention workspace is smaller than scrapgpu_attention_batched_workspace_bytes");
+        }
+        if (backend_of(workspace) != setup.backend) {
+            return invalid("attention workspace belongs to a different backend");
+        }
+    } else {
+        const scrapgpu_status st = scrapgpu_buffer_alloc(device, static_cast<size_t>(total), &owned.buffer);
+        if (st != SCRAPGPU_STATUS_OK) {
+            return st;
+        }
+        workspace = owned.buffer;
+    }
+
+    const scrapgpu_tensor_desc vt = make_4d_desc(workspace, 0, setup.k, setup.dv, setup.hkv, setup.batches);
+    const scrapgpu_tensor_desc scores = make_4d_desc(workspace, scores_offset, setup.k, setup.q, setup.hq, setup.batches);
+
+    // V^T: CPY follows the input's logical strides, so the source is V with its first two dims swapped
+    scrapgpu_tensor_desc v_t = setup.value;
+    std::swap(v_t.ne[0], v_t.ne[1]);
+    std::swap(v_t.nb[0], v_t.nb[1]);
+
+    // everything is checked before the first op is enqueued
+    {
+        scrapgpu_cpy_params params{sizeof(params), 1};
+        scrapgpu_tensor_desc in = v_t, out = vt;
+        scrapgpu_op_desc desc{};
+        desc.struct_size = sizeof(desc);
+        desc.op = SCRAPGPU_OP_CPY;
+        desc.inputs = &in;
+        desc.input_count = 1;
+        desc.outputs = &out;
+        desc.output_count = 1;
+        desc.params = &params;
+        desc.params_size = sizeof(params);
+        const scrapgpu_status st = check_supported(device, &desc, "attention V transpose");
+        if (st != SCRAPGPU_STATUS_OK) return st;
+    }
+    {
+        const scrapgpu_status st = support_mul_mat(device, setup.key, setup.query, scores, "attention score matmul", 1);
+        if (st != SCRAPGPU_STATUS_OK) return st;
+    }
+    {
+        const scrapgpu_status st = support_softmax(device, scores, setup.has_mask ? &setup.mask : nullptr, setup.scale);
+        if (st != SCRAPGPU_STATUS_OK) return st;
+    }
+    {
+        const scrapgpu_status st = support_mul_mat(device, vt, scores, setup.output, "attention value matmul", 1);
+        if (st != SCRAPGPU_STATUS_OK) return st;
+    }
+    scrapgpu_clamp_params clamp{sizeof(clamp), 0.0f, 1.0f};
+    {
+        scrapgpu_tensor_desc in = scores, out = scores;
+        scrapgpu_op_desc desc{};
+        desc.struct_size = sizeof(desc);
+        desc.op = SCRAPGPU_OP_CLAMP;
+        desc.inputs = &in;
+        desc.input_count = 1;
+        desc.outputs = &out;
+        desc.output_count = 1;
+        desc.params = &clamp;
+        desc.params_size = sizeof(clamp);
+        const scrapgpu_status st = check_supported(device, &desc, "attention weight clamp");
+        if (st != SCRAPGPU_STATUS_OK) return st;
+    }
+
+    {
+        const scrapgpu_status st = run_cpy_transpose(stream, setup.value, vt);
+        if (st != SCRAPGPU_STATUS_OK) return st;
+    }
+    {
+        const scrapgpu_status st = run_mul_mat(stream, setup.key, setup.query, scores, 1);
+        if (st != SCRAPGPU_STATUS_OK) return st;
+    }
+    {
+        const scrapgpu_status st = run_softmax(stream, scores, setup.has_mask ? &setup.mask : nullptr, setup.scale);
+        if (st != SCRAPGPU_STATUS_OK) return st;
+    }
+    if (setup.has_mask) {
+        // a fully masked row leaves NaN weights; softmax weights are within [0, 1], so CLAMP(0, 1) only changes NaN -> 0
+        scrapgpu_tensor_desc in = scores, out = scores;
+        scrapgpu_op_desc desc{};
+        desc.struct_size = sizeof(desc);
+        desc.op = SCRAPGPU_OP_CLAMP;
+        desc.inputs = &in;
+        desc.input_count = 1;
+        desc.outputs = &out;
+        desc.output_count = 1;
+        desc.params = &clamp;
+        desc.params_size = sizeof(clamp);
+        const scrapgpu_status st = scrapgpu_op_execute(stream, &desc);
+        if (st != SCRAPGPU_STATUS_OK) return st;
+    }
+    {
+        const scrapgpu_status st = run_mul_mat(stream, vt, scores, setup.output, 1);
+        if (st != SCRAPGPU_STATUS_OK) return st;
+    }
+    if (owned.buffer != nullptr) {
+        // the buffer is freed on return and work is asynchronous: wait for it
+        return scrapgpu_stream_sync(stream);
+    }
+    return SCRAPGPU_STATUS_OK;
+}
+
 scrapgpu_status execute_attention(scrapgpu_device_t * device, scrapgpu_stream_t * stream,
                                   const scrapgpu_attention_params * raw_params) {
     AttentionSetup setup;
@@ -563,6 +730,9 @@ scrapgpu_status execute_attention(scrapgpu_device_t * device, scrapgpu_stream_t 
         if (st != SCRAPGPU_STATUS_OK) {
             return st;
         }
+    }
+    if (setup.batched) {
+        return execute_batched(device, stream, setup);
     }
     {
         const scrapgpu_status st = check_supported_tiles(device, setup);
@@ -680,6 +850,44 @@ scrapgpu_status execute_attention(scrapgpu_device_t * device, scrapgpu_stream_t 
 } // namespace
 
 extern "C" {
+
+scrapgpu_status scrapgpu_attention_batched_workspace_bytes(const scrapgpu_attention_params * params, uint64_t * out_bytes) {
+    try {
+        if (params == nullptr || out_bytes == nullptr) {
+            return invalid("params or out_bytes is null");
+        }
+        bool ok = false;
+        const scrapgpu_attention_params p = load_params(*params, &ok);
+        if (!ok || p.query == nullptr || p.key == nullptr || p.value == nullptr) {
+            return invalid("query, key and value descriptors are required");
+        }
+        const scrapgpu_tensor_desc q = load_desc(*p.query, &ok);
+        if (!ok) return invalid("query tensor desc is too small");
+        const scrapgpu_tensor_desc k = load_desc(*p.key, &ok);
+        if (!ok) return invalid("key tensor desc is too small");
+        const scrapgpu_tensor_desc v = load_desc(*p.value, &ok);
+        if (!ok) return invalid("value tensor desc is too small");
+        if (!is_positive_shape(q) || !is_positive_shape(k) || !is_positive_shape(v)) {
+            return invalid("attention tensors must have positive dimensions");
+        }
+        AttentionSetup setup;
+        setup.d = q.ne[0];
+        setup.q = q.ne[1];
+        setup.hq = q.ne[2];
+        setup.batches = q.ne[3];
+        setup.k = k.ne[1];
+        setup.hkv = k.ne[2];
+        setup.dv = v.ne[0];
+        uint64_t vt = 0, off = 0, total = 0;
+        if (!batched_layout(setup, &vt, &off, &total)) {
+            return unsupported("attention workspace size overflowed");
+        }
+        *out_bytes = total;
+        return SCRAPGPU_STATUS_OK;
+    } catch (...) {
+        return fail(SCRAPGPU_STATUS_BACKEND_ERROR, "unknown exception while sizing the attention workspace");
+    }
+}
 
 scrapgpu_status scrapgpu_scaled_dot_product_attention(scrapgpu_device_t * device,
                                                       scrapgpu_stream_t * stream,

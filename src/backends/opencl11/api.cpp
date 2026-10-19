@@ -854,7 +854,17 @@ scrapgpu_status api_exec_desc(cl11_api_stream * s, const scrapgpu_op_desc * desc
         return api_fail("the OpenCL kernels could not be built");
     }
     if (c->exec.profile) {
-        c->exec.prof_key = cl11_prof_key(c->exec, api_op_name(desc->op));
+        // GGML_CL11_PROFILE_SHAPES=1 splits the table by the shape of src0 (and its dtype for MUL_MAT)
+        static const bool with_shapes = getenv("GGML_CL11_PROFILE_SHAPES") != nullptr;
+        std::string key = api_op_name(desc->op);
+        if (with_shapes && desc->input_count > 0) {
+            char buf[160];
+            const scrapgpu_tensor_desc & t = desc->inputs[0];
+            std::snprintf(buf, sizeof(buf), " %s src0[%lld,%lld,%lld,%lld]", desc->op == SCRAPGPU_OP_MUL_MAT ? (t.dtype == SCRAPGPU_DTYPE_F16 ? "f16" : "f32") : "",
+                          (long long) t.ne[0], (long long) t.ne[1], (long long) t.ne[2], (long long) t.ne[3]);
+            key += buf;
+        }
+        c->exec.prof_key = cl11_prof_key(c->exec, key);
         c->exec.prof_stats[c->exec.prof_key].count++;
     }
     return api_dispatch(s->dev, desc, in, out);
@@ -1473,6 +1483,19 @@ const scrapgpu_backend_vtable g_cl11_vtable = {
 };
 
 } // namespace
+
+void scrapgpu_opencl11_profile_print(void) {
+    for (auto & d : g_devices) {
+        cl11_device * c = &d->dev;
+        std::lock_guard<std::mutex> lock(c->mutex);
+        if (!c->exec.profile || !c->context_ready) {
+            continue;
+        }
+        clFinish(c->queue);
+        cl11_prof_collect(c->exec);
+        cl11_prof_print(c->exec, c->info.name.c_str());
+    }
+}
 
 scrapgpu_status scrapgpu_opencl11_register(void) {
     static std::mutex reg_mutex;

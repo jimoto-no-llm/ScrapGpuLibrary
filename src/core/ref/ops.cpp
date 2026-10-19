@@ -353,7 +353,9 @@ scrapgpu_status exec_unary(scrapgpu_op op, const RTensor & s, const WTensor & d,
                 if (params == nullptr || params_size < sizeof(*p)) {
                     return ref_invalid("CLAMP params are missing");
                 }
-                y = std::min(std::max(x, p->min_value), p->max_value);
+                // fmax/fmin: a NaN input becomes min_value, like the OpenCL kernels (fmin(fmax(x, lo), hi));
+                // DEVICE_BATCHED attention relies on it to clear the NaN weights of fully masked rows
+                y = std::fmin(std::fmax(x, p->min_value), p->max_value);
                 break;
             }
             case SCRAPGPU_OP_UNARY: {
