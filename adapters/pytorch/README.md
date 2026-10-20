@@ -59,6 +59,43 @@ This adapter does not emulate CUDA APIs, replace NVIDIA drivers, or turn an old 
 
 Weights support `f32`, `f16`, `bf16`, `q4_0`, `q8_0`, `q4_k`, and `q6_k`. Quantized rows must be multiples of the format's block size. F16/BF16 conversion uses PyTorch rounding. `ScrapLinear` caches the packed weight and refreshes it after normal in-place updates or `load_state_dict` changes. Mutation through `.data` bypasses PyTorch version tracking and is not supported.
 
+## Device-resident tensors (stage B)
+
+`torch.classes.scrapgpu.DTensor` keeps activations in ScrapGpu device buffers, so a whole network can run without a
+host round trip per op (the stage A ops above copy their inputs and outputs every call).
+
+```python
+import scrapgpu_torch as sgt
+sgt.load()
+w = torch.classes.scrapgpu.Weight(torch.randn(64, 32), "f16")       # [out, in], uploaded once
+x = sgt.to_device(torch.randn(2, 6, 32))                              # torch (2, 6, 32) -> ne = [32, 6, 2, 1]
+y = sgt.silu(sgt.mul_mat(w, x))                                       # device ops, no transfer
+out = sgt.to_cpu(y)                                                   # the only download, 4-D (ne3, ne2, ne1, ne0)
+```
+
+- **Dimensions** follow ggml: `ne[0]` is the fastest dimension (a torch `(R, N, D)` tensor is `ne = [D, N, R, 1]`).
+  `view`, `reshape`, `permute` (result dim `i` is source dim `order[i]`), `narrow` and `cont` are methods of the object;
+  views only change the descriptor and share the buffer.
+- **Ops** (each returns a new dense DTensor, enqueues one ScrapGpu op, never synchronizes): `mul_mat(Weight, x)`,
+  `add`/`mul` (the right operand repeats along smaller dims, so a bias row works), `silu`, `sigmoid`, `swiglu`, `scale`,
+  `rms_norm_mul`, `rope` (NEOX or normal, int32 positions shared by the batch), `concat`, `sdpa` (q `[D,Q,H,B]`,
+  k/v `[D,K,Hkv,B]`, additive mask `[K,Q,1|H,1|B]`, explicit scale) and `mul_mat_into` (the one op that writes into an
+  existing `empty()` tensor or a `narrow()` view of it). Inputs may be strided views where the backend kernel allows
+  (`MUL_MAT` needs `nb[0] == 4`); anything the backend does not support raises an error that quotes the backend's reason.
+  There is no CPU fallback for DTensor ops.
+- **`sdpa`** runs the library's `scrapgpu_scaled_dot_product_attention` with `SCRAPGPU_ATTENTION_FLAG_DEVICE_BATCHED`:
+  all (batch, head) pairs in a few batched ops, the mask stays on the device. A query whose keys are all `-inf` yields zeros.
+- **Transfers**: only `to_device`, `to_cpu`, `sync` and creating a `Weight` cross the host boundary.
+  `sgt.stats()` returns the library-level host-to-device / device-to-host counters (`scrapgpu_transfer_stats_get`) and the
+  pool counters; `sgt.reset_stats()` clears them.
+- **Buffers** come from a size-class pool (no `clCreateBuffer` per op; NVIDIA 390 probes the tail of every allocation). Idle
+  buffers are capped by `SCRAPGPU_TORCH_POOL_MAX_BYTES` (default 256 MiB), `sgt.pool_trim()` releases them, and an allocation
+  failure trims the pool once and retries. `SCRAPGPU_TORCH_SYNC_EACH_OP=1` synchronizes after every op to localize an error.
+- With `GGML_CL11_PROFILE=1` (and `GGML_CL11_PROFILE_SHAPES=1`) `sgt.profile_print()` prints the kernel time per op.
+
+`examples/timestral_gpu.py` runs the Timestral-209M transformer entirely on a GT 430 this way (see its header).
+
+
 All operations reject tensors that require gradients. Detach model weights/activations or prepare inference buffers under `torch.no_grad()` before calling the adapter. Calls, weight upload, and release serialize access to the shared stream, including calls from multiple Python threads.
 
 ## Attention
