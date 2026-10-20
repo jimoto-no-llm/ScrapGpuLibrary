@@ -327,10 +327,10 @@ scrapgpu_status api_supports(cl11_api_device * d, const scrapgpu_op_desc * desc,
                 case SCRAPGPU_OP_SQRT:  code = CL11_UC_SQRT;  break;
                 default: {
                     const auto p = api_params<scrapgpu_unary_params>(desc);
-                    if (p.kind < SCRAPGPU_UNARY_SILU || p.kind > SCRAPGPU_UNARY_TANH) {
+                    code = cl11_unary_code_of(p.kind);
+                    if (code < 0) {
                         return api_no("unknown UNARY kind", reason);
                     }
-                    code = CL11_UC_SILU + (int32_t) p.kind;
                 }
             }
             return cl11_supports_unary(in[0], out[0], code)
@@ -353,6 +353,11 @@ scrapgpu_status api_supports(cl11_api_device * d, const scrapgpu_op_desc * desc,
             return cl11_supports_rms_norm(in[0], out[0])
                 ? SCRAPGPU_STATUS_OK
                 : api_no("RMS_NORM needs F32 tensors with contiguous rows", reason);
+
+        case SCRAPGPU_OP_NORM:
+            return cl11_supports_norm(in[0], out[0])
+                ? SCRAPGPU_STATUS_OK
+                : api_no("NORM needs F32 tensors with contiguous rows", reason);
 
         case SCRAPGPU_OP_RMS_NORM_MUL: {
             const sgt::TensorDesc & w = in[1];
@@ -582,6 +587,7 @@ const char * api_op_name(scrapgpu_op op) {
         case SCRAPGPU_OP_UNARY: return "UNARY";
         case SCRAPGPU_OP_GLU: return "GLU";
         case SCRAPGPU_OP_RMS_NORM: return "RMS_NORM";
+        case SCRAPGPU_OP_NORM: return "NORM";
         case SCRAPGPU_OP_ROPE: return "ROPE";
         case SCRAPGPU_OP_SOFT_MAX: return "SOFT_MAX";
         case SCRAPGPU_OP_GET_ROWS: return "GET_ROWS";
@@ -646,7 +652,7 @@ scrapgpu_status api_dispatch(cl11_api_device * d, const scrapgpu_op_desc * desc,
                 case SCRAPGPU_OP_SQRT: code = CL11_UC_SQRT; break;
                 default: {
                     const auto p = api_params<scrapgpu_unary_params>(desc);
-                    code = CL11_UC_SILU + (int32_t) p.kind;
+                    code = cl11_unary_code_of(p.kind);
                     break;
                 }
             }
@@ -661,6 +667,11 @@ scrapgpu_status api_dispatch(cl11_api_device * d, const scrapgpu_op_desc * desc,
         case SCRAPGPU_OP_RMS_NORM: {
             const auto p = api_params<scrapgpu_rms_norm_params>(desc);
             ok = cl11_op_rms_norm(c, out[0], in[0], p);
+            break;
+        }
+        case SCRAPGPU_OP_NORM: {
+            const auto p = api_params<scrapgpu_norm_params>(desc);
+            ok = cl11_op_norm(c, out[0], in[0], p);
             break;
         }
         case SCRAPGPU_OP_RMS_NORM_MUL: {

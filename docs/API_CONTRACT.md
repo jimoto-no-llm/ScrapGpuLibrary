@@ -58,7 +58,7 @@
 
 ## 7. Op
 
-- op の種類は Core 独自の列挙（`MUL_MAT`、`MUL_MAT_ID`、`GET_ROWS`、`SET_ROWS`、`CPY`、`ADD`、`MUL`、`SCALE`、`RMS_NORM`、`ROPE`、`SOFT_MAX`、`GLU`、`UNARY`、`SSM_CONV`、`CONCAT`、`PAD`、`SUM_ROWS`、`ARGSORT`、`TOP_K`、`ADD_ID` など）。ggml の列挙との対応表は adapter が持つ。
+- op の種類は Core 独自の列挙（`MUL_MAT`、`MUL_MAT_ID`、`GET_ROWS`、`SET_ROWS`、`CPY`、`ADD`、`MUL`、`SCALE`、`RMS_NORM`、`NORM`、`ROPE`、`SOFT_MAX`、`GLU`、`UNARY`、`SSM_CONV`、`CONCAT`、`PAD`、`SUM_ROWS`、`ARGSORT`、`TOP_K`、`ADD_ID` など）。ggml の列挙との対応表は adapter が持つ。
 - 各 op は、入力と出力の `tensor_desc`、op 固有のパラメータ構造体（ROPE のモードと yarn の値、SOFT_MAX の scale と mask、GLU の種類など）を受け取る。
 - `scrapgpu_op_supported(device, op, &reason)`：対応しない理由を返す。**暗黙の転送や CPU での実行はしない**。CPU に回すかどうかは adapter が決める（ggml ではスケジューラが行う）。
 - 正しさの基準：op ごとに CPU の参照実装との NMSE の許容値を文書に持つ（llama.cpp の `test-backend-ops` と同じ値を出発点にする）。
@@ -127,7 +127,8 @@ ROPE と SOFT_MAX の任意入力は、`desc->inputs[]` の固定順で渡す。
 | `SCALE` | `SCRAPGPU_OP_SCALE`, `scrapgpu_scale_params { scale, bias }` | Representable |
 | `CLAMP` | `SCRAPGPU_OP_CLAMP`, `scrapgpu_clamp_params` | Representable |
 | `SQR`, `SQRT` | Dedicated unary-like `scrapgpu_op` values | Representable |
-| `UNARY` (`SILU`, `RELU`, `NEG`, `ABS`, `SIGMOID`, `TANH`) | `SCRAPGPU_OP_UNARY`, `scrapgpu_unary_params.kind` | Representable |
+| `UNARY` (`SILU`, `RELU`, `NEG`, `ABS`, `SIGMOID`, `TANH`, `GELU`, `GELU_ERF`, `GELU_QUICK`) | `SCRAPGPU_OP_UNARY`, `scrapgpu_unary_params.kind` | Representable |
+| `NORM` (LayerNorm without weight / bias) | `SCRAPGPU_OP_NORM`, `scrapgpu_norm_params` | Representable |
 | `GLU` (`SWIGLU`, `REGLU`, fused/split, swapped) | `SCRAPGPU_OP_GLU`, `scrapgpu_glu_params` | Representable |
 | `RMS_NORM` | `SCRAPGPU_OP_RMS_NORM`; fusions as `SCRAPGPU_OP_RMS_NORM_MUL` and `SCRAPGPU_OP_ADD_RMS_NORM_MUL` in plans | Representable |
 | `ROPE` normal / NEOX, yarn, `freq_factors`, `n_offs` | `SCRAPGPU_OP_ROPE`, `scrapgpu_rope_params` | Representable; mrope/vision remain unsupported exactly as CL11 documents |
@@ -163,7 +164,7 @@ ROPE と SOFT_MAX の任意入力は、`desc->inputs[]` の固定順で渡す。
 | Sub-buffer release order | `SCRAPGPU_DEVICE_QUIRK_SUBBUFFER_RELEASE_ORDER`; backend buffer lifetime policy | Representable |
 | Launch cost grows with program | `SCRAPGPU_DEVICE_QUIRK_LAUNCH_COST_GROWS_WITH_PROGRAM`; backend program splitting policy | Representable |
 
-Gate 1 non-representable items: **none**. Unsupported CL11 cases documented in `docs/CL11.md`（`FLASH_ATTN_EXT`、`NORM`、`GROUP_NORM`、`SSM_SCAN` / RWKV、未対応量子型、長すぎる `ARGSORT` / `TOP_K` など）は、現在のCL11機能ではなくCPU fallback対象なので、Core contractでは `op_supported` の理由付き `UNSUPPORTED` として表す。
+Gate 1 non-representable items: **none**. Unsupported CL11 cases documented in `docs/CL11.md`（`FLASH_ATTN_EXT`、`GROUP_NORM`、`SSM_SCAN` / RWKV、未対応量子型、長すぎる `ARGSORT` / `TOP_K` など）は、現在のCL11機能ではなくCPU fallback対象なので、Core contractでは `op_supported` の理由付き `UNSUPPORTED` として表す。
 
 ## 14. マルチデバイス間の転送（P4）
 

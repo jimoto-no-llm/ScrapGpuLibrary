@@ -145,6 +145,15 @@ void test_unary_family() {
     const double silu1 = 1.0 / (1.0 + std::exp(-1.0));
     const double sig0 = 0.5;
     const double tanh1 = std::tanh(1.0);
+    const auto gelu = [](double v) {
+        return 0.5 * v * (1.0 + std::tanh(0.79788456080286535587989211986876 * v * (1.0 + 0.044715 * v * v)));
+    };
+    const auto gelu_erf = [](double v) {
+        return 0.5 * v * (1.0 + std::erf(0.70710678118654752440084436210484 * v));
+    };
+    const auto gelu_quick = [](double v) {
+        return v * (1.0 / (1.0 + std::exp(-1.702 * v)));
+    };
     struct KindCase {
         scrapgpu_unary_kind kind;
         double expected[5];
@@ -156,6 +165,9 @@ void test_unary_family() {
         {SCRAPGPU_UNARY_ABS, {1, 2, 0, 0.5, 0.25}},
         {SCRAPGPU_UNARY_SIGMOID, {1.0 / (1.0 + std::exp(-1.0)), 1.0 / (1.0 + std::exp(2.0)), sig0, 1.0 / (1.0 + std::exp(-0.5)), 1.0 / (1.0 + std::exp(0.25))}},
         {SCRAPGPU_UNARY_TANH, {tanh1, std::tanh(-2.0), 0, std::tanh(0.5), std::tanh(-0.25)}},
+        {SCRAPGPU_UNARY_GELU, {gelu(1.0), gelu(-2.0), 0, gelu(0.5), gelu(-0.25)}},
+        {SCRAPGPU_UNARY_GELU_ERF, {gelu_erf(1.0), gelu_erf(-2.0), 0, gelu_erf(0.5), gelu_erf(-0.25)}},
+        {SCRAPGPU_UNARY_GELU_QUICK, {gelu_quick(1.0), gelu_quick(-2.0), 0, gelu_quick(0.5), gelu_quick(-0.25)}},
     };
     for (const KindCase & c : cases) {
         scrapgpu_unary_params p{sizeof(p), c.kind};
@@ -228,6 +240,22 @@ void test_norms() {
     }
     // missing params
     CHECK(execute(SCRAPGPU_OP_RMS_NORM, &s, {xx.data()}, const_cast<scrapgpu_tensor_desc *>(&d), {y.data()}) ==
+          SCRAPGPU_STATUS_INVALID_ARGUMENT);
+
+    // NORM: dst = (x - mean) / sqrt(var + eps) per row; x = {1, 2, 2, 4}: mean = 2.25, var = 1.1875
+    scrapgpu_norm_params nrm{sizeof(nrm), 0.25f};
+    CHECK_OK(execute(SCRAPGPU_OP_NORM, &s, {xx.data()}, const_cast<scrapgpu_tensor_desc *>(&d), {y.data()}, &nrm, sizeof(nrm)));
+    {
+        const double mean = 9.0 / 4.0;
+        const double var = ((1 - mean) * (1 - mean) + 2 * (2 - mean) * (2 - mean) + (4 - mean) * (4 - mean)) / 4.0;
+        const double scale = 1.0 / std::sqrt(var + 0.25);
+        for (int i = 0; i < 4; ++i) {
+            CHECK_FEQ(y[i], (x[i] - mean) * scale, 1e-6);
+            CHECK_FEQ(y[4 + i], (x[i] - mean) * scale, 1e-6);
+        }
+    }
+    // missing params
+    CHECK(execute(SCRAPGPU_OP_NORM, &s, {xx.data()}, const_cast<scrapgpu_tensor_desc *>(&d), {y.data()}) ==
           SCRAPGPU_STATUS_INVALID_ARGUMENT);
 
     // RMS_NORM_MUL: dst = rms_norm(x) * w

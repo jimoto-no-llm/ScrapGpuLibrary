@@ -16,9 +16,9 @@ bool cl11_supports_binary(const sgt::TensorDesc & s0, const sgt::TensorDesc & s1
            sgt::same_shape(s0, d);
 }
 
-// UNARY (CL11_UC_SILU .. CL11_UC_TANH) / SCALE / CLAMP / SQR / SQRT
+// UNARY (CL11_UC_SILU .. CL11_UC_TANH, CL11_UC_GELU .. CL11_UC_GELU_QUICK) / SCALE / CLAMP / SQR / SQRT
 bool cl11_supports_unary(const sgt::TensorDesc & s0, const sgt::TensorDesc & d, int32_t code) {
-    if (code < CL11_UC_SILU || code > CL11_UC_CLAMP) {
+    if (code < CL11_UC_SILU || code > CL11_UC_GELU_QUICK) {
         return false;
     }
     return s0.dtype == SCRAPGPU_DTYPE_F32 && d.dtype == SCRAPGPU_DTYPE_F32;
@@ -40,6 +40,10 @@ bool cl11_supports_glu(const sgt::TensorDesc & s0, const sgt::TensorDesc * s1, c
 bool cl11_supports_rms_norm(const sgt::TensorDesc & s0, const sgt::TensorDesc & d) {
     return s0.dtype == SCRAPGPU_DTYPE_F32 && d.dtype == SCRAPGPU_DTYPE_F32 &&
            s0.nb[0] == sizeof(float) && d.nb[0] == sizeof(float);
+}
+
+bool cl11_supports_norm(const sgt::TensorDesc & s0, const sgt::TensorDesc & d) {
+    return cl11_supports_rms_norm(s0, d); // the same conditions: F32 with contiguous rows
 }
 
 bool cl11_supports_soft_max(const sgt::TensorDesc & s0, const sgt::TensorDesc * mask, const sgt::TensorDesc * sinks,

@@ -40,6 +40,7 @@ typedef enum scrapgpu_op {
     SCRAPGPU_OP_SUM_ROWS = 34,
     SCRAPGPU_OP_ARGSORT = 35,
     SCRAPGPU_OP_TOP_K = 36,
+    SCRAPGPU_OP_NORM = 37,
     SCRAPGPU_OP_RMS_NORM_MUL = 100,
     SCRAPGPU_OP_ADD_RMS_NORM_MUL = 101,
     SCRAPGPU_OP_SET_ROWS_PAIR = 102,
@@ -54,6 +55,9 @@ typedef enum scrapgpu_unary_kind {
     SCRAPGPU_UNARY_ABS = 3,
     SCRAPGPU_UNARY_SIGMOID = 4,
     SCRAPGPU_UNARY_TANH = 5,
+    SCRAPGPU_UNARY_GELU = 6,
+    SCRAPGPU_UNARY_GELU_ERF = 7,
+    SCRAPGPU_UNARY_GELU_QUICK = 8,
 } scrapgpu_unary_kind;
 
 typedef enum scrapgpu_glu_kind {
@@ -161,6 +165,11 @@ typedef struct scrapgpu_rms_norm_params {
     size_t struct_size;
     float eps;
 } scrapgpu_rms_norm_params;
+
+typedef struct scrapgpu_norm_params {
+    size_t struct_size;
+    float eps;
+} scrapgpu_norm_params;
 
 typedef struct scrapgpu_mul_mat_params {
     size_t struct_size;

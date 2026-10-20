@@ -77,6 +77,7 @@ scrapgpu_status scrapgpu_op_desc_validate(const scrapgpu_op_desc * desc) {
         case SCRAPGPU_OP_SQR:
         case SCRAPGPU_OP_SQRT:
         case SCRAPGPU_OP_RMS_NORM:
+        case SCRAPGPU_OP_NORM:
         case SCRAPGPU_OP_SUM_ROWS: {
             scrapgpu_status st = validate_counts(desc, 1, 1);
             if (st != SCRAPGPU_STATUS_OK) return st;

@@ -56,6 +56,14 @@ bool cl11_op_rms_norm(cl11_device * c, const cl11_tensor & dst, const cl11_tenso
     return cl11_launch(c->queue, c->exec, a, c->cfg.wg_row, (size_t) (s0.d.ne[1] * s0.d.ne[2] * s0.d.ne[3]));
 }
 
+// NORM (F32): LayerNorm without the weight / bias, one work-group per row
+bool cl11_op_norm(cl11_device * c, const cl11_tensor & dst, const cl11_tensor & s0, const scrapgpu_norm_params & p) {
+    const cl11_tref s = cl11_tref_of(s0), d = cl11_tref_of(dst);
+    cl11_args a(c->kernels[K_NORM]);
+    a.set(s.mem).set(s.td).set(d.mem).set(d.td).set(p.eps);
+    return cl11_launch(c->queue, c->exec, a, c->cfg.wg_row, (size_t) (s0.d.ne[1] * s0.d.ne[2] * s0.d.ne[3]));
+}
+
 // RMS_NORM (F32) followed by a MUL with a weight vector `w` (the fusion itself is decided by the caller)
 bool cl11_op_rms_norm_mul(cl11_device * c, const cl11_tensor & dst, const cl11_tensor & s0, const cl11_tensor & w, const scrapgpu_rms_norm_params & p) {
     const cl11_tref s = cl11_tref_of(s0), wr = cl11_tref_of(w), d = cl11_tref_of(dst);

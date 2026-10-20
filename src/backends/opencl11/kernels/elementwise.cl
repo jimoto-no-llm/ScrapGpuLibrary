@@ -24,7 +24,8 @@ DEF_BIN(k_div, a / b)
 
 // ---------------------------------------------------------------------------------------------
 // unary ops (F32). op codes must match the host:
-//   0 silu, 1 relu, 2 neg, 3 abs, 4 sigmoid, 5 tanh, 6 sqr, 7 sqrt, 8 scale (x*p0 + p1), 9 clamp(p0, p1)
+//   0 silu, 1 relu, 2 neg, 3 abs, 4 sigmoid, 5 tanh, 6 sqr, 7 sqrt, 8 scale (x*p0 + p1), 9 clamp(p0, p1),
+//   10 gelu (tanh approximation), 11 gelu_erf (0.5*x*(1 + erf(x/sqrt(2)))), 12 gelu_quick (x*sigmoid(1.702*x))
 // ---------------------------------------------------------------------------------------------
 kernel void k_unary(global uchar * ps, tdesc ts, global uchar * pd, tdesc td, int n, int op, float p0, float p1) {
     const int idx = LGID() * WG_EW + (int)get_local_id(0);
@@ -43,7 +44,10 @@ kernel void k_unary(global uchar * ps, tdesc ts, global uchar * pd, tdesc td, in
         case 6:  y = x * x; break;
         case 7:  y = sqrt(x); break;
         case 8:  y = x * p0 + p1; break;
-        default: y = fmin(fmax(x, p0), p1); break;
+        case 9:  y = fmin(fmax(x, p0), p1); break;
+        case 10: y = 0.5f * x * (1.0f + tanh(0.79788456080286535587989211986876f * x * (1.0f + 0.044715f * x * x))); break;
+        case 11: y = 0.5f * x * (1.0f + erf(0.70710678118654752440084436210484f * x)); break;
+        default: y = x * (1.0f / (1.0f + exp(-1.702f * x))); break;
     }
     ST_F32(pd + OFF4(td, i0, i1, i2, i3), y);
 }

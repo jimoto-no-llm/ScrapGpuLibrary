@@ -88,6 +88,7 @@ void test_op_validation() {
     pad.struct_size = sizeof(pad);
     scrapgpu_argsort_params argsort{sizeof(argsort), SCRAPGPU_ARGSORT_DESC, 0};
     scrapgpu_argsort_params topk{sizeof(topk), SCRAPGPU_ARGSORT_DESC, 4};
+    scrapgpu_norm_params norm{sizeof(norm), 1e-5f};
 
     validate(SCRAPGPU_OP_SCALE, &f32, 1, &out, 1, &scale, sizeof(scale));
     validate(SCRAPGPU_OP_CLAMP, &f32, 1, &out, 1, &clamp, sizeof(clamp));
@@ -96,6 +97,7 @@ void test_op_validation() {
     validate(SCRAPGPU_OP_UNARY, &f32, 1, &out, 1, &unary, sizeof(unary));
     validate(SCRAPGPU_OP_GLU, &f32, 1, &out, 1, &glu, sizeof(glu));
     validate(SCRAPGPU_OP_RMS_NORM, &f32, 1, &out, 1, nullptr, 0);
+    validate(SCRAPGPU_OP_NORM, &f32, 1, &out, 1, &norm, sizeof(norm));
     validate(SCRAPGPU_OP_ROPE, &f16, 1, &out, 1, &rope, sizeof(rope));
     validate(SCRAPGPU_OP_SOFT_MAX, &f32, 1, &out, 1, &softmax, sizeof(softmax));
     validate(SCRAPGPU_OP_GET_ROWS, rows, 2, &out, 1, &get_rows, sizeof(get_rows));
