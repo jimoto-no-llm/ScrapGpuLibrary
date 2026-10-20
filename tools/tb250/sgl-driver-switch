@@ -1,0 +1,103 @@
+#!/bin/bash
+# TB250 NVIDIA driver switch for the SGL driver experiments.
+#
+# Install (once, as root; the script and the installers must be root-owned so
+# that the NOPASSWD rule below cannot be used to run anything else):
+#   install -o root -g root -m 0755 sgl-driver-switch /usr/local/sbin/sgl-driver-switch
+#   install -d -o root -g root -m 0755 /usr/local/lib/sgl-driver
+#   install -o root -g root -m 0644 ~/bench/nvidia/NVIDIA-Linux-x86_64-390.157.run \
+#       ~/bench/nvidia/NVIDIA-470.run /usr/local/lib/sgl-driver/
+#   echo 'eightman ALL=(root) NOPASSWD: /usr/local/sbin/sgl-driver-switch' > /etc/sudoers.d/sgl-driver
+#   chmod 0440 /etc/sudoers.d/sgl-driver && visudo -cf /etc/sudoers.d/sgl-driver
+#
+# Usage: sudo sgl-driver-switch <status|nv390|nv470|nouveau|nv470-nouveau430>
+#   nv390             390.157 for all three cards (the boot default; the restore target)
+#   nv470             470 for the Kepler cards; the GT 430 is left without a driver
+#   nouveau           nouveau (modeset=1) for all three cards, for rusticl / NVK
+#   nv470-nouveau430  470 for the Kepler cards, nouveau for the GT 430
+# After a reboot the 390 kernel module loads again; run `nv390` before using
+# CUDA / OpenCL if the last state installed the 470 userspace.
+
+set -euo pipefail
+LIB=/usr/local/lib/sgl-driver
+RUN390=$LIB/NVIDIA-Linux-x86_64-390.157.run
+RUN470=$LIB/NVIDIA-470.run
+STATE=/run/sgl-driver.state
+GT430=0000:04:00.0
+KEPLER=(0000:07:00.0 0000:08:00.0)
+ALL=("$GT430" "${KEPLER[@]}")
+
+[ "$(id -u)" = 0 ] || { echo "run with sudo" >&2; exit 2; }
+log() { echo "[sgl-driver] $*"; }
+
+status() {
+    for d in "${ALL[@]}"; do
+        drv=$(basename "$(readlink -f /sys/bus/pci/devices/$d/driver 2>/dev/null)" 2>/dev/null || true)
+        echo "$d ${drv:-none}"
+    done
+    lsmod | grep -E '^(nvidia|nouveau)' || true
+    [ -f "$STATE" ] && echo "state: $(cat "$STATE")" || echo "state: unknown (boot default)"
+    cat /proc/driver/nvidia/version 2>/dev/null | head -1 || true
+}
+
+busy_check() { # refuse while a process holds an NVIDIA device node (fuser is not installed)
+    local users
+    users=$(find /proc/[0-9]*/fd -lname '/dev/nvidia*' 2>/dev/null | cut -d/ -f3 | sort -u | tr '\n' ' ')
+    if [ -n "$users" ]; then
+        echo "/dev/nvidia* is in use by pid(s): $users; stop the bench first" >&2; exit 1
+    fi
+}
+
+unload_all() {
+    for m in nvidia_drm nvidia_modeset nvidia_uvm nvidia_peermem nvidia nouveau; do
+        if lsmod | grep -q "^$m "; then log "rmmod $m"; modprobe -r "$m"; fi
+    done
+    for d in "${ALL[@]}"; do echo > /sys/bus/pci/devices/$d/driver_override; done
+}
+
+override() { # override <driver> <pci>...
+    local drv=$1; shift
+    for d in "$@"; do echo "$drv" > /sys/bus/pci/devices/$d/driver_override; done
+}
+
+userspace() { # userspace <run file>
+    log "installing userspace from $(basename "$1")"
+    sh "$1" --silent --no-kernel-module --no-x-check --no-nouveau-check \
+        --no-distro-scripts --install-libglvnd 2>&1 | tail -5
+    nvidia-modprobe -u -c=0 || true
+}
+
+load_nv() { # load_nv <390|470>
+    if [ "$1" = 390 ]; then
+        modprobe nvidia-legacy-390xx; modprobe nvidia-legacy-390xx-uvm
+        modprobe nvidia-legacy-390xx-modeset; modprobe nvidia-legacy-390xx-drm || true
+    else
+        modprobe nvidia-tesla-470; modprobe nvidia-tesla-470-uvm
+        modprobe nvidia-tesla-470-modeset; modprobe nvidia-tesla-470-drm || true
+    fi
+}
+
+load_nouveau() { modprobe nouveau modeset=1; }
+
+case "${1:-}" in
+    status) status; exit 0 ;;
+    nv390)
+        busy_check; unload_all
+        override nvidia "${ALL[@]}"
+        load_nv 390; userspace "$RUN390" ;;
+    nv470)
+        busy_check; unload_all
+        override nvidia "${KEPLER[@]}"; override none "$GT430"
+        load_nv 470; userspace "$RUN470" ;;
+    nouveau)
+        busy_check; unload_all
+        override nouveau "${ALL[@]}"
+        load_nouveau ;;
+    nv470-nouveau430)
+        busy_check; unload_all
+        override nvidia "${KEPLER[@]}"; override nouveau "$GT430"
+        load_nouveau; load_nv 470; userspace "$RUN470" ;;
+    *) echo "usage: $0 <status|nv390|nv470|nouveau|nv470-nouveau430>" >&2; exit 2 ;;
+esac
+echo "$1" > "$STATE"
+status
