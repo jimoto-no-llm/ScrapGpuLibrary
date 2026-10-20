@@ -7,6 +7,7 @@
 #include "scrapgpu/stream.h"
 
 #include <cmath>
+#include <cstddef>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -212,7 +213,7 @@ void expect_close(const std::string & name, const std::vector<float> & actual, c
     CHECK(actual.size() == expected.size());
     for (size_t i = 0; i < actual.size(); ++i) {
         const double diff = std::fabs(static_cast<double>(actual[i]) - expected[i]);
-        if (diff > kTol) {
+        if (!(diff <= kTol)) {
             std::fprintf(stderr, "%s: mismatch at %zu, got %.9g expected %.9g diff %.9g\n",
                          name.c_str(), i, static_cast<double>(actual[i]), expected[i], diff);
             std::exit(1);
@@ -430,6 +431,137 @@ void test_invalid_inputs_and_budget() {
     ++g_run;
 }
 
+
+// DEVICE_BATCHED: GQA, two batches, one mask per batch broadcast over heads, a fully masked row, caller workspace and
+// internally allocated workspace; no host transfer is involved in the call itself.
+void test_device_batched() {
+    const int64_t d = 8, q = 6, k = 7, dv = 5, hq = 4, hkv = 2, b = 2;
+    std::vector<float> qv(static_cast<size_t>(d * q * hq * b));
+    std::vector<float> kv(static_cast<size_t>(d * k * hkv * b));
+    std::vector<float> vv(static_cast<size_t>(dv * k * hkv * b));
+    std::vector<float> mv(static_cast<size_t>(k * q * 1 * b), 0.0f);
+    for (size_t i = 0; i < qv.size(); ++i) qv[i] = static_cast<float>(std::sin(0.37 * static_cast<double>(i)));
+    for (size_t i = 0; i < kv.size(); ++i) kv[i] = static_cast<float>(std::cos(0.23 * static_cast<double>(i)));
+    for (size_t i = 0; i < vv.size(); ++i) vv[i] = static_cast<float>(std::sin(0.11 * static_cast<double>(i) + 1.0));
+    const float ninf = -std::numeric_limits<float>::infinity();
+    for (int64_t kp = 0; kp < k; ++kp) {
+        mv[idx4(kp, 2, 0, 1, k, q, 1)] = ninf; // batch 1, query 2: fully masked
+    }
+    for (int64_t qp = 0; qp < q; ++qp) {
+        for (int64_t kp = qp + 1; kp < k; ++kp) {
+            mv[idx4(kp, qp, 0, 0, k, q, 1)] = ninf; // batch 0: causal-looking
+        }
+    }
+
+    OwnedTensor query = make_tensor(d, q, hq, b, qv);
+    OwnedTensor key = make_tensor(d, k, hkv, b, kv);
+    OwnedTensor value = make_tensor(dv, k, hkv, b, vv);
+    OwnedTensor mask = make_tensor(k, q, 1, b, mv);
+
+    AttentionHostInputs in;
+    in.d = d; in.q = q; in.k = k; in.dv = dv; in.hq = hq; in.hkv = hkv; in.batches = b;
+    in.mask_h = 1;
+    in.mask_b = b;
+    in.mask = &mv;
+    in.query = &qv; in.key = &kv; in.value = &vv;
+    const std::vector<double> expected = oracle_attention(in);
+
+    for (int use_workspace = 0; use_workspace < 2; ++use_workspace) {
+        OwnedTensor output = make_output_tensor(dv, q, hq, b);
+        scrapgpu_attention_params p{};
+        p.struct_size = sizeof(p);
+        p.query = &query.desc;
+        p.key = &key.desc;
+        p.value = &value.desc;
+        p.mask = &mask.desc;
+        p.output = &output.desc;
+        p.scale = 1.0f / std::sqrt(static_cast<float>(d));
+        p.flags = SCRAPGPU_ATTENTION_FLAG_DEVICE_BATCHED;
+        uint64_t need = 0;
+        CHECK_OK(scrapgpu_attention_batched_workspace_bytes(&p, &need));
+        scrapgpu_buffer_t * ws = nullptr;
+        if (use_workspace) {
+            CHECK_OK(scrapgpu_buffer_alloc(g_device, static_cast<size_t>(need), &ws));
+            p.workspace = ws;
+            p.workspace_bytes = need - 1;
+            CHECK(scrapgpu_scaled_dot_product_attention(g_device, g_stream, &p) == SCRAPGPU_STATUS_INVALID_ARGUMENT);
+            p.workspace_bytes = need;
+        }
+        CHECK_OK(scrapgpu_scaled_dot_product_attention(g_device, g_stream, &p));
+        CHECK_OK(scrapgpu_stream_sync(g_stream));
+        download_tensor(output);
+        expect_close("device_batched", output.host, expected);
+        for (int64_t h = 0; h < hq; ++h) {
+            for (int64_t dv_i = 0; dv_i < dv; ++dv_i) {
+                CHECK(output.host[idx4(dv_i, 2, h, 1, dv, q, hq)] == 0.0f);
+            }
+        }
+        scrapgpu_buffer_free(ws);
+    }
+
+    // a workspace that overlaps one of the attention tensors is rejected before anything is enqueued
+    {
+        OwnedTensor output = make_output_tensor(dv, q, hq, b);
+        scrapgpu_attention_params p{};
+        p.struct_size = sizeof(p);
+        p.query = &query.desc;
+        p.key = &key.desc;
+        p.value = &value.desc;
+        p.mask = &mask.desc;
+        p.output = &output.desc;
+        p.scale = 1.0f / std::sqrt(static_cast<float>(d));
+        p.flags = SCRAPGPU_ATTENTION_FLAG_DEVICE_BATCHED;
+        uint64_t need = 0;
+        CHECK_OK(scrapgpu_attention_batched_workspace_bytes(&p, &need));
+        p.workspace_bytes = need;
+        const scrapgpu_tensor_desc * aliased[] = {&query.desc, &value.desc, &mask.desc, &output.desc};
+        for (const scrapgpu_tensor_desc * t : aliased) {
+            p.workspace = t->buffer;
+            CHECK(scrapgpu_scaled_dot_product_attention(g_device, g_stream, &p) == SCRAPGPU_STATUS_INVALID_ARGUMENT);
+        }
+    }
+
+    // callers built against the header before flags / workspace were appended pass the shorter struct_size;
+    // the tail they do not cover must read as 0 (tiled path), whatever the bytes after it hold
+    {
+        OwnedTensor output = make_output_tensor(dv, q, hq, b);
+        scrapgpu_attention_params p{};
+        p.query = &query.desc;
+        p.key = &key.desc;
+        p.value = &value.desc;
+        p.mask = &mask.desc;
+        p.output = &output.desc;
+        p.max_workspace_bytes = 64u << 20;
+        p.scale = 1.0f / std::sqrt(static_cast<float>(d));
+        p.flags = SCRAPGPU_ATTENTION_FLAG_DEVICE_BATCHED;   // outside the old struct: must be ignored
+        p.workspace = query.desc.buffer;                    // likewise
+        p.workspace_bytes = 1;
+        p.struct_size = offsetof(scrapgpu_attention_params, scale) + sizeof(float);
+        CHECK_OK(scrapgpu_scaled_dot_product_attention(g_device, g_stream, &p));
+        CHECK_OK(scrapgpu_stream_sync(g_stream));
+        download_tensor(output);
+        expect_close("v1_struct_size", output.host, expected);
+        p.struct_size = offsetof(scrapgpu_attention_params, scale);  // shorter than the v1 prefix
+        CHECK(scrapgpu_scaled_dot_product_attention(g_device, g_stream, &p) == SCRAPGPU_STATUS_INVALID_ARGUMENT);
+    }
+
+    // causal is not supported by the batched path
+    OwnedTensor output = make_output_tensor(dv, q, hq, b);
+    scrapgpu_attention_params p{};
+    p.struct_size = sizeof(p);
+    p.query = &query.desc;
+    p.key = &key.desc;
+    p.value = &value.desc;
+    p.output = &output.desc;
+    p.scale = 0.5f;
+    p.causal = 1;
+    p.flags = SCRAPGPU_ATTENTION_FLAG_DEVICE_BATCHED;
+    CHECK(scrapgpu_scaled_dot_product_attention(g_device, g_stream, &p) == SCRAPGPU_STATUS_UNSUPPORTED);
+
+    std::printf("PASS  %-24s\n", "device_batched");
+    ++g_run;
+}
+
 int register_backend_from_env() {
     const char * backend = std::getenv("SCRAPGPU_TEST_BACKEND");
     if (backend == nullptr || backend[0] == '\0') {
@@ -481,6 +613,7 @@ int main() {
     test_causal_decode_offset();
     test_masked_rows_zero();
     test_invalid_inputs_and_budget();
+    test_device_batched();
 
     CHECK_OK(scrapgpu_stream_free(g_stream));
     std::printf("%d attention runs\n", g_run);

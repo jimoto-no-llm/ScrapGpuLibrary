@@ -1,6 +1,7 @@
 #include "scrapgpu/backend.h"
 
 #include <algorithm>
+#include <atomic>
 #include <cstddef>
 #include <cstring>
 #include <mutex>
@@ -133,10 +134,42 @@ scrapgpu_status scrapgpu_buffer_free(scrapgpu_buffer_t * buffer) {
     return dispatch(buffer, &scrapgpu_backend_vtable::buffer_free, "the buffer backend cannot free buffers", buffer);
 }
 
+namespace {
+std::atomic<uint64_t> g_h2d_calls{0}, g_h2d_bytes{0}, g_d2h_calls{0}, g_d2h_bytes{0};
+void note_h2d(size_t bytes) {
+    g_h2d_calls.fetch_add(1, std::memory_order_relaxed);
+    g_h2d_bytes.fetch_add(bytes, std::memory_order_relaxed);
+}
+void note_d2h(size_t bytes) {
+    g_d2h_calls.fetch_add(1, std::memory_order_relaxed);
+    g_d2h_bytes.fetch_add(bytes, std::memory_order_relaxed);
+}
+} // namespace
+
+scrapgpu_status scrapgpu_transfer_stats_get(scrapgpu_transfer_stats * out) {
+    if (out == nullptr || out->struct_size < sizeof(scrapgpu_transfer_stats)) {
+        scrapgpu_set_last_error("transfer stats struct is null or too small");
+        return SCRAPGPU_STATUS_INVALID_ARGUMENT;
+    }
+    out->host_to_device_calls = g_h2d_calls.load(std::memory_order_relaxed);
+    out->host_to_device_bytes = g_h2d_bytes.load(std::memory_order_relaxed);
+    out->device_to_host_calls = g_d2h_calls.load(std::memory_order_relaxed);
+    out->device_to_host_bytes = g_d2h_bytes.load(std::memory_order_relaxed);
+    return SCRAPGPU_STATUS_OK;
+}
+
+void scrapgpu_transfer_stats_reset(void) {
+    g_h2d_calls = 0;
+    g_h2d_bytes = 0;
+    g_d2h_calls = 0;
+    g_d2h_bytes = 0;
+}
+
 scrapgpu_status scrapgpu_buffer_write(scrapgpu_stream_t * stream, scrapgpu_buffer_t * buffer, uint64_t offset, const void * data, size_t size, int blocking) {
     if (stream == nullptr || buffer == nullptr || (data == nullptr && size != 0)) {
         return invalid("stream, buffer or data is null");
     }
+    note_h2d(size);
     return dispatch(stream, &scrapgpu_backend_vtable::buffer_write, "the stream backend cannot write buffers", stream, buffer, offset, data, size, blocking);
 }
 
@@ -144,6 +177,7 @@ scrapgpu_status scrapgpu_buffer_read(scrapgpu_stream_t * stream, scrapgpu_buffer
     if (stream == nullptr || buffer == nullptr || (data == nullptr && size != 0)) {
         return invalid("stream, buffer or data is null");
     }
+    note_d2h(size);
     return dispatch(stream, &scrapgpu_backend_vtable::buffer_read, "the stream backend cannot read buffers", stream, buffer, offset, data, size, blocking);
 }
 
@@ -187,6 +221,7 @@ scrapgpu_status scrapgpu_tensor_upload(scrapgpu_stream_t * stream, const scrapgp
     if (stream == nullptr || desc == nullptr || (host == nullptr && size != 0)) {
         return invalid("stream, tensor desc or host pointer is null");
     }
+    note_h2d(size);
     return dispatch(stream, &scrapgpu_backend_vtable::tensor_upload, "the stream backend cannot upload tensors", stream, desc, host, size);
 }
 
@@ -194,6 +229,7 @@ scrapgpu_status scrapgpu_tensor_download(scrapgpu_stream_t * stream, const scrap
     if (stream == nullptr || desc == nullptr || (host == nullptr && size != 0)) {
         return invalid("stream, tensor desc or host pointer is null");
     }
+    note_d2h(size);
     return dispatch(stream, &scrapgpu_backend_vtable::tensor_download, "the stream backend cannot download tensors", stream, desc, host, size);
 }
 

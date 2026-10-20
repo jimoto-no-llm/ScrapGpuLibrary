@@ -12,6 +12,7 @@
 #include "scrapgpu/status.h"
 #include "scrapgpu/stream.h"
 #include "scrapgpu/tensor.h"
+#include "torch_internal.h"
 
 #include <ATen/ATen.h>
 #include <torch/custom_class.h>
@@ -27,7 +28,7 @@
 #include <string>
 #include <vector>
 
-namespace {
+namespace sgtorch {
 
 std::mutex g_mu;
 bool g_ready = false;
@@ -213,78 +214,53 @@ bool is_quantized(scrapgpu_dtype dt) {
     return dt == SCRAPGPU_DTYPE_Q4_0 || dt == SCRAPGPU_DTYPE_Q8_0 || dt == SCRAPGPU_DTYPE_Q4_K || dt == SCRAPGPU_DTYPE_Q6_K;
 }
 
-class WeightImpl : public torch::CustomClassHolder {
-public:
-    WeightImpl(at::Tensor weight_f32, std::string quant_type) : quant_type_(std::move(quant_type)) {
-        at::Tensor w = require_cpu_f32(weight_f32, "weight");
-        TORCH_CHECK(w.dim() == 2, "weight must be 2-D [out_features, in_features]");
-        const int64_t m = w.size(0);
-        const int64_t k = w.size(1);
-        TORCH_CHECK(m > 0 && k > 0, "weight must be non-empty");
-        out_features_ = m;
-        in_features_ = k;
-        dtype_ = parse_quant(quant_type_);
-        TORCH_CHECK(k % scrapgpu_dtype_block_size(dtype_) == 0,
-                    "in_features must be a multiple of the quantization block size");
-        std::lock_guard<std::mutex> lock(g_mu);
-        ensure_backend();
-        layout_ = is_quantized(dtype_) && g_backend == "opencl11" ? SCRAPGPU_LAYOUT_R32 : SCRAPGPU_LAYOUT_NATURAL;
+WeightImpl::WeightImpl(at::Tensor weight_f32, std::string quant_type) : quant_type_(std::move(quant_type)) {
+    at::Tensor w = require_cpu_f32(weight_f32, "weight");
+    TORCH_CHECK(w.dim() == 2, "weight must be 2-D [out_features, in_features]");
+    const int64_t m = w.size(0);
+    const int64_t k = w.size(1);
+    TORCH_CHECK(m > 0 && k > 0, "weight must be non-empty");
+    out_features_ = m;
+    in_features_ = k;
+    dtype_ = parse_quant(quant_type_);
+    TORCH_CHECK(k % scrapgpu_dtype_block_size(dtype_) == 0,
+                "in_features must be a multiple of the quantization block size");
+    std::lock_guard<std::mutex> lock(g_mu);
+    ensure_backend();
+    layout_ = is_quantized(dtype_) && g_backend == "opencl11" ? SCRAPGPU_LAYOUT_R32 : SCRAPGPU_LAYOUT_NATURAL;
 
-        // ScrapGpu MUL_MAT: src0 is [K, M] (ne0=K, ne1=M); PyTorch Linear weight is [M, K].
-        const float * km = w.data_ptr<float>();
+    // ScrapGpu MUL_MAT: src0 is [K, M] (ne0=K, ne1=M); PyTorch Linear weight is [M, K].
+    const float * km = w.data_ptr<float>();
 
-        std::vector<uint8_t> host;
-        if (dtype_ == SCRAPGPU_DTYPE_F32) {
-            host.resize(static_cast<size_t>(k * m) * sizeof(float));
-            std::memcpy(host.data(), km, host.size());
-        } else if (dtype_ == SCRAPGPU_DTYPE_F16 || dtype_ == SCRAPGPU_DTYPE_BF16) {
-            const at::Tensor packed = w.to(dtype_ == SCRAPGPU_DTYPE_F16 ? at::kHalf : at::kBFloat16);
-            host.resize(static_cast<size_t>(w.numel()) * 2);
-            std::memcpy(host.data(), packed.const_data_ptr(), host.size());
-        } else {
-            host.resize(tensor_bytes(make_desc(dtype_, SCRAPGPU_LAYOUT_NATURAL, k, m, 1, 1, nullptr)));
-            check_status(scrapgpu_ref_quantize(dtype_, km, host.data(), k * m), "scrapgpu_ref_quantize");
-        }
-
-        GpuBuf pending;
-        check_status(scrapgpu_buffer_alloc(g_dev, host.size(), pending.put()), "scrapgpu_buffer_alloc");
-        desc_ = make_desc(dtype_, layout_, k, m, 1, 1, pending.b);
-        check_status(scrapgpu_tensor_upload(g_stream, &desc_, host.data(), host.size()), "weight upload");
-        check_status(scrapgpu_stream_sync(g_stream), "stream_sync after weight upload");
-        buf_ = pending.b;
-        pending.b = nullptr;
+    std::vector<uint8_t> host;
+    if (dtype_ == SCRAPGPU_DTYPE_F32) {
+        host.resize(static_cast<size_t>(k * m) * sizeof(float));
+        std::memcpy(host.data(), km, host.size());
+    } else if (dtype_ == SCRAPGPU_DTYPE_F16 || dtype_ == SCRAPGPU_DTYPE_BF16) {
+        const at::Tensor packed = w.to(dtype_ == SCRAPGPU_DTYPE_F16 ? at::kHalf : at::kBFloat16);
+        host.resize(static_cast<size_t>(w.numel()) * 2);
+        std::memcpy(host.data(), packed.const_data_ptr(), host.size());
+    } else {
+        host.resize(tensor_bytes(make_desc(dtype_, SCRAPGPU_LAYOUT_NATURAL, k, m, 1, 1, nullptr)));
+        check_status(scrapgpu_ref_quantize(dtype_, km, host.data(), k * m), "scrapgpu_ref_quantize");
     }
 
-    ~WeightImpl() override {
-        std::lock_guard<std::mutex> lock(g_mu);
-        if (buf_) {
-            scrapgpu_buffer_free(buf_);
-            buf_ = nullptr;
-        }
-    }
+    GpuBuf pending;
+    check_status(scrapgpu_buffer_alloc(g_dev, host.size(), pending.put()), "scrapgpu_buffer_alloc");
+    desc_ = make_desc(dtype_, layout_, k, m, 1, 1, pending.b);
+    check_status(scrapgpu_tensor_upload(g_stream, &desc_, host.data(), host.size()), "weight upload");
+    check_status(scrapgpu_stream_sync(g_stream), "stream_sync after weight upload");
+    buf_ = pending.b;
+    pending.b = nullptr;
+}
 
-    const scrapgpu_tensor_desc & desc() const {
-        return desc_;
+WeightImpl::~WeightImpl() {
+    std::lock_guard<std::mutex> lock(g_mu);
+    if (buf_) {
+        scrapgpu_buffer_free(buf_);
+        buf_ = nullptr;
     }
-    int64_t in_features() const {
-        return in_features_;
-    }
-    int64_t out_features() const {
-        return out_features_;
-    }
-    const std::string & quant_type() const {
-        return quant_type_;
-    }
-
-private:
-    scrapgpu_buffer_t * buf_ = nullptr;
-    scrapgpu_tensor_desc desc_{};
-    scrapgpu_dtype dtype_ = SCRAPGPU_DTYPE_F32;
-    scrapgpu_layout layout_ = SCRAPGPU_LAYOUT_NATURAL;
-    int64_t in_features_ = 0;
-    int64_t out_features_ = 0;
-    std::string quant_type_;
-};
+}
 
 at::Tensor linear_cpu(const at::Tensor & x, const c10::intrusive_ptr<WeightImpl> & weight) {
     std::lock_guard<std::mutex> lock(g_mu);
@@ -666,7 +642,9 @@ at::Tensor ref_dequant_linear_weight(at::Tensor weight_f32, std::string quant_ty
     return out;
 }
 
-} // namespace
+} // namespace sgtorch
+
+using namespace sgtorch;
 
 TORCH_LIBRARY(scrapgpu, m) {
     m.class_<WeightImpl>("Weight")
@@ -697,4 +675,10 @@ TORCH_LIBRARY(scrapgpu, m) {
         "float attn_factor, float beta_fast, float beta_slow, int mode) -> Tensor",
         &ref_rope_cpu);
     m.def("ref_dequant_linear_weight(Tensor weight, str quant_type) -> Tensor", &ref_dequant_linear_weight);
+    m.def("opencl11_profile_print", []() {
+#ifdef SCRAPGPU_TORCH_HAS_OPENCL11
+        scrapgpu_opencl11_profile_print();
+#endif
+    });
+    register_device_tensor(m);
 }
