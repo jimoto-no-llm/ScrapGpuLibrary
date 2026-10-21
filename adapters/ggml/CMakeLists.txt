@@ -74,9 +74,18 @@ if (NOT TARGET scrapgpu_opencl11)
         POSITION_INDEPENDENT_CODE ON)
 endif()
 
+# the SGLX composite device (GGML_SGLX_SPLIT): composite/
+set(SGLX_SOURCES
+    composite/composite_device.cpp
+    composite/pdev_ggml.cpp
+    composite/pdev_cl11.cpp
+    composite/composite.h
+    composite/pdev.h)
+
 if (CL11_IN_TREE)
     ggml_add_backend_library(${TARGET_NAME}
                              ggml-cl11.cpp
+                             ${SGLX_SOURCES}
                              ../../include/ggml-cl11.h)
 else()
     # ---- out-of-tree plugin -------------------------------------------------------------------------------------
@@ -150,6 +159,7 @@ else()
 
     add_library(${TARGET_NAME} MODULE
                 ggml-cl11.cpp
+                ${SGLX_SOURCES}
                 include/ggml-cl11.h)
     # same definitions as ggml_add_backend_library (ggml/src/CMakeLists.txt) with GGML_BACKEND_DL and BUILD_SHARED_LIBS
     target_compile_definitions(${TARGET_NAME} PRIVATE GGML_BACKEND_DL GGML_BACKEND_BUILD GGML_BACKEND_SHARED)

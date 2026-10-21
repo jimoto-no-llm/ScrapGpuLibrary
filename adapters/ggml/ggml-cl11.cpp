@@ -36,6 +36,7 @@
 #include "opencl11/r32.h"
 #include "opencl11/tensor.h"
 #include "tensor/tensor.h"
+#include "composite/composite.h"
 
 #include <algorithm>
 #include <cctype>
@@ -1437,12 +1438,15 @@ static const char * ggml_backend_cl11_reg_get_name(ggml_backend_reg_t reg) {
 
 static size_t ggml_backend_cl11_reg_get_device_count(ggml_backend_reg_t reg) {
     GGML_UNUSED(reg);
-    return g_cl11_devices.size();
+    return g_cl11_devices.size() + sglx::device_count(); // the SGLX composite device (GGML_SGLX_SPLIT) comes after the physical CL11 devices
 }
 
 static ggml_backend_dev_t ggml_backend_cl11_reg_get_device(ggml_backend_reg_t reg, size_t index) {
-    GGML_ASSERT(index < g_cl11_devices.size());
+    GGML_ASSERT(index < g_cl11_devices.size() + sglx::device_count());
     GGML_UNUSED(reg);
+    if (index >= g_cl11_devices.size()) {
+        return sglx::device_get(index - g_cl11_devices.size());
+    }
     return &g_cl11_devices[index]->dev;
 }
 
@@ -1486,6 +1490,15 @@ ggml_backend_reg_t ggml_backend_cl11_reg(void) {
             /* .reg     = */ &reg,
             /* .context = */ c.get(),
         };
+    }
+
+    // GGML_SGLX_SPLIT: the composite device SGLX0 over physical devices (composite/composite.h); nothing happens without the variable
+    {
+        std::vector<std::pair<std::string, cl11_device *>> physical;
+        for (auto & c : g_cl11_devices) {
+            physical.emplace_back(c->device->name, c->device.get());
+        }
+        sglx::attach(&reg, physical);
     }
 
     return &reg;
