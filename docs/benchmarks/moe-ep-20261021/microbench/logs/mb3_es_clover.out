@@ -1,0 +1,22 @@
+# moe_rt_bench mb3  args: --csv /home/eightman/moe-ep/rt-bench/logs/all.csv --devices WX 2100,GT 730,GT 710 --platforms NVIDIA,Clover
+# generating the layer (32 experts, Q4_0, random)...
+# device: AMD Radeon Pro WX 2100       [AMD Radeon Pro WX 2100 (radeonsi, polaris12, ACO, DRM 3.61, 6.12.107+deb13-amd64)] platform=Clover version=OpenCL 1.1 Mesa 25.0.7-2+deb13u1 driver=25.0.7-2+deb13u1 max_wg=256 max_alloc=512MiB gmem=2048MiB
+MB3   i_single_compute_only              AMD Radeon Pro WX 2100   n=1000   median=    1191.8 p99=    1471.8 min=     914.3 mean=    1188.6 us  achieved 20.79 GB/s (24.77 MB per layer) nmse=4.67e-14
+MB3   i_single_full_cycle                AMD Radeon Pro WX 2100   n=1000   median=    1312.5 p99=    1535.8 min=    1074.6 mean=    1324.0 us  x write + ids + kernels + out read
+MB3   CHECK single AMD Radeon Pro WX 2100 first/last OK nmse 4.67e-14 / 4.15e-14
+# device: GeForce GT 730               [GeForce GT 730] platform=NVIDIA CUDA version=OpenCL 1.2 CUDA driver=390.157 max_wg=1024 max_alloc=245MiB gmem=981MiB
+MB3   i_single_compute_only              GeForce GT 730           n=1000   median=    1210.5 p99=    1231.3 min=    1197.7 mean=    1211.8 us  achieved 20.46 GB/s (24.77 MB per layer) nmse=4.16e-14
+MB3   i_single_full_cycle                GeForce GT 730           n=1000   median=    1397.8 p99=    1410.3 min=    1382.5 mean=    1397.6 us  x write + ids + kernels + out read
+MB3   CHECK single GeForce GT 730 first/last         OK nmse 4.16e-14 / 3.62e-14
+# device: GeForce GT 710               [GeForce GT 710] platform=NVIDIA CUDA version=OpenCL 1.2 CUDA driver=390.157 max_wg=1024 max_alloc=501MiB gmem=2002MiB
+MB3   i_single_compute_only              GeForce GT 710           n=1000   median=    2742.1 p99=    2765.2 min=    2720.7 mean=    2743.3 us  achieved 9.03 GB/s (24.77 MB per layer) nmse=4.16e-14
+MB3   i_single_full_cycle                GeForce GT 710           n=1000   median=    3068.7 p99=    3092.0 min=    3038.6 mean=    3068.4 us  x write + ids + kernels + out read
+MB3   CHECK single GeForce GT 710 first/last         OK nmse 4.16e-14 / 3.62e-14
+# ES split: AMD Radeon Pro WX 2100:832 rows GeForce GT 730:736 rows GeForce GT 710:224 rows 
+MB3   ii_ES_full_cycle                   AMD Radeon Pro WX 2100+GeForce GT 730+GeForce GT 710 n=1000   median=    1901.8 p99=    2716.2 min=    1697.7 mean=    1945.4 us  submit all, wait all, host sum; AMD Radeon Pro WX 2100:832 rows GeForce GT 730:736 rows GeForce GT 710:224 rows 
+MB3   ii_ES_compute_only                 AMD Radeon Pro WX 2100+GeForce GT 730+GeForce GT 710 n=1000   median=     946.5 p99=    1287.4 min=     620.5 mean=     899.5 us  ids + kernels on all devices, wait all
+MB3   CHECK ES AMD Radeon Pro WX 2100+GeForce GT 730+GeForce GT 710 first/last OK nmse 4.81e-14 / 3.74e-14
+MB3   ii_ES_slice_compute_only           AMD Radeon Pro WX 2100   n=1000   median=     800.5 p99=    1251.2 min=     629.8 mean=     832.2 us  slice 832 rows, achieved 14.37 GB/s
+MB3   ii_ES_slice_compute_only           GeForce GT 730           n=1000   median=     542.6 p99=     551.0 min=     537.6 mean=     543.3 us  slice 736 rows, achieved 18.75 GB/s
+MB3   ii_ES_slice_compute_only           GeForce GT 710           n=1000   median=     454.6 p99=     461.4 min=     446.0 mean=     454.6 us  slice 224 rows, achieved 6.81 GB/s
+# done mb3: all OK (0 failed check(s))

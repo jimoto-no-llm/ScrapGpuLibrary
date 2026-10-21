@@ -1,0 +1,6 @@
+# date: 2026-10-21_02:42:08  host: tb250  tag: mb2_kepler_pair
+# temps at start:  amd40 amd39 GT 430=42 GT 730=35 GT 710=35    (max 42 C)
+# env: 
+# cmd: /home/eightman/moe-ep/rt-bench/moe_rt_bench mb2 --platforms NVIDIA --devices GT 730,GT 710 --csv /home/eightman/moe-ep/rt-bench/logs/all.csv
+# rc=0  seconds=35
+# temps at end:  amd38 amd38 GT 430=41 GT 730=37 GT 710=36    (max 42 C)

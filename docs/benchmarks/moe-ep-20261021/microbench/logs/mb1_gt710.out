@@ -1,0 +1,15 @@
+# moe_rt_bench mb1  args: --csv /home/eightman/moe-ep/rt-bench/logs/all.csv --devices GT 710 --platforms NVIDIA
+# device: GeForce GT 710               platform=NVIDIA CUDA version=OpenCL 1.2 CUDA driver=390.157 max_wg=1024 max_alloc=501MiB gmem=2002MiB
+MB1   rt_blocking                        GeForce GT 710           n=10000  median=      66.4 p99=      68.1 min=      65.6 mean=      66.6 us  check=OK
+MB1   rt_nonblock_finish                 GeForce GT 710           n=10000  median=      95.1 p99=      99.4 min=      74.9 mean=      96.9 us  check=OK
+MB1   rt_event_busypoll                  GeForce GT 710           n=10000  median=      95.0 p99=      99.6 min=      85.3 mean=      97.0 us  check=OK
+MB1   rt_pinned_finish                   GeForce GT 710           n=10000  median=      64.2 p99=      66.5 min=      56.1 mean=      63.7 us  check=OK
+MB1   rt_pinned_busypoll                 GeForce GT 710           n=10000  median=      63.5 p99=      66.7 min=      55.4 mean=      63.5 us  check=OK
+MB1   piece_clFinish_idle                GeForce GT 710           n=10000  median=       1.0 p99=       1.1 min=       1.0 mean=       1.0 us  
+MB1   piece_kernel_finish                GeForce GT 710           n=10000  median=      11.9 p99=      12.6 min=      11.6 mean=      12.0 us  T_k: tiny kernel + clFinish
+MB1   piece_write8k_blocking             GeForce GT 710           n=10000  median=      28.5 p99=      29.0 min=      28.1 mean=      28.6 us  
+MB1   piece_read8k_blocking              GeForce GT 710           n=10000  median=      30.6 p99=      31.5 min=      29.2 mean=      30.7 us  
+MB1   piece_write8k_pinned               GeForce GT 710           n=10000  median=      29.2 p99=      29.9 min=      28.9 mean=      29.3 us  
+MB1   piece_read8k_pinned                GeForce GT 710           n=10000  median=      29.3 p99=      29.8 min=      28.1 mean=      29.9 us  
+MB1   piece_write32B_blocking            GeForce GT 710           n=10000  median=       8.3 p99=       8.9 min=       7.9 mean=       8.4 us  
+# done mb1: all OK (0 failed check(s))

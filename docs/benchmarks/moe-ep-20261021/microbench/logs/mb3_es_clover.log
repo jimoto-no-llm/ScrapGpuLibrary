@@ -1,0 +1,6 @@
+# date: 2026-10-21_02:54:05  host: tb250  tag: mb3_es_clover
+# temps at start:  amd36 amd50 GT 430=44 GT 730=34 GT 710=35    (max 44 C)
+# env: 
+# cmd: /home/eightman/moe-ep/rt-bench/moe_rt_bench mb3 --platforms NVIDIA,Clover --devices WX 2100,GT 730,GT 710 --csv /home/eightman/moe-ep/rt-bench/logs/all.csv
+# rc=0  seconds=26
+# temps at end:  amd36 amd49 GT 430=43 GT 730=36 GT 710=36    (max 43 C)

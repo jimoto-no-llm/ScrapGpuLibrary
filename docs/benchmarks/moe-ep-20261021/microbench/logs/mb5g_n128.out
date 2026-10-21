@@ -1,0 +1,15 @@
+# moe_rt_bench mb5g  args: --csv /home/eightman/moe-ep/rt-bench/logs/all.csv --ggml-devs Vulkan0,Vulkan1 --iters 10 --lib-dir /home/eightman/moe-ep/src/llama-build/bin --ntok 128
+# env VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json
+# env GGML_LIB_DIR=/home/eightman/moe-ep/src/llama-build/bin
+# ggml devices (lib dir /home/eightman/moe-ep/src/llama-build/bin):
+#   Vulkan0 : AMD Radeon RX 6400 (RADV NAVI24) (type 1, 4064 / 4080 MiB free)
+#   Vulkan1 : AMD Radeon Pro WX 2100 (RADV POLARIS12) (type 1, 2043 / 2048 MiB free)
+#   CPU : Intel(R) Celeron(R) CPU G3930 @ 2.90GHz (type 0, 32032 / 32032 MiB free)
+# generating the layer...
+MB5G  CHECK result Vulkan0 AMD Radeon RX 6400 (RADV NAVI24) OK nmse 1.18e-04
+MB5G  ggml_compute_only_n128             Vulkan0 AMD Radeon RX 6400 (RADV NAVI24) n=10     median=    9982.0 p99=   10050.6 min=    9702.0 mean=    9939.6 us  ids+weights set, graph_compute, synchronize ; 1129.5 GFLOPS ; unsupported nodes 0
+MB5G  ggml_full_cycle_n128               Vulkan0 AMD Radeon RX 6400 (RADV NAVI24) n=10     median=   12325.9 p99=   12515.5 min=   12136.8 mean=   12321.8 us  x + ids + weights set, compute, out get ; 10384.6 tok/s (layer)
+MB5G  CHECK result Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12) OK nmse 2.05e-12
+MB5G  ggml_compute_only_n128             Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12) n=10     median=   71172.8 p99=   72986.6 min=   70549.1 mean=   71490.3 us  ids+weights set, graph_compute, synchronize ; 158.4 GFLOPS ; unsupported nodes 0
+MB5G  ggml_full_cycle_n128               Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12) n=10     median=   79571.9 p99=   80570.0 min=   78840.3 mean=   79576.1 us  x + ids + weights set, compute, out get ; 1608.6 tok/s (layer)
+# done mb5g: all OK (0 failed check(s))

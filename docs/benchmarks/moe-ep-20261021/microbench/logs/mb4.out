@@ -1,0 +1,30 @@
+# moe_rt_bench mb4  args: --csv /home/eightman/moe-ep/rt-bench/logs/all.csv --lib-dir /home/eightman/moe-ep/src/llama-build/bin
+# env VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json
+# env GGML_LIB_DIR=/home/eightman/moe-ep/src/llama-build/bin
+# ggml devices (lib dir /home/eightman/moe-ep/src/llama-build/bin):
+#   Vulkan0 : AMD Radeon RX 6400 (RADV NAVI24) (type 1, 4064 / 4080 MiB free)
+#   Vulkan1 : AMD Radeon Pro WX 2100 (RADV POLARIS12) (type 1, 2043 / 2048 MiB free)
+#   CPU : Intel(R) Celeron(R) CPU G3930 @ 2.90GHz (type 0, 32032 / 32032 MiB free)
+MB4   CHECK 1-node add and 8 KiB set/get on Vulkan0 AMD Radeon RX 6400 (RADV NAVI24) OK 
+MB4   tensor_set_8KiB                    Vulkan0 AMD Radeon RX 6400 (RADV NAVI24) n=10000  median=       5.6 p99=       5.7 min=       4.8 mean=       5.7 us  RT_out half: Vulkan0 <- host
+MB4   tensor_get_8KiB                    Vulkan0 AMD Radeon RX 6400 (RADV NAVI24) n=10000  median=      67.0 p99=      95.9 min=      61.2 mean=      69.0 us  RT_in half: host <- Vulkan0
+MB4   tensor_set_16B                     Vulkan0 AMD Radeon RX 6400 (RADV NAVI24) n=10000  median=       0.2 p99=       0.2 min=       0.1 mean=       0.2 us  
+MB4   tensor_get_16B                     Vulkan0 AMD Radeon RX 6400 (RADV NAVI24) n=10000  median=      67.0 p99=      76.5 min=      64.1 mean=      67.4 us  
+MB4   tensor_get_8KiB+16B+16B            Vulkan0 AMD Radeon RX 6400 (RADV NAVI24) n=10000  median=     204.5 p99=     268.5 min=     196.5 mean=     207.6 us  sched copies of hidden, ids, weights into the composite device
+MB4   set_8KiB+get_8KiB                  Vulkan0 AMD Radeon RX 6400 (RADV NAVI24) n=10000  median=      74.2 p99=      91.5 min=      71.8 mean=      75.1 us  RT_out + RT_in with no compute between
+MB4   graph_compute_1node_nosync         Vulkan0 AMD Radeon RX 6400 (RADV NAVI24) n=10000  median=      73.3 p99=     127.7 min=      67.7 mean=      76.7 us  submit only
+MB4   graph_compute_1node+synchronize    Vulkan0 AMD Radeon RX 6400 (RADV NAVI24) n=10000  median=      73.3 p99=     115.5 min=      68.0 mean=      73.9 us  one op round trip without data transfer
+MB4   synchronize_idle                   Vulkan0 AMD Radeon RX 6400 (RADV NAVI24) n=10000  median=       0.1 p99=       0.1 min=       0.0 mean=       0.1 us  
+MB4   set8K+node+sync+get8K              Vulkan0 AMD Radeon RX 6400 (RADV NAVI24) n=10000  median=     144.6 p99=     193.8 min=     138.3 mean=     151.4 us  one boundary + one op (the cheapest possible remote layer through sched)
+MB4   CHECK 1-node add and 8 KiB set/get on Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12) OK 
+MB4   tensor_set_8KiB                    Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12) n=10000  median=      22.7 p99=      22.9 min=      13.0 mean=      22.7 us  RT_out half: Vulkan0 <- host
+MB4   tensor_get_8KiB                    Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12) n=10000  median=      76.4 p99=      89.2 min=      63.2 mean=      75.4 us  RT_in half: host <- Vulkan0
+MB4   tensor_set_16B                     Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12) n=10000  median=       0.2 p99=       0.2 min=       0.2 mean=       0.2 us  
+MB4   tensor_get_16B                     Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12) n=10000  median=      57.0 p99=      68.6 min=      50.8 mean=      58.1 us  
+MB4   tensor_get_8KiB+16B+16B            Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12) n=10000  median=     191.3 p99=     229.3 min=     182.0 mean=     192.6 us  sched copies of hidden, ids, weights into the composite device
+MB4   set_8KiB+get_8KiB                  Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12) n=10000  median=      90.4 p99=     103.3 min=      86.8 mean=      91.1 us  RT_out + RT_in with no compute between
+MB4   graph_compute_1node_nosync         Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12) n=10000  median=      72.8 p99=      92.6 min=      65.2 mean=      73.5 us  submit only
+MB4   graph_compute_1node+synchronize    Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12) n=10000  median=      72.6 p99=     112.1 min=      62.5 mean=      75.7 us  one op round trip without data transfer
+MB4   synchronize_idle                   Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12) n=10000  median=       0.0 p99=       0.0 min=       0.0 mean=       0.0 us  
+MB4   set8K+node+sync+get8K              Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12) n=10000  median=     152.6 p99=     197.1 min=     146.6 mean=     153.5 us  one boundary + one op (the cheapest possible remote layer through sched)
+# done mb4: all OK (0 failed check(s))

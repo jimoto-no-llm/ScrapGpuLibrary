@@ -1,0 +1,21 @@
+# moe_rt_bench mb3g  args: --csv /home/eightman/moe-ep/rt-bench/logs/all.csv --lib-dir /home/eightman/moe-ep/src/llama-build/bin --threads 2
+# env VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json
+# env GGML_LIB_DIR=/home/eightman/moe-ep/src/llama-build/bin
+# ggml devices (lib dir /home/eightman/moe-ep/src/llama-build/bin):
+#   Vulkan0 : AMD Radeon RX 6400 (RADV NAVI24) (type 1, 4064 / 4080 MiB free)
+#   Vulkan1 : AMD Radeon Pro WX 2100 (RADV POLARIS12) (type 1, 2043 / 2048 MiB free)
+#   CPU : Intel(R) Celeron(R) CPU G3930 @ 2.90GHz (type 0, 32032 / 32032 MiB free)
+# generating the layer...
+MB3G  CHECK result Vulkan0 AMD Radeon RX 6400 (RADV NAVI24) OK nmse 2.95e-05
+MB3G  ggml_compute_only_n1               Vulkan0 AMD Radeon RX 6400 (RADV NAVI24) n=1000   median=     301.2 p99=     352.4 min=     295.7 mean=     308.2 us  ids+weights set, graph_compute, synchronize ; 292.4 GFLOPS ; unsupported nodes 0
+MB3G  ggml_full_cycle_n1                 Vulkan0 AMD Radeon RX 6400 (RADV NAVI24) n=1000   median=     356.7 p99=     439.2 min=     349.3 mean=     374.3 us  x + ids + weights set, compute, out get ; 2803.9 tok/s (layer)
+MB3G        achieved weight bandwidth (compute only): 82.25 GB/s
+MB3G  CHECK result Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12) OK nmse 3.62e-14
+MB3G  ggml_compute_only_n1               Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12) n=1000   median=     947.3 p99=    1080.9 min=     873.7 mean=     951.8 us  ids+weights set, graph_compute, synchronize ; 93.0 GFLOPS ; unsupported nodes 0
+MB3G  ggml_full_cycle_n1                 Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12) n=1000   median=    1034.2 p99=    1437.6 min=     950.3 mean=    1060.8 us  x + ids + weights set, compute, out get ; 966.9 tok/s (layer)
+MB3G        achieved weight bandwidth (compute only): 26.15 GB/s
+MB3G  CHECK result CPU Intel(R) Celeron(R) CPU G3930 @ 2.90GHz OK nmse 1.03e-04
+MB3G  ggml_compute_only_n1               CPU Intel(R) Celeron(R) CPU G3930 @ 2.90GHz n=1000   median=    2488.2 p99=    5283.2 min=    2474.3 mean=    2567.6 us  ids+weights set, graph_compute, synchronize ; 35.4 GFLOPS ; unsupported nodes 0
+MB3G  ggml_full_cycle_n1                 CPU Intel(R) Celeron(R) CPU G3930 @ 2.90GHz n=1000   median=    2499.7 p99=    2992.6 min=    2483.8 mean=    2679.5 us  x + ids + weights set, compute, out get ; 400.0 tok/s (layer)
+MB3G        achieved weight bandwidth (compute only): 9.96 GB/s
+# done mb3g: all OK (0 failed check(s))

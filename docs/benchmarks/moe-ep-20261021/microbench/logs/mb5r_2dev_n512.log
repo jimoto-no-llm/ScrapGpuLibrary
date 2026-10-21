@@ -1,0 +1,6 @@
+# date: 2026-10-21_03:23:22  host: tb250  tag: mb5r_2dev_n512
+# temps at start:  amd41 amd40 GT 430=42 GT 730=34 GT 710=34    (max 42 C)
+# env: RUSTICL_ENABLE=radeonsi 
+# cmd: /home/eightman/moe-ep/rt-bench/moe_rt_bench mb5 --ntok 512 --iters 10 --platforms NVIDIA,rusticl --devices WX 2100,GT 730 --ratios 176,55 --csv /home/eightman/moe-ep/rt-bench/logs/all.csv
+# rc=0  seconds=34
+# temps at end:  amd39 amd44 GT 430=41 GT 730=38 GT 710=34    (max 41 C)

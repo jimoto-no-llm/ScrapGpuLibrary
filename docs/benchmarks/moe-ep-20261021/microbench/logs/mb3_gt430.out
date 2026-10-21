@@ -1,0 +1,7 @@
+# moe_rt_bench mb3  args: --csv /home/eightman/moe-ep/rt-bench/logs/all.csv --devices GT 430 --platforms NVIDIA
+# generating the layer (32 experts, Q4_0, random)...
+# device: GeForce GT 430               [GeForce GT 430] platform=NVIDIA CUDA version=OpenCL 1.1 CUDA driver=390.157 max_wg=1024 max_alloc=241MiB gmem=964MiB
+MB3   i_single_compute_only              GeForce GT 430           n=1000   median=    3189.8 p99=    3234.9 min=    3162.5 mean=    3192.2 us  achieved 7.77 GB/s (24.77 MB per layer) nmse=4.16e-14
+MB3   i_single_full_cycle                GeForce GT 430           n=1000   median=    3243.6 p99=    3285.7 min=    3222.0 mean=    3250.2 us  x write + ids + kernels + out read
+MB3   CHECK single GeForce GT 430 first/last         OK nmse 4.16e-14 / 3.62e-14
+# done mb3: all OK (0 failed check(s))

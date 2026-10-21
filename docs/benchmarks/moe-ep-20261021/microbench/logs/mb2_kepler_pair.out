@@ -1,0 +1,34 @@
+# moe_rt_bench mb2  args: --csv /home/eightman/moe-ep/rt-bench/logs/all.csv --devices GT 730,GT 710 --platforms NVIDIA
+# device: GeForce GT 730               platform=NVIDIA CUDA version=OpenCL 1.2 CUDA driver=390.157 max_wg=1024 max_alloc=245MiB gmem=981MiB
+# device: GeForce GT 710               platform=NVIDIA CUDA version=OpenCL 1.2 CUDA driver=390.157 max_wg=1024 max_alloc=501MiB gmem=2002MiB
+MB2   solo_tiny_finish                   GeForce GT 730           n=10000  median=      64.1 p99=      65.0 min=      56.0 mean=      63.7 us  
+MB2   solo_tiny_finish                   GeForce GT 710           n=10000  median=      64.3 p99=      65.1 min=      55.7 mean=      63.8 us  
+MB2   sequential_tiny_finish             GeForce GT 730+GeForce GT 710 n=10000  median=     128.9 p99=     134.5 min=     113.3 mean=     127.9 us  one after the other
+MB2   parallel_1thread_tiny_finish       GeForce GT 730+GeForce GT 710 n=10000  median=      77.8 p99=      80.5 min=      69.4 mean=      77.1 us  submit all, then wait in order
+MB2   parallel_threads_tiny_finish       GeForce GT 730+GeForce GT 710 n=10000  median=     162.1 p99=     207.6 min=      64.8 mean=     158.4 us  one thread per device (wake-up included)
+MB2   SUMMARY tiny_finish: median max(solo)=64.3 sum(solo)=128.4 sequential=128.9 1thread=77.8 threads=162.1 ; 1thread/max=1.21 1thread/sum=0.61 threads/max=2.52
+MB2   CHECK results tiny_finish                      OK 
+MB2   solo_tiny_poll                     GeForce GT 730           n=10000  median=      63.5 p99=      65.7 min=      55.6 mean=      63.0 us  
+MB2   solo_tiny_poll                     GeForce GT 710           n=10000  median=      63.5 p99=      67.2 min=      55.6 mean=      65.6 us  
+MB2   sequential_tiny_poll               GeForce GT 730+GeForce GT 710 n=10000  median=     127.9 p99=     130.8 min=     112.5 mean=     127.2 us  one after the other
+MB2   parallel_1thread_tiny_poll         GeForce GT 730+GeForce GT 710 n=10000  median=      76.8 p99=      79.1 min=      68.8 mean=      76.5 us  submit all, then wait in order
+MB2   parallel_threads_tiny_poll         GeForce GT 730+GeForce GT 710 n=10000  median=     143.3 p99=     203.1 min=      67.1 mean=     132.0 us  one thread per device (wake-up included)
+MB2   SUMMARY tiny_poll: median max(solo)=63.5 sum(solo)=127.0 sequential=127.9 1thread=76.8 threads=143.3 ; 1thread/max=1.21 1thread/sum=0.61 threads/max=2.26
+MB2   CHECK results tiny_poll                        OK 
+# GeForce GT 730: busy kernel iters=52851
+# GeForce GT 710: busy kernel iters=25146
+MB2   solo_busy500us_finish              GeForce GT 730           n=3000   median=     516.1 p99=     746.2 min=     505.7 mean=     537.5 us  
+MB2   solo_busy500us_finish              GeForce GT 710           n=3000   median=     543.8 p99=     719.9 min=     497.4 mean=     569.4 us  
+MB2   sequential_busy500us_finish        GeForce GT 730+GeForce GT 710 n=3000   median=    1078.3 p99=    1321.3 min=    1006.6 mean=    1103.9 us  one after the other
+MB2   parallel_1thread_busy500us_finish  GeForce GT 730+GeForce GT 710 n=3000   median=     567.4 p99=     748.2 min=     513.1 mean=     594.8 us  submit all, then wait in order
+MB2   parallel_threads_busy500us_finish  GeForce GT 730+GeForce GT 710 n=3000   median=     579.4 p99=     774.4 min=     518.8 mean=     601.2 us  one thread per device (wake-up included)
+MB2   SUMMARY busy500us_finish: median max(solo)=543.8 sum(solo)=1059.9 sequential=1078.3 1thread=567.4 threads=579.4 ; 1thread/max=1.04 1thread/sum=0.54 threads/max=1.07
+MB2   CHECK results busy500us_finish                 OK 
+MB2   solo_busy500us_poll                GeForce GT 730           n=3000   median=     515.6 p99=     728.3 min=     505.3 mean=     535.9 us  
+MB2   solo_busy500us_poll                GeForce GT 710           n=3000   median=     543.5 p99=     719.0 min=     496.6 mean=     569.9 us  
+MB2   sequential_busy500us_poll          GeForce GT 730+GeForce GT 710 n=3000   median=    1078.4 p99=    1336.0 min=    1004.6 mean=    1104.5 us  one after the other
+MB2   parallel_1thread_busy500us_poll    GeForce GT 730+GeForce GT 710 n=3000   median=     565.9 p99=     741.0 min=     509.9 mean=     592.7 us  submit all, then wait in order
+MB2   parallel_threads_busy500us_poll    GeForce GT 730+GeForce GT 710 n=3000   median=     578.7 p99=     762.0 min=     518.3 mean=     600.5 us  one thread per device (wake-up included)
+MB2   SUMMARY busy500us_poll: median max(solo)=543.5 sum(solo)=1059.1 sequential=1078.4 1thread=565.9 threads=578.7 ; 1thread/max=1.04 1thread/sum=0.53 threads/max=1.06
+MB2   CHECK results busy500us_poll                   OK 
+# done mb2: all OK (0 failed check(s))
