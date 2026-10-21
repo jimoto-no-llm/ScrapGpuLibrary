@@ -100,7 +100,7 @@ case "${1:-}" in
                 auto|high)
                     echo "$2" > "$f"
                     if [ "$2" = auto ] && [ -f "$prof_saved" ]; then
-                        cat "$prof_saved" > $s/pp_power_profile_mode && rm -f "$prof_saved"
+                        cat "$prof_saved" > $s/pp_power_profile_mode 2>/dev/null || log "$d profile restore refused (level auto resets it)"; rm -f "$prof_saved"
                     fi ;;
                 pin|compute)
                     echo manual > "$f"
