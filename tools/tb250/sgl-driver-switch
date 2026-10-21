@@ -11,7 +11,7 @@
 #   chmod 0440 /etc/sudoers.d/sgl-driver && visudo -cf /etc/sudoers.d/sgl-driver
 #
 # Usage: sudo sgl-driver-switch <status|nv390|nv470|nouveau|nv470-nouveau430>
-#        sudo sgl-driver-switch perf <auto|high>   (AMD cards only; power_dpm_force_performance_level)
+#        sudo sgl-driver-switch perf <auto|high|pin|compute>   (AMD cards only; pin = manual top sclk/mclk)
 #   nv390             390.157 for all three cards (the boot default; the restore target)
 #   nv470             470 for the Kepler cards; the GT 430 is left without a driver
 #   nouveau           nouveau (modeset=1) for all three cards, for rusticl / NVK
@@ -87,10 +87,35 @@ load_nouveau() { modprobe nouveau modeset=1; }
 case "${1:-}" in
     status) status; exit 0 ;;
     perf)
-        case "${2:-}" in auto|high) ;; *) echo "usage: $0 perf <auto|high>" >&2; exit 2 ;; esac
+        # auto / high: the plain levels. pin: manual level with the top sclk and mclk state
+        # (high alone sometimes leaves the RX 6400 gfxclk following the load). compute: pin +
+        # the COMPUTE power profile. auto also restores the profile that was active before pin.
+        case "${2:-}" in auto|high|pin|compute) ;; *) echo "usage: $0 perf <auto|high|pin|compute>" >&2; exit 2 ;; esac
         for d in "${AMD[@]}"; do
-            f=/sys/bus/pci/devices/$d/power_dpm_force_performance_level
-            [ -w "$f" ] && echo "$2" > "$f" && log "$d perf=$(cat "$f")"
+            s=/sys/bus/pci/devices/$d
+            f=$s/power_dpm_force_performance_level
+            [ -w "$f" ] || continue
+            prof_saved=/run/sgl-driver.profile.${d//:/_}
+            case "$2" in
+                auto|high)
+                    echo "$2" > "$f"
+                    if [ "$2" = auto ] && [ -f "$prof_saved" ]; then
+                        cat "$prof_saved" > $s/pp_power_profile_mode && rm -f "$prof_saved"
+                    fi ;;
+                pin|compute)
+                    echo manual > "$f"
+                    for k in pp_dpm_sclk pp_dpm_mclk; do
+                        [ -w $s/$k ] || continue
+                        top=$(grep -c . $s/$k); echo $((top - 1)) > $s/$k
+                    done
+                    if [ "$2" = compute ] && [ -w $s/pp_power_profile_mode ]; then
+                        cur=$(grep -oE '^ *[0-9]+ +[A-Z_0-9]+ *\*' $s/pp_power_profile_mode | awk '{print $1}')
+                        idx=$(grep -oE '^ *[0-9]+ +COMPUTE' $s/pp_power_profile_mode | awk '{print $1}')
+                        [ -n "$cur" ] && [ ! -f "$prof_saved" ] && echo "$cur" > "$prof_saved"
+                        [ -n "$idx" ] && echo "$idx" > $s/pp_power_profile_mode
+                    fi ;;
+            esac
+            log "$d perf=$(cat "$f") sclk=$(grep '\*' $s/pp_dpm_sclk | tr -d '\n') mclk=$(grep '\*' $s/pp_dpm_mclk | tr -d '\n')"
         done
         exit 0 ;;
     nv390)
