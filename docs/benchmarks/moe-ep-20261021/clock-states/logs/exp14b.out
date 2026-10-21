@@ -1,0 +1,7 @@
+19:16:35 RESULT e14b_s1_1 pp512=666.8 tg128=45.2 pg=171.1  tg_samples=[45.5, 44.9]
+19:17:07 RESULT e14b_s1_2 pp512=663.8 tg128=45.1 pg=174.2  tg_samples=[45.1, 45.2]
+19:17:39 RESULT e14b_s2_1 pp512=662.6 tg128=44.9 pg=174.9  tg_samples=[44.9, 44.9]
+19:18:11 RESULT e14b_s2_2 pp512=661.5 tg128=44.2 pg=175.6  tg_samples=[44.1, 44.3]
+19:18:43 RESULT e14b_s3_1 pp512=664.5 tg128=45.0 pg=174.4  tg_samples=[45.0, 45.1]
+19:19:15 RESULT e14b_s3_2 pp512=662.7 tg128=45.1 pg=173.8  tg_samples=[45.1, 45.1]
+FIN

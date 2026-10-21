@@ -1,0 +1,15 @@
+RESULT e8_bare1 tg128=52.0
+RESULT e8_bare2 tg128=51.9
+RESULT e8__sclk_ pp512=662.6 tg128=51.4 pg=191.7  tg_samples=[51.5, 51.5, 51.3]
+RESULT e8_bare_after tg128=51.8
+RESULT e8__busy_ pp512=662.4 tg128=51.7 pg=193.5  tg_samples=[51.7, 51.8, 51.7]
+RESULT e8_bare_after tg128=51.8
+RESULT e8__temp___pwr_ pp512=663.4 tg128=51.5 pg=192.9  tg_samples=[51.7, 51.5, 51.3]
+RESULT e8_bare_after tg128=51.8
+RESULT e8_cpu pp512=662.3 tg128=50.3 pg=191.1  tg_samples=[50.8, 50.0, 50.2]
+RESULT e8_bare_after tg128=51.8
+RESULT e8__lspeed__lwidth__pcie pp512=662.0 tg128=51.8 pg=194.9  tg_samples=[51.8, 51.8, 51.8]
+RESULT e8_bare_after tg128=51.9
+RESULT e8__mclk__fclk__socclk pp512=662.0 tg128=50.0 pg=191.1  tg_samples=[50.0, 50.0, 50.1]
+RESULT e8_bare_after tg128=52.0
+FIN
