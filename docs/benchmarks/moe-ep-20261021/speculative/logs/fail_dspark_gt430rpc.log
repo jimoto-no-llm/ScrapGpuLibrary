@@ -1,0 +1,18 @@
+# date: 2026-10-21_06:02:02  host: tb250  tag: fail_dspark_gt430rpc
+# temps at start:  amd37 amd39 GT 430=44 GT 730=33 GT 710=35 
+# env: GGML_CL11_PLATFORMS=NVIDIA GGML_BACKEND_PATH=/home/eightman/moe-ep/src/build-cl11/libggml-cl11.so VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json GGML_SPEC_CONFIG=mix5 
+# cmd: /home/eightman/moe-ep/spec/build/bin/llama-speculative-simple -m /home/eightman/moe-ep/models/LFM2.5-8B-A1B-Q4_0.gguf -md /home/eightman/moe-ep/models/LFM2.5-8B-A1B-DSpark-Q8_0.gguf --spec-type draft-dspark -dev Vulkan0,Vulkan1 -ts 5,1 -ngl 99 -ngld 99 -devd RPC0 -sm layer -fa off -t 2 -b 128 -ub 128 -c 2048 -n 32 --temp 0 -f prompts/explain.txt --spec-draft-n-max 5
+cl11_filter_open_conflicts: skipping 'GeForce GT 430' (cc 2.1): it cannot be opened in the same process as 'GeForce GT 730' (clCreateContext: CL_INVALID_DEVICE); the NVIDIA driver does not mix GPU generations. Select the devices with GGML_CL11_DEVICES, or run the device in another process (the remote backend / scrapgpu-device-server, or llama.cpp RPC). GGML_CL11_NO_CONFLICT_CHECK=1 disables this check.
+0.01.480.749 W cl11_serve_dropped_over_rpc: ggml-rpc-server not found at /home/eightman/moe-ep/spec/build/bin/ggml-rpc-server (set GGML_CL11_RPC_SERVER): the dropped devices stay unused
+error while handling argument "-devd": invalid device: RPC0
+
+usage:
+--spec-draft-device, -devd, --device-draft <dev1,dev2,..>
+                                        comma-separated list of devices to use for offloading the draft model
+                                        (none = don't offload, default: follows --device)
+                                        use --list-devices to see a list of available devices
+
+
+to show complete usage, run with -h
+# rc=1  seconds=2
+# temps at end:  amd37 amd39 GT 430=44 GT 730=34 GT 710=35 

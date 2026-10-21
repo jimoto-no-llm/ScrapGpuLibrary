@@ -1,0 +1,13 @@
+
+
+<|startoftext|><|im_start|>user
+Write a Python function that merges overlapping intervals. Include a short docstring and three example calls with their expected output.<|im_end|>
+<|im_start|>assistant
+<think>
+We need to produce a Python function that merges overlapping intervals. Provide a short docstring and three example calls with expected output. No extra formatting unless requested. The user didn't specify any formatting constraints beyond that. They didn't ask for markdown, but typical answer may be plain text. However the instruction says "Do NOT use formatting (bold, italic, underline, markdown) unless explicitly asked". So we should avoid markdown. So we should output plain text, maybe code block? Code block is markdown. That might be considered formatting. The instruction says "Do NOT use formatting (bold, italic, underline, markdown) unless explicitly asked". Using a code block is markdown. So we should avoid markdown. So we should just write the code as plain text, maybe with indentation. Provide docstring as a string literal. Provide three example calls and expected output. Could be like:
+
+def merge_intervals(intervals):
+
+
+
+

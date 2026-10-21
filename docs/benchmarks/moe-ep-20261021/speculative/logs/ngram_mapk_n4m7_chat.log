@@ -1,0 +1,32 @@
+# date: 2026-10-21_06:13:58  host: tb250  tag: ngram_mapk_n4m7_chat
+# temps at start:  amd41 amd49 GT 430=43 GT 730=33 GT 710=35 
+# env: VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json GGML_SPEC_CONFIG=amdvk 
+# cmd: /home/eightman/moe-ep/spec/build/bin/llama-speculative-simple -m /home/eightman/moe-ep/models/LFM2.5-8B-A1B-Q4_0.gguf --spec-type ngram-map-k --spec-ngram-map-k-size-n 4 --spec-ngram-map-k-size-m 7 -dev Vulkan0,Vulkan1 -ts 5,1 -ngl 99 -ngld 99 -sm layer -fa off -t 2 -b 128 -ub 128 -c 2048 -n 192 --temp 0 -f prompts/chat.txt
+0.00.554.248 W common_fit_params: failed to fit params to free device memory: n_gpu_layers already set by user to 99, abort
+0.06.830.584 W llama_kv_cache: the V embeddings have different sizes across layers and FA is not enabled - padding V cache to 512
+0.06.858.173 I cmn          init: llama threadpool init, n_threads = 2
+0.06.964.517 I speculative decoding will use checkpoints (context does not support partial sequence removal)
+0.11.981.247 I encoded   36 tokens in    0.182 seconds, speed:  197.767 t/s
+0.11.981.257 I decoded  193 tokens in    4.835 seconds, speed:   39.921 t/s
+0.11.981.257 I 
+0.11.981.258 I n_draft   = 3
+0.11.981.259 I n_predict = 193
+0.11.981.259 I n_drafted = 3
+0.11.981.259 I n_accept  = 3
+0.11.981.261 I accept    = 100.000%
+0.11.981.265 I 
+0.11.981.266 I draft:
+
+0.11.981.301 I 
+0.11.981.302 I target:
+
+0.11.981.309 I common_perf_print:    sampling time =      44.79 ms
+0.11.981.311 I common_perf_print:    samplers time =      15.62 ms /   102 tokens
+0.11.981.316 I common_perf_print:        load time =    6266.15 ms
+0.11.981.319 I common_perf_print: prompt eval time =     559.15 ms /    59 tokens (    9.48 ms per token,   105.52 tokens per second)
+0.11.981.322 I common_perf_print:        eval time =    4270.65 ms /   187 runs   (   22.84 ms per token,    43.79 tokens per second)
+0.11.981.324 I common_perf_print:       total time =    5056.23 ms /   246 tokens
+0.11.981.326 I common_perf_print: unaccounted time =     181.65 ms /   3.6 %      (total - sampling - prompt eval - eval) / (total)
+0.11.981.327 I common_perf_print:    graphs reused =        186
+# rc=0  seconds=12
+# temps at end:  amd43 amd52 GT 430=43 GT 730=33 GT 710=35 

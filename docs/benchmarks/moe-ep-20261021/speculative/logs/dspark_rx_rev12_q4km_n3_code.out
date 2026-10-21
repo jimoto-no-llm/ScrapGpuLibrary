@@ -1,0 +1,13 @@
+
+
+<|startoftext|><|im_start|>user
+Write a Python function that merges overlapping intervals. Include a short docstring and three example calls with their expected output.<|im_end|>
+<|im_start|>assistant
+<think>
+We need to produce a Python function that merges overlapping intervals. Include a short docstring and three example calls with their expected output. No extra formatting unless requested. The user didn't specify any formatting constraints like markdown, but typical answer would be plain text. However, we can use code fences for readability. The instruction says avoid formatting unless explicitly asked. The user didn't ask for markdown, but they didn't forbid it. Usually we can provide code block. But to be safe, we can just provide plain text with code lines. However, the instruction says "Do not use formatting (bold, italic, underline, markdown) unless explicitly asked." So we should not use markdown fences. So we should output plain text, maybe with indentation. Provide function definition, docstring, then three example calls and expected output. Could be like:
+
+def merge_intervals(intervals):
+    """Merge overlapping intervals into a list of non
+
+
+

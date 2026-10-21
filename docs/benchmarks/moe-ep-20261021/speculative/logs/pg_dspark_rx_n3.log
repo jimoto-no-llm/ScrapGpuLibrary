@@ -1,0 +1,13 @@
+# date: 2026-10-21_09:10:55  host: tb250  tag: pg_dspark_rx_n3
+# temps at start:  amd43 amd45 GT 430=45 GT 730=34 GT 710=35 
+# env: VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json GGML_SPEC_CONFIG=amdvk 
+# cmd: /home/eightman/moe-ep/spec/build/bin/llama-speculative-simple -m /home/eightman/moe-ep/models/LFM2.5-8B-A1B-Q4_0.gguf -md /home/eightman/moe-ep/models/LFM2.5-8B-A1B-DSpark-Q4_K_M.gguf --spec-type draft-dspark -dev Vulkan1,Vulkan0 -ts 1,2 -ngl 99 -ngld 99 -devd Vulkan0 -sm layer -fa off -t 2 -b 128 -ub 128 -c 2048 -n 128 --temp 0 -f prompts/long512.txt --spec-draft-n-max 3 --spec-draft-n-min 0
+0.00.949.985 E llama_init_from_model: failed to initialize the context: dflash requires ctx_other to be set (this warning is normal during memory fitting)
+0.01.016.254 W operator(): failed to measure the memory of the extra model, fitting without it: failed to create llama_context from model
+0.01.016.278 W common_fit_params: failed to fit params to free device memory: n_gpu_layers already set by user to 99, abort
+0.13.072.929 W llama_kv_cache: the V embeddings have different sizes across layers and FA is not enabled - padding V cache to 512
+0.19.183.706 I cmn          init: llama threadpool init, n_threads = 2
+0.19.246.693 I common_speculative_init_result: loading draft model '/home/eightman/moe-ep/models/LFM2.5-8B-A1B-DSpark-Q4_K_M.gguf'
+0.19.860.544 E main: the prompt exceeds the batch size (434 tokens, batch 128)
+# rc=1  seconds=20
+# temps at end:  amd44 amd47 GT 430=45 GT 730=34 GT 710=35 

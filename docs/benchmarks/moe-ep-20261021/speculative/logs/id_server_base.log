@@ -1,0 +1,6 @@
+# date: 2026-10-21_09:08:17  host: tb250  tag: id_server_base
+# temps at start:  amd41 amd41 GT 430=46 GT 730=36 GT 710=37 
+# env: VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json GGML_SPEC_CONFIG=amdvk 
+# cmd: scripts/servertest.sh logs/runs/id_server_base -m /home/eightman/moe-ep/models/LFM2.5-8B-A1B-Q4_0.gguf -dev Vulkan1,Vulkan0 -ts 1,2 -ngl 99 -sm layer -fa off -t 2 -b 128 -ub 128 -c 2048
+# rc=0  seconds=39
+# temps at end:  amd43 amd46 GT 430=45 GT 730=34 GT 710=35 

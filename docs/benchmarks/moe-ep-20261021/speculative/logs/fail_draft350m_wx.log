@@ -1,0 +1,28 @@
+# date: 2026-10-21_06:00:56  host: tb250  tag: fail_draft350m_wx
+# temps at start:  amd37 amd42 GT 430=43 GT 730=32 GT 710=36 
+# env: VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json GGML_SPEC_CONFIG=amdvk 
+# cmd: /home/eightman/moe-ep/spec/build/bin/llama-speculative-simple -m /home/eightman/moe-ep/models/LFM2.5-8B-A1B-Q4_0.gguf -md /home/eightman/moe-ep/models/LFM2.5-350M-Q4_0.gguf --spec-type draft-simple -dev Vulkan0,Vulkan1 -ts 5,1 -ngl 99 -ngld 99 -devd Vulkan1 -sm layer -fa off -t 2 -b 128 -ub 128 -c 2048 -n 32 --temp 0 -f prompts/explain.txt --spec-draft-n-max 5
+0.00.751.244 W common_fit_params: failed to fit params to free device memory: n_gpu_layers already set by user to 99, abort
+0.07.108.314 W llama_kv_cache: the V embeddings have different sizes across layers and FA is not enabled - padding V cache to 512
+0.07.139.237 I cmn          init: llama threadpool init, n_threads = 2
+0.07.205.271 I common_speculative_init_result: loading draft model '/home/eightman/moe-ep/models/LFM2.5-350M-Q4_0.gguf'
+0.08.861.435 W llama_kv_cache: the V embeddings have different sizes across layers and FA is not enabled - padding V cache to 512
+0.08.938.414 I speculative decoding will use checkpoints (context does not support partial sequence removal)
+0.08.938.582 W spec common_specu: draft model bos tokens must match target model to use speculation. add: 1 - 1, id: 124894 - 1)
+0.08.938.583 E spec common_specu: the target and draft vocabs are not compatible
+/home/eightman/moe-ep/spec/build/bin/libggml-base.so.0(+0x198a5) [0x7f7eb2b4d8a5]
+/home/eightman/moe-ep/spec/build/bin/libggml-base.so.0(ggml_print_backtrace+0x1df) [0x7f7eb2b4dc7f]
+/home/eightman/moe-ep/spec/build/bin/libggml-base.so.0(+0x2d929) [0x7f7eb2b61929]
+/lib/x86_64-linux-gnu/libstdc++.so.6(+0xb344a) [0x7f7eb28b344a]
+/lib/x86_64-linux-gnu/libstdc++.so.6(_ZSt10unexpectedv+0x0) [0x7f7eb28a15e9]
+/lib/x86_64-linux-gnu/libstdc++.so.6(+0xb36c8) [0x7f7eb28b36c8]
+/home/eightman/moe-ep/spec/build/bin/libllama-common.so.0(_ZN36common_speculative_impl_draft_simpleC2ERK25common_params_speculativej+0xb13) [0x7f7eb32f8403]
+/home/eightman/moe-ep/spec/build/bin/libllama-common.so.0(_Z23common_speculative_initR25common_params_speculativej+0x1ae) [0x7f7eb32f010e]
+/home/eightman/moe-ep/spec/build/bin/llama-speculative-simple(+0x39a2) [0x55723cb729a2]
+/lib/x86_64-linux-gnu/libc.so.6(+0x29ca8) [0x7f7eb2635ca8]
+/lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x85) [0x7f7eb2635d65]
+/home/eightman/moe-ep/spec/build/bin/llama-speculative-simple(+0x4b41) [0x55723cb73b41]
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  draft model vocab type must match target model to use speculation
+# rc=134  seconds=9
+# temps at end:  amd38 amd42 GT 430=43 GT 730=33 GT 710=36 

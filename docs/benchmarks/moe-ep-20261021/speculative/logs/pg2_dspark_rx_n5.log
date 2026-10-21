@@ -1,0 +1,38 @@
+# date: 2026-10-21_09:13:01  host: tb250  tag: pg2_dspark_rx_n5
+# temps at start:  amd42 amd46 GT 430=45 GT 730=34 GT 710=36 
+# env: VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json GGML_SPEC_CONFIG=amdvk 
+# cmd: /home/eightman/moe-ep/spec/build/bin/llama-speculative-simple -m /home/eightman/moe-ep/models/LFM2.5-8B-A1B-Q4_0.gguf -md /home/eightman/moe-ep/models/LFM2.5-8B-A1B-DSpark-Q4_K_M.gguf --spec-type draft-dspark -dev Vulkan1,Vulkan0 -ts 1,2 -ngl 99 -ngld 99 -devd Vulkan0 -sm layer -fa off -t 2 -b 512 -ub 128 -c 2048 -n 128 --temp 0 -f prompts/long512.txt --spec-draft-n-max 5 --spec-draft-n-min 0
+0.00.949.406 E llama_init_from_model: failed to initialize the context: dflash requires ctx_other to be set (this warning is normal during memory fitting)
+0.01.015.179 W operator(): failed to measure the memory of the extra model, fitting without it: failed to create llama_context from model
+0.01.015.204 W common_fit_params: failed to fit params to free device memory: n_gpu_layers already set by user to 99, abort
+0.11.892.585 W llama_kv_cache: the V embeddings have different sizes across layers and FA is not enabled - padding V cache to 512
+0.17.985.696 I cmn          init: llama threadpool init, n_threads = 2
+0.18.048.747 I common_speculative_init_result: loading draft model '/home/eightman/moe-ep/models/LFM2.5-8B-A1B-DSpark-Q4_K_M.gguf'
+0.18.660.729 I common_speculative_impl_draft_dflash: adding speculative implementation 'draft-dspark'
+0.18.660.731 I common_speculative_impl_draft_dflash: - n_max=5, n_min=0, p_min=0.00
+0.18.660.732 I common_speculative_impl_draft_dflash: - block_size=9, mask_token_id=125017, n_extract=5, sample_from_anchor=true
+0.26.089.668 I encoded  434 tokens in    2.634 seconds, speed:  164.755 t/s
+0.26.089.669 I decoded  130 tokens in    4.795 seconds, speed:   27.113 t/s
+0.26.089.669 I 
+0.26.089.669 I n_draft   = 5
+0.26.089.670 I n_predict = 130
+0.26.089.670 I n_drafted = 222
+0.26.089.670 I n_accept  = 85
+0.26.089.671 I accept    = 38.288%
+0.26.089.671 I 
+0.26.089.671 I draft:
+
+0.26.089.694 I 
+0.26.089.694 I target:
+
+0.26.089.698 I common_perf_print:    sampling time =     121.58 ms
+0.26.089.699 I common_perf_print:    samplers time =      39.38 ms /   130 tokens
+0.26.089.701 I common_perf_print:        load time =   16930.55 ms
+0.26.089.703 I common_perf_print: prompt eval time =    3740.52 ms /   700 tokens (    5.34 ms per token,   187.14 tokens per second)
+0.26.089.704 I common_perf_print:        eval time =       0.00 ms /     1 runs   (    0.00 ms per token,      inf tokens per second)
+0.26.089.705 I common_perf_print:       total time =    8040.99 ms /   701 tokens
+0.26.089.706 I common_perf_print: unaccounted time =    4178.89 ms /  52.0 %      (total - sampling - prompt eval - eval) / (total)
+0.26.089.706 I common_perf_print:    graphs reused =         40
+0.26.090.183 W ~llama_context: Vulkan_Host compute buffer size of   5.5078 MiB, does not match expectation of   2.5117 MiB
+# rc=0  seconds=26
+# temps at end:  amd45 amd50 GT 430=45 GT 730=34 GT 710=35 

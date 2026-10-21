@@ -1,0 +1,37 @@
+# date: 2026-10-21_05:41:34  host: tb250  tag: dspark_wx_q8_n5_nobs_code
+# temps at start:  amd43 amd49 GT 430=44 GT 730=33 GT 710=35 
+# env: VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json GGML_SPEC_CONFIG=amdvk 
+# cmd: /home/eightman/moe-ep/spec/build/bin/llama-speculative-simple -m /home/eightman/moe-ep/models/LFM2.5-8B-A1B-Q4_0.gguf -md /home/eightman/moe-ep/models/LFM2.5-8B-A1B-DSpark-Q8_0.gguf --spec-type draft-dspark -dev Vulkan0,Vulkan1 -ts 5,1 -ngl 99 -ngld 99 -devd Vulkan1 -sm layer -fa off -t 2 -b 128 -ub 128 -c 2048 -n 192 --temp 0 -f prompts/code.txt --spec-draft-n-max 5 --spec-draft-n-min 0 --no-spec-draft-backend-sampling
+0.00.942.990 E llama_init_from_model: failed to initialize the context: dflash requires ctx_other to be set (this warning is normal during memory fitting)
+0.01.007.518 W operator(): failed to measure the memory of the extra model, fitting without it: failed to create llama_context from model
+0.01.007.543 W common_fit_params: failed to fit params to free device memory: n_gpu_layers already set by user to 99, abort
+0.07.277.707 W llama_kv_cache: the V embeddings have different sizes across layers and FA is not enabled - padding V cache to 512
+0.07.305.461 I cmn          init: llama threadpool init, n_threads = 2
+0.07.373.502 I common_speculative_init_result: loading draft model '/home/eightman/moe-ep/models/LFM2.5-8B-A1B-DSpark-Q8_0.gguf'
+0.08.816.268 I common_speculative_impl_draft_dflash: adding speculative implementation 'draft-dspark'
+0.08.816.271 I common_speculative_impl_draft_dflash: - n_max=5, n_min=0, p_min=0.00
+0.08.816.272 I common_speculative_impl_draft_dflash: - block_size=9, mask_token_id=125017, n_extract=5, sample_from_anchor=true
+0.16.370.972 I encoded   32 tokens in    0.234 seconds, speed:  136.845 t/s
+0.16.370.974 I decoded  194 tokens in    7.321 seconds, speed:   26.500 t/s
+0.16.370.974 I 
+0.16.370.974 I n_draft   = 5
+0.16.370.974 I n_predict = 194
+0.16.370.975 I n_drafted = 254
+0.16.370.975 I n_accept  = 143
+0.16.370.976 I accept    = 56.299%
+0.16.370.976 I 
+0.16.370.976 I draft:
+
+0.16.371.005 I 
+0.16.371.005 I target:
+
+0.16.371.009 I common_perf_print:    sampling time =     101.39 ms
+0.16.371.010 I common_perf_print:    samplers time =      35.13 ms /   194 tokens
+0.16.371.014 I common_perf_print:        load time =    6262.71 ms
+0.16.371.016 I common_perf_print: prompt eval time =    4285.08 ms /   336 tokens (   12.75 ms per token,    78.41 tokens per second)
+0.16.371.017 I common_perf_print:        eval time =       0.00 ms /     1 runs   (    0.00 ms per token,      inf tokens per second)
+0.16.371.019 I common_perf_print:       total time =    8997.54 ms /   337 tokens
+0.16.371.020 I common_perf_print: unaccounted time =    4611.07 ms /  51.2 %      (total - sampling - prompt eval - eval) / (total)
+0.16.371.020 I common_perf_print:    graphs reused =         48
+# rc=0  seconds=17
+# temps at end:  amd45 amd54 GT 430=43 GT 730=33 GT 710=35 

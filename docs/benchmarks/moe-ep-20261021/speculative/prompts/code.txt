@@ -1,0 +1,3 @@
+<|im_start|>user
+Write a Python function that merges overlapping intervals. Include a short docstring and three example calls with their expected output.<|im_end|>
+<|im_start|>assistant

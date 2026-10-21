@@ -1,0 +1,31 @@
+# date: 2026-10-21_06:02:10  host: tb250  tag: base_rev12_explain
+# temps at start:  amd37 amd39 GT 430=43 GT 730=34 GT 710=35 
+# env: VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json GGML_SPEC_CONFIG=amdvk 
+# cmd: /home/eightman/moe-ep/spec/build/bin/llama-completion -m /home/eightman/moe-ep/models/LFM2.5-8B-A1B-Q4_0.gguf -dev Vulkan1,Vulkan0 -ts 1,2 -ngl 99 -sm layer -fa off -t 2 -b 128 -ub 128 -c 2048 -n 192 --temp 0 -f prompts/explain.txt --no-display-prompt -no-cnv
+0.00.034.888 I llama_completion: llama backend init
+0.00.034.898 I llama_completion: load the model and apply lora adapter, if any
+0.00.549.040 W common_fit_params: failed to fit params to free device memory: n_gpu_layers already set by user to 99, abort
+0.11.678.396 W llama_kv_cache: the V embeddings have different sizes across layers and FA is not enabled - padding V cache to 512
+0.17.770.454 I cmn          init: llama threadpool init, n_threads = 2
+0.17.836.543 I 
+0.17.836.602 I system_info: n_threads = 2 (n_threads_batch = 2) / 2 | CPU : SSE3 = 1 | SSSE3 = 1 | LLAMAFILE = 1 | OPENMP = 1 | REPACK = 1 | 
+0.17.836.602 I 
+0.17.836.687 I sampler seed: 4294967295
+0.17.836.698 I sampler params: 
+	repeat_last_n = 64, repeat_penalty = 1.000, frequency_penalty = 0.000, presence_penalty = 0.000
+	dry_multiplier = 0.000, dry_base = 1.750, dry_allowed_length = 2, dry_penalty_last_n = 64
+	top_k = 40, top_p = 0.950, min_p = 0.050, xtc_probability = 0.000, xtc_threshold = 0.100, typical_p = 1.000, top_n_sigma = -1.000, temp = 0.000
+	mirostat = 0, mirostat_lr = 0.100, mirostat_ent = 5.000, adaptive_target = -1.000, adaptive_decay = 0.900
+0.17.836.704 I sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> greedy 
+0.17.836.704 I generate: n_ctx = 2048, n_batch = 128, n_predict = 192, n_keep = 1
+0.17.836.704 I 
+0.22.565.570 I common_perf_print:    sampling time =     114.33 ms
+0.22.565.574 I common_perf_print:    samplers time =      38.23 ms /   222 tokens
+0.22.565.582 I common_perf_print:        load time =   17180.38 ms
+0.22.565.587 I common_perf_print: prompt eval time =     402.69 ms /    30 tokens (   13.42 ms per token,    74.50 tokens per second)
+0.22.565.592 I common_perf_print:        eval time =    4202.03 ms /   191 runs   (   22.00 ms per token,    45.45 tokens per second)
+0.22.565.595 I common_perf_print:       total time =    4729.04 ms /   221 tokens
+0.22.565.605 I common_perf_print: unaccounted time =       9.99 ms /   0.2 %      (total - sampling - prompt eval - eval) / (total)
+0.22.565.607 I common_perf_print:    graphs reused =        190
+# rc=0  seconds=23
+# temps at end:  amd40 amd45 GT 430=43 GT 730=33 GT 710=34 
