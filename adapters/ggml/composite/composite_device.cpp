@@ -130,6 +130,10 @@ struct composite {
     bool profile = false;
     bool serial = false;              // GGML_SGLX_SERIAL=1: wait for each device right after its submit (to measure what the overlap gives)
     int  profile_every = 128;
+    uint64_t prof_calls = 0;
+    // phases of one token seen from this device: GET_ROWS (input embedding) -> [the layers on the other devices] -> MUL_MAT -> [logits, sampling, next graph]
+    clock_type::time_point t_gr_end{}, t_mm_end{};
+    acc gap_layers, gap_host, gr_ms;
     prof_set prof[2];                 // [0]: N == 1, [1]: N > 1
     acc upload_ms;
     std::vector<float> xs;            // gathered input columns
@@ -259,9 +263,17 @@ void print_profile(composite * c) {
             char buf[200];
             snprintf(buf, sizeof(buf), "  %s: submit %.3f ms, done at %.3f ms (max %.3f)", c->pdevs[j]->name().c_str(), ps.submit[j].mean(), ps.done[j].mean(), ps.done[j].mx);
             per += buf;
+            const std::string st = c->pdevs[j]->stats();
+            if (!st.empty()) {
+                per += " [" + st + "]";
+            }
         }
         fprintf(stderr, "SGLX profile MUL_MAT %s: calls %llu, mean %.3f ms (max %.3f), gather %.3f, scatter %.3f;%s\n", k == 0 ? "N=1" : "N>1",
                 (unsigned long long) ps.total.n, ps.total.mean(), ps.total.mx, ps.gather.mean(), ps.scatter.mean(), per.c_str());
+    }
+    if (c->gap_layers.n != 0) {
+        fprintf(stderr, "SGLX profile token phases (N=1): GET_ROWS %.3f ms; layers on the other devices (GET_ROWS end -> MUL_MAT start) %.3f ms; after MUL_MAT (-> next GET_ROWS: logits, sampling, next graph) %.3f ms\n",
+                c->gr_ms.mean(), c->gap_layers.mean(), c->gap_host.mean());
     }
     if (c->upload_ms.n != 0) {
         fprintf(stderr, "SGLX profile upload: %llu weights, %.1f ms in total\n", (unsigned long long) c->upload_ms.n, c->upload_ms.sum);
@@ -685,7 +697,7 @@ bool do_mul_mat(composite * c, ggml_tensor * op) {
             }
         }
     }
-    if (c->profile) {
+    if (c->profile && ++c->prof_calls > 3 + (uint64_t) (N == 1 ? 0 : 0)) { // the first calls compile shaders and pay the first use
         ps.total.add(ms_since(t0));
         ps.gather.add(t_gather);
         ps.scatter.add(ms_since(tsc));
@@ -732,15 +744,31 @@ enum ggml_status backend_graph_compute(ggml_backend_t backend, ggml_cgraph * cgr
             continue;
         }
         switch (node->op) {
-            case GGML_OP_GET_ROWS:
+            case GGML_OP_GET_ROWS: {
+                const auto t0 = clock_type::now();
+                if (c->profile && node->src[1]->ne[0] == 1 && c->t_mm_end.time_since_epoch().count() != 0) {
+                    c->gap_host.add(std::chrono::duration<double, std::milli>(t0 - c->t_mm_end).count());
+                }
                 if (!do_get_rows(node)) {
                     return GGML_STATUS_FAILED;
                 }
+                c->t_gr_end = clock_type::now();
+                if (c->profile && node->src[1]->ne[0] == 1) {
+                    c->gr_ms.add(std::chrono::duration<double, std::milli>(c->t_gr_end - t0).count());
+                }
                 break;
+            }
             case GGML_OP_MUL_MAT:
+                if (c->profile && node->src[1]->ne[1] == 1 && c->t_gr_end.time_since_epoch().count() != 0) {
+                    {
+                        const double g = std::chrono::duration<double, std::milli>(clock_type::now() - c->t_gr_end).count();
+                        if (g < 100.0) { c->gap_layers.add(g); } // not the shader compilation of the first tokens
+                    }
+                }
                 if (!do_mul_mat(c, node)) {
                     return GGML_STATUS_FAILED;
                 }
+                c->t_mm_end = clock_type::now();
                 break;
             default:
                 SGLX_LOG("op %s is not supported\n", ggml_op_desc(node));

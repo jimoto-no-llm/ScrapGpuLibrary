@@ -54,6 +54,8 @@ public:
     virtual bool submit(piece * p, const float * x, int64_t N, float * out) = 0;
     // blocks until everything submitted since the last wait() is finished and written to its `out`
     virtual bool wait() = 0;
+    // GGML_SGLX_PROFILE: where submit() spent its time (empty when the pdev keeps no timers)
+    virtual std::string stats() { return std::string(); }
 };
 
 // the effective mat-vec GB/s used for the default split, from a device description (substring table, see composite_device.cpp)
