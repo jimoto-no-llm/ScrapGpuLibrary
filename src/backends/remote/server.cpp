@@ -22,6 +22,9 @@
 #ifdef SCRAPGPU_SERVER_WITH_VULKAN
 #include "scrapgpu/vulkan.h"
 #endif
+#ifdef SCRAPGPU_SERVER_WITH_CUDA
+#include "scrapgpu/cuda.h"
+#endif
 
 #include <algorithm>
 #include <cerrno>
@@ -630,7 +633,7 @@ bool handle(uint32_t op, sgr::cur c) {
 // ---------------------------------------------------------------------------------------------
 
 void usage(const char * argv0) {
-    std::fprintf(stderr, "usage: %s --socket PATH [--backend opencl11[,vulkan]]\n", argv0);
+    std::fprintf(stderr, "usage: %s --socket PATH [--backend opencl11[,vulkan][,cuda]]\n", argv0);
 }
 
 int srv_register(const std::string & name) {
@@ -647,6 +650,14 @@ int srv_register(const std::string & name) {
         return scrapgpu_vulkan_register() == SCRAPGPU_STATUS_OK ? 0 : 1;
 #else
         std::fprintf(stderr, "scrapgpu-device-server: built without the vulkan backend\n");
+        return 1;
+#endif
+    }
+    if (name == "cuda") {
+#ifdef SCRAPGPU_SERVER_WITH_CUDA
+        return scrapgpu_cuda_register() == SCRAPGPU_STATUS_OK ? 0 : 1;
+#else
+        std::fprintf(stderr, "scrapgpu-device-server: built without the cuda backend\n");
         return 1;
 #endif
     }
