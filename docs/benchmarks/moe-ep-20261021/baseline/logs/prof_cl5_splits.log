@@ -1,0 +1,43 @@
+# date: 2026-10-21_09:14:17  host: tb250  tag: prof_cl5_splits
+# temps at start:  amd41 amd45 GT 430=45 GT 730=34 GT 710=35 
+# env: GGML_SCHED_DEBUG=1 GGML_CL11_PLATFORMS=NVIDIA,rusticl RUSTICL_ENABLE=radeonsi GGML_BACKEND_PATH=/home/eightman/moe-ep/src/build-cl11/libggml-cl11.so VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json 
+# cmd: /home/eightman/moe-ep/src/llama-build/bin/llama-completion -m /home/eightman/moe-ep/models/LFM2.5-8B-A1B-Q4_0.gguf -dev RPC0,CL11_0,CL11_1,CL11_2,CL11_3 -ngl 99 -fa off -t 2 -b 128 -ub 128 -ts 8,8,18,40,18 -sm layer -c 256 -n 3 -p Hello --temp 0 -no-cnv
+cl11_filter_open_conflicts: skipping 'GeForce GT 430' (cc 2.1): it cannot be opened in the same process as 'GeForce GT 730' (clCreateContext: CL_INVALID_DEVICE); the NVIDIA driver does not mix GPU generations. Select the devices with GGML_CL11_DEVICES, or run the device in another process (the remote backend / scrapgpu-device-server, or llama.cpp RPC). GGML_CL11_NO_CONFLICT_CHECK=1 disables this check.
+0.01.884.390 W cl11_serve_dropped_over_rpc: 'GeForce GT 430' cannot share a process with the other GPUs: served by ggml-rpc-server (pid 106843, 127.0.0.1:44725) as an RPC device; run with -fa off (the RPC device reports FLASH_ATTN_EXT as supported, the CL11 server aborts on it)
+0.01.884.899 I llama_completion: llama backend init
+0.01.884.912 I llama_completion: load the model and apply lora adapter, if any
+cl11_ensure_program: CL11_0: multi mat-vec (Q / K / V, FFN gate / up in one launch) enabled
+cl11_ensure_program: CL11_0: mat-mat variant: tile 64 x 64, 8 x 4 values per work-item, BK 16, unroll 16, prefetch 0, 128 work-items
+cl11_ensure_program: CL11_0: GeForce GT 730, OpenCL 1.2 CUDA, kernels built (work-group sizes: element-wise 128, row 128, mat-vec 128, mat-mat 16x16)
+cl11_ensure_program: CL11_1: multi mat-vec (Q / K / V, FFN gate / up in one launch) enabled
+cl11_ensure_program: CL11_1: mat-mat variant: tile 64 x 64, 8 x 4 values per work-item, BK 16, unroll 16, prefetch 0, 128 work-items
+cl11_ensure_program: CL11_1: GeForce GT 710, OpenCL 1.2 CUDA, kernels built (work-group sizes: element-wise 128, row 128, mat-vec 128, mat-mat 16x16)
+cl11_ensure_program: rebuilding the kernels with smaller work-groups
+cl11_ensure_program: CL11_2: AMD Radeon RX 6400 (radeonsi, navi24, LLVM 19.1.7, DRM 3.61, 6.12.107+deb13-amd64), OpenCL 3.0 , kernels built (work-group sizes: element-wise 128, row 128, mat-vec 128, mat-mat 16x16)
+cl11_ensure_program: rebuilding the kernels with smaller work-groups
+cl11_ensure_program: CL11_3: AMD Radeon Pro WX 2100 (radeonsi, polaris12, ACO, DRM 3.61, 6.12.107+deb13-amd64), OpenCL 3.0 , kernels built (work-group sizes: element-wise 128, row 128, mat-vec 128, mat-mat 16x16)
+0.08.881.359 W common_fit_params: failed to fit params to free device memory: n_gpu_layers already set by user to 99, abort
+0.21.388.053 W llama_kv_cache: the V embeddings have different sizes across layers and FA is not enabled - padding V cache to 512
+0.22.706.208 I cmn          init: llama threadpool init, n_threads = 2
+0.26.875.197 I 
+0.26.875.260 I system_info: n_threads = 2 (n_threads_batch = 2) / 2 | CPU : SSE3 = 1 | SSSE3 = 1 | LLAMAFILE = 1 | OPENMP = 1 | REPACK = 1 | 
+0.26.875.260 I 
+0.26.875.290 I sampler seed: 4294967295
+0.26.875.300 I sampler params: 
+	repeat_last_n = 64, repeat_penalty = 1.000, frequency_penalty = 0.000, presence_penalty = 0.000
+	dry_multiplier = 0.000, dry_base = 1.750, dry_allowed_length = 2, dry_penalty_last_n = 64
+	top_k = 40, top_p = 0.950, min_p = 0.050, xtc_probability = 0.000, xtc_threshold = 0.100, typical_p = 1.000, top_n_sigma = -1.000, temp = 0.000
+	mirostat = 0, mirostat_lr = 0.100, mirostat_ent = 5.000, adaptive_target = -1.000, adaptive_decay = 0.900
+0.26.875.307 I sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> greedy 
+0.26.875.308 I generate: n_ctx = 256, n_batch = 128, n_predict = 3, n_keep = 1
+0.26.875.308 I 
+0.27.589.814 I common_perf_print:    sampling time =       5.08 ms
+0.27.589.817 I common_perf_print:    samplers time =       0.87 ms /     5 tokens
+0.27.589.823 I common_perf_print:        load time =   17880.74 ms
+0.27.589.826 I common_perf_print: prompt eval time =     519.44 ms /     2 tokens (  259.72 ms per token,     3.85 tokens per second)
+0.27.589.829 I common_perf_print:        eval time =     189.75 ms /     2 runs   (   94.88 ms per token,    10.54 tokens per second)
+0.27.589.834 I common_perf_print:       total time =     714.63 ms /     4 tokens
+0.27.589.839 I common_perf_print: unaccounted time =       0.35 ms /   0.0 %      (total - sampling - prompt eval - eval) / (total)
+0.27.589.840 I common_perf_print:    graphs reused =          2
+# rc=0  seconds=29
+# temps at end:  amd41 amd44 GT 430=46 GT 730=35 GT 710=35 

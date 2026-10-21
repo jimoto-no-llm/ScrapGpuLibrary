@@ -1,0 +1,25 @@
+FAILED sweep_gt730_ub128_ncmoe21 rc=1
+sweep_gt430_ub128_ncmoe23: 128 0 7.22 | 0 64 3.77 | 
+sweep_gt710_ub128_ncmoe19: 128 0 7.16 | 0 64 3.09 | 
+sweep_gt710_ub128_ncmoe17: 128 0 10.39 | 0 64 2.64 | 
+sweep_wx-cl11_ub128_ncmoe19: 128 0 10.37 | 0 64 5.59 | 
+sweep_wx-vk_ub128_ncmoe21: 128 0 11.37 | 0 64 10.79 | 
+sweep_wx-vk_ub128_ncmoe19: 128 0 12.58 | 0 64 11.49 | 
+sweep_wx-vk_ub128_ncmoe17: 128 0 14.14 | 0 64 12.47 | 
+sweep_rx-cl11_ub128_ncmoe15: 128 0 26.31 | 0 64 10.59 | 
+sweep_rx-cl11_ub128_ncmoe13: 128 0 29.96 | 0 64 10.89 | 
+sweep_rx-cl11_ub128_ncmoe11: 128 0 34.69 | 0 64 10.64 | 
+sweep_rx-cl11_ub128_ncmoe9: 128 0 41.01 | 0 64 10.24 | 
+sweep_rx-cl11_ub128_ncmoe7: 128 0 48.38 | 0 64 9.7 | 
+sweep_rx-cl11_ub128_ncmoe5: 128 0 16.14 | 0 64 8.58 | 
+sweep_rx-cl11_ub128_ncmoe3: 128 0 16.01 | 0 64 7.14 | 
+sweep_rx-vk_ub128_ncmoe7: 128 0 140.85 | 0 64 21.89 | 
+sweep_rx-vk_ub128_ncmoe5: 128 0 72.76 | 0 64 29.89 | 
+mgx_amdvk_ub64_ts5,1: 128 0 215.28 | 0 64 43.72 | 
+mgx_amdvk_ub256_ts5,1: 128 0 348.8 | 0 64 43.75 | 
+mgx_amdvk_ts9,2: 128 0 347.19 | 0 64 44.02 | 
+mgx_amdvk_ts11,2: 128 0 415.56 | 0 64 39.37 | 
+mgx_amdvk_ts13,3: 128 0 346.41 | 0 64 43.76 | 
+mgx_amdvk_ub512_ts9,2: 128 0 348.15 | 0 64 44.48 | 
+mgx_amdvk_ub512_ts11,2: 128 0 414.81 | 0 64 39.03 | 
+QUEUE4_DONE

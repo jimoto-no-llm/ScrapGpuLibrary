@@ -1,0 +1,34 @@
+# date: 2026-10-21_06:20:28  host: tb250  tag: prof_gt730_splits
+# temps at start:  amd36 amd40 GT 430=42 GT 730=34 GT 710=34 
+# env: GGML_SCHED_DEBUG=1 GGML_CL11_PLATFORMS=NVIDIA GGML_CL11_DEVICES=GT 730 GGML_BACKEND_PATH=/home/eightman/moe-ep/src/build-cl11/libggml-cl11.so VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json 
+# cmd: /home/eightman/moe-ep/src/llama-build/bin/llama-completion -m /home/eightman/moe-ep/models/LFM2.5-8B-A1B-Q4_0.gguf -dev CL11_0 -ngl 99 -fa off -t 2 -b 128 -ub 128 -ncmoe 22 -c 256 -n 3 -p Hello --temp 0 -no-cnv
+0.01.120.638 I llama_completion: llama backend init
+0.01.120.647 I llama_completion: load the model and apply lora adapter, if any
+cl11_ensure_program: CL11_0: multi mat-vec (Q / K / V, FFN gate / up in one launch) enabled
+cl11_ensure_program: CL11_0: mat-mat variant: tile 64 x 64, 8 x 4 values per work-item, BK 16, unroll 16, prefetch 0, 128 work-items
+cl11_ensure_program: CL11_0: GeForce GT 730, OpenCL 1.2 CUDA, kernels built (work-group sizes: element-wise 128, row 128, mat-vec 128, mat-mat 16x16)
+0.01.752.016 W common_fit_params: failed to fit params to free device memory: n_gpu_layers already set by user to 99, abort
+0.06.278.437 W llama_kv_cache: the V embeddings have different sizes across layers and FA is not enabled - padding V cache to 512
+0.06.287.510 I cmn          init: llama threadpool init, n_threads = 2
+0.06.649.036 I 
+0.06.649.097 I system_info: n_threads = 2 (n_threads_batch = 2) / 2 | CPU : SSE3 = 1 | SSSE3 = 1 | LLAMAFILE = 1 | OPENMP = 1 | REPACK = 1 | 
+0.06.649.098 I 
+0.06.649.129 I sampler seed: 4294967295
+0.06.649.140 I sampler params: 
+	repeat_last_n = 64, repeat_penalty = 1.000, frequency_penalty = 0.000, presence_penalty = 0.000
+	dry_multiplier = 0.000, dry_base = 1.750, dry_allowed_length = 2, dry_penalty_last_n = 64
+	top_k = 40, top_p = 0.950, min_p = 0.050, xtc_probability = 0.000, xtc_threshold = 0.100, typical_p = 1.000, top_n_sigma = -1.000, temp = 0.000
+	mirostat = 0, mirostat_lr = 0.100, mirostat_ent = 5.000, adaptive_target = -1.000, adaptive_decay = 0.900
+0.06.649.154 I sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> greedy 
+0.06.649.155 I generate: n_ctx = 256, n_batch = 128, n_predict = 3, n_keep = 1
+0.06.649.155 I 
+0.07.173.933 I common_perf_print:    sampling time =       1.15 ms
+0.07.173.935 I common_perf_print:    samplers time =       0.35 ms /     5 tokens
+0.07.173.938 I common_perf_print:        load time =    4791.65 ms
+0.07.173.940 I common_perf_print: prompt eval time =     354.28 ms /     2 tokens (  177.14 ms per token,     5.65 tokens per second)
+0.07.173.941 I common_perf_print:        eval time =     169.22 ms /     2 runs   (   84.61 ms per token,    11.82 tokens per second)
+0.07.173.942 I common_perf_print:       total time =     524.91 ms /     4 tokens
+0.07.173.943 I common_perf_print: unaccounted time =       0.26 ms /   0.0 %      (total - sampling - prompt eval - eval) / (total)
+0.07.173.943 I common_perf_print:    graphs reused =          2
+# rc=0  seconds=8
+# temps at end:  amd36 amd39 GT 430=42 GT 730=35 GT 710=35 

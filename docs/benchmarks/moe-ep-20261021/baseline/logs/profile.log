@@ -1,0 +1,2 @@
+scripts/run.sh: line 30: 97833 Aborted                 "$@" > "$OUT" 2>> "$LOG"
+PROFILE_DONE

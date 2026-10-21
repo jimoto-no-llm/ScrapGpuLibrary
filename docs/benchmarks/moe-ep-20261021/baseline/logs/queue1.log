@@ -1,0 +1,54 @@
+Terminated
+sweep_gt730_ub128_ncmoe24: 128 0 17.25 | 0 64 11.71 | 
+sweep_gt730_ub128_ncmoe22: 128 0 17.81 | 0 64 12.13 | 
+FAILED sweep_gt730_ub128_ncmoe20 rc=1
+sweep_gt430_ub128_ncmoe24: 128 0 15.4 | 0 64 10.32 | 
+FAILED sweep_gt430_ub128_ncmoe22 rc=1
+sweep_gt710_ub128_ncmoe24: 128 0 16.15 | 0 64 8.59 | 
+sweep_gt710_ub128_ncmoe22: 128 0 15.21 | 0 64 7.15 | 
+sweep_gt710_ub128_ncmoe20: 128 0 16.47 | 0 64 8.61 | 
+sweep_gt710_ub128_ncmoe18: 128 0 16.47 | 0 64 8.59 | 
+FAILED sweep_gt710_ub128_ncmoe16 rc=1
+sweep_rx-vk_ub128_ncmoe24: 128 0 47.44 | 0 64 11.97 | 
+sweep_rx-vk_ub128_ncmoe22: 128 0 49.5 | 0 64 12.74 | 
+sweep_rx-vk_ub128_ncmoe20: 128 0 55.08 | 0 64 13.43 | 
+sweep_rx-vk_ub128_ncmoe18: 128 0 61.98 | 0 64 13.74 | 
+sweep_rx-vk_ub128_ncmoe16: 128 0 69.49 | 0 64 15.08 | 
+sweep_rx-vk_ub128_ncmoe14: 128 0 78.18 | 0 64 15.98 | 
+sweep_rx-vk_ub128_ncmoe12: 128 0 89.5 | 0 64 16.88 | 
+sweep_rx-vk_ub128_ncmoe10: 128 0 103.89 | 0 64 18.72 | 
+sweep_rx-vk_ub128_ncmoe8: 128 0 122.27 | 0 64 20.73 | 
+sweep_rx-vk_ub128_ncmoe6: 128 0 168.16 | 0 64 23.69 | 
+sweep_rx-vk_ub128_ncmoe4: 128 0 224.62 | 0 64 19.23 | 
+sweep_rx-vk_ub128_ncmoe2: 128 0 230.51 | 0 64 12.04 | 
+sweep_rx-vk_ub128_ncmoe0: 128 0 231.13 | 0 64 12.03 | 
+sweep_wx-vk_ub128_ncmoe24: 128 0 10.42 | 0 64 9.89 | 
+sweep_wx-vk_ub128_ncmoe22: 128 0 10.87 | 0 64 10.43 | 
+sweep_wx-vk_ub128_ncmoe20: 128 0 11.97 | 0 64 11.23 | 
+sweep_wx-vk_ub128_ncmoe18: 128 0 13.32 | 0 64 11.84 | 
+sweep_wx-vk_ub128_ncmoe16: 128 0 5.25 | 0 64 9.09 | 
+sweep_wx-vk_ub128_ncmoe14: 128 0 15.28 | 0 64 3.44 | 
+sweep_wx-vk_ub128_ncmoe12: 128 0 5.89 | 0 64 2.09 | 
+sweep_wx-vk_ub128_ncmoe10: 128 0 6.14 | 0 64 1.5 | 
+Terminated
+sweep_rx-cl11_ub128_ncmoe24: 128 0 18.58 | 0 64 8.68 | 
+sweep_rx-cl11_ub128_ncmoe22: 128 0 19.11 | 0 64 9.26 | 
+sweep_rx-cl11_ub128_ncmoe20: 128 0 20.82 | 0 64 9.7 | 
+sweep_rx-cl11_ub128_ncmoe18: 128 0 22.79 | 0 64 10.06 | 
+sweep_rx-cl11_ub128_ncmoe16: 128 0 24.75 | 0 64 10.31 | 
+sweep_rx-cl11_ub128_ncmoe14: 128 0 28.24 | 0 64 10.98 | 
+sweep_rx-cl11_ub128_ncmoe12: 128 0 31.94 | 0 64 10.53 | 
+sweep_rx-cl11_ub128_ncmoe10: 128 0 37.82 | 0 64 10.34 | 
+sweep_rx-cl11_ub128_ncmoe8: 128 0 44.42 | 0 64 10.03 | 
+sweep_rx-cl11_ub128_ncmoe6: 128 0 54.53 | 0 64 9.62 | 
+sweep_rx-cl11_ub128_ncmoe4: 128 0 16.01 | 0 64 7.46 | 
+sweep_rx-cl11_ub128_ncmoe2: 128 0 16.1 | 0 64 7.41 | 
+sweep_rx-cl11_ub128_ncmoe0: 128 0 15.93 | 0 64 7.4 | 
+sweep_wx-cl11_ub128_ncmoe24: 128 0 17.41 | 0 64 7.66 | 
+sweep_wx-cl11_ub128_ncmoe22: 128 0 17.89 | 0 64 7.79 | 
+sweep_wx-cl11_ub128_ncmoe20: 128 0 19.21 | 0 64 8.14 | 
+sweep_wx-cl11_ub128_ncmoe18: 128 0 20.12 | 0 64 8.57 | 
+sweep_wx-cl11_ub128_ncmoe16: 128 0 21.57 | 0 64 6.78 | 
+sweep_wx-cl11_ub128_ncmoe14: 128 0 10.12 | 0 64 1.66 | 
+Terminated
+QUEUE_DONE

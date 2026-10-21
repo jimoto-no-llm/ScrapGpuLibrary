@@ -1,0 +1,43 @@
+# date: 2026-10-21_06:20:13  host: tb250  tag: prof_gt730_kernels
+# temps at start:  amd36 amd40 GT 430=42 GT 730=34 GT 710=35 
+# env: GGML_CL11_PLATFORMS=NVIDIA GGML_CL11_PROFILE=1 GGML_CL11_DEVICES=GT 730 GGML_BACKEND_PATH=/home/eightman/moe-ep/src/build-cl11/libggml-cl11.so VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json 
+# cmd: /home/eightman/moe-ep/src/llama-build/bin/llama-bench -m /home/eightman/moe-ep/models/LFM2.5-8B-A1B-Q4_0.gguf -dev CL11_0 -ngl 99 -fa 0 -t 2 -b 128 -ub 128 -ncmoe 22 -p 0 -n 16 -r 1 -o jsonl
+load_backend: loaded RPC backend from /home/eightman/moe-ep/src/llama-build/bin/libggml-rpc.so
+ggml_vulkan: Found 2 Vulkan devices:
+ggml_vulkan: 0 = AMD Radeon RX 6400 (RADV NAVI24) (radv) | uma: 0 | fp16: 1 | bf16: 0 | fp4: 0 | warp size: 32 | shared memory: 65536 | int dot: 1 | matrix cores: none
+ggml_vulkan: 1 = AMD Radeon Pro WX 2100 (RADV POLARIS12) (radv) | uma: 0 | fp16: 0 | bf16: 0 | fp4: 0 | warp size: 64 | shared memory: 65536 | int dot: 0 | matrix cores: none
+load_backend: loaded Vulkan backend from /home/eightman/moe-ep/src/llama-build/bin/libggml-vulkan.so
+load_backend: loaded CPU backend from /home/eightman/moe-ep/src/llama-build/bin/libggml-cpu.so
+load_backend: loaded CL11 backend from /home/eightman/moe-ep/src/build-cl11/libggml-cl11.so
+cl11_ensure_program: CL11_0: multi mat-vec (Q / K / V, FFN gate / up in one launch) enabled
+cl11_ensure_program: CL11_0: mat-mat variant: tile 64 x 64, 8 x 4 values per work-item, BK 16, unroll 16, prefetch 0, 128 work-items
+cl11_ensure_program: CL11_0: GeForce GT 730, OpenCL 1.2 CUDA, kernels built (work-group sizes: element-wise 128, row 128, mat-vec 128, mat-mat 16x16)
+cl11 profile of CL11_0: total kernel time 457.559 ms
+  MUL_MAT q4_0 mv n=1                             748 calls    140.131 ms    187.3 us/call  30.6%  weights 24.33 GB/s
+  MUL_MAT q6_K mv n=1                              17 calls    129.327 ms   7607.5 us/call  28.3%  weights 28.27 GB/s
+  MUL_MAT_ID                                      102 calls     31.933 ms    313.1 us/call   7.0%
+  MUL_MAT q4_0 mv multi x2 (fused)                 34 calls     22.229 ms    653.8 us/call   4.9%  weights 25.26 GB/s
+  ADD+RMS_NORM+MUL (fused)                        816 calls     16.537 ms     20.3 us/call   3.6%
+  MUL_MAT q4_0 mv multi x3 (fused)                102 calls     16.243 ms    159.2 us/call   3.5%  weights 22.22 GB/s
+  MUL_MAT f16 mv n=1                              204 calls     14.577 ms     71.5 us/call   3.2%  weights 3.67 GB/s
+  ADD                                            1496 calls     14.564 ms      9.7 us/call   3.2%
+  MUL                                             986 calls     13.642 ms     13.8 us/call   3.0%
+  GET_ROWS f32->f32                               714 calls      9.747 ms     13.7 us/call   2.1%
+  MUL_MAT f32 mv n=1                              374 calls      7.253 ms     19.4 us/call   1.6%  weights 13.52 GB/s
+  ARGSORT                                         374 calls      6.714 ms     18.0 us/call   1.5%
+  SSM_CONV                                        306 calls      3.936 ms     12.9 us/call   0.9%
+  CONCAT                                          306 calls      3.841 ms     12.6 us/call   0.8%
+  CPY f32->f32                                    306 calls      3.500 ms     11.4 us/call   0.8%
+  SIGMOID                                         374 calls      3.422 ms      9.2 us/call   0.7%
+  SUM_ROWS                                        374 calls      3.245 ms      8.7 us/call   0.7%
+  DIV                                             374 calls      3.034 ms      8.1 us/call   0.7%
+  CLAMP                                           374 calls      2.984 ms      8.0 us/call   0.7%
+  RMS_NORM+MUL (fused)                            221 calls      2.564 ms     11.6 us/call   0.6%
+  ROPE                                            204 calls      2.317 ms     11.4 us/call   0.5%
+  SOFT_MAX                                        102 calls      1.893 ms     18.6 us/call   0.4%
+  CONT                                            102 calls      1.572 ms     15.4 us/call   0.3%
+  SET_ROWS f32->f16 x2 (fused)                    102 calls      1.012 ms      9.9 us/call   0.2%
+  SWIGLU                                           68 calls      0.942 ms     13.9 us/call   0.2%
+  SCALE                                            36 calls      0.398 ms     11.1 us/call   0.1%
+# rc=0  seconds=9
+# temps at end:  amd36 amd40 GT 430=42 GT 730=34 GT 710=35 
