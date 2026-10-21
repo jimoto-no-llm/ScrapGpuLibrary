@@ -1,0 +1,5 @@
+fin_ot_ub128 temps: 50 51  vram_used: 16416768 5439488 gtt: 14245888
+fin_base_ub128 temps: 49 55  vram_used: 16416768 5439488 gtt: 14245888
+fin_ot_ub64 temps: 51 55  vram_used: 16416768 5439488 gtt: 14245888
+fin_ot_ub256 temps: 54 52  vram_used: 16416768 5439488 gtt: 14245888
+Q9DONE
