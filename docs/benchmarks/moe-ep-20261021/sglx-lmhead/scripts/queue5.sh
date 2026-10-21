@@ -1,7 +1,7 @@
 #!/bin/bash
 # final matrix, power level auto: pp512 / tg128 / pg512,128, -r 5 (bench.sh defaults)
 cd "$(dirname "$0")"
-rm -f ../logs/queue5.done
+rm -f logs/queue5.done
 for mm in 0 1; do
   M=""; [ $mm = 1 ] && M=1
   sfx=$([ $mm = 1 ] && echo _mmvq)
@@ -15,4 +15,4 @@ for mm in 0 1; do
   done
 done
 SERIAL=1 ./bench.sh f_sglx_A_ts51_serial "Vulkan0:0.5,Vulkan1:0.5"
-echo done > ../logs/queue5.done
+echo done > logs/queue5.done

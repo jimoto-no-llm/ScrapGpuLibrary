@@ -1,0 +1,20 @@
+Testing 3 devices
+
+Backend 1/3: Vulkan0
+  Device description: AMD Radeon RX 6400 (RADV NAVI24)
+  Device memory: 4080 MB (4064 MB free)
+
+[MUL_MAT] NaN at index 0 (Vulkan0=-nan CPU=0.545887)   MUL_MAT(type_a=q4_0,type_b=f32,m=40,n=9,k=32,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0): [1;31mFAIL[0m
+[MUL_MAT] NaN at index 8 (Vulkan0=nan CPU=0.167923)   MUL_MAT(type_a=q4_0,type_b=f32,m=100,n=9,k=96,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0): [1;31mFAIL[0m
+  0/2 tests passed
+
+Failing tests:
+  MUL_MAT(type_a=q4_0,type_b=f32,m=40,n=9,k=32,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0)
+  MUL_MAT(type_a=q4_0,type_b=f32,m=100,n=9,k=96,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0)
+  Backend Vulkan0: [1;31mFAIL[0m
+Backend 2/3: Vulkan1
+  Skipping
+Backend 3/3: CPU
+  Skipping
+2/3 backends passed
+[1;31mFAIL[0m

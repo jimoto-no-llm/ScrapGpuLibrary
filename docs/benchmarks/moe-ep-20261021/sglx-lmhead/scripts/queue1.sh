@@ -6,4 +6,4 @@ for s in "Vulkan0:0.7,Vulkan1:0.3" "Vulkan0:0.5,Vulkan1:0.5" "Vulkan0:0.8,Vulkan
   t=$(echo "$s" | tr ':,' '__')
   ./bench.sh "s_ts51_$t" "$s"
 done
-echo done > ../logs/queue1.done
+echo done > logs/queue1.done
