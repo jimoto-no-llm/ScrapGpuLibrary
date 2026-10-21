@@ -5,19 +5,26 @@
  * JIT (cuModuleLoadDataEx) turns it into machine code at run time. The PTX is checked into the repository, so building the library needs no
  * compiler for it.
  *
- * Two builds of this file:
- *   sm20  (.target sm_20): Fermi and everything newer. The reduction over a warp goes through shared memory.
- *   sm35  (-DKEPLER, .target sm_35): Kepler GK110 / GK208 and newer. The weights and activations are read through the read-only data cache
- *         (ld.global.nc, from the const __restrict__ kernel arguments) and the reduction over a warp uses shfl.down.
+ * Two builds of this file: sm20 (.target sm_20, Fermi and everything newer) and sm35 (-DKEPLER, .target sm_35: the const __restrict__ arguments are
+ * read through the read-only data cache, ld.global.nc).
  *
- * Data layout: the weights are read in the natural GGUF block layout, so a weight tensor needs no repacking (blocks are 2-byte aligned
- * only: Q4_0 is 18 bytes, Q6_K 210 bytes). All arithmetic is F32 (the activations are not quantized).
+ * Weights are in the R32 layout (src/tensor/tensor.h, r32_geometry; the layout of the OpenCL 1.1 backend): the rows are grouped by 32, and inside
+ * a group the 16-byte unit j of the block b of the row `lane` is the unit (b * U + j) * rs + lane (rs = rows of the group, 32 except for the last
+ * group), so a warp whose lane is a row reads 512 contiguous bytes per 128-bit load and the 32 rows need no reduction over the lanes. The
+ * activations are F32 and the same for every lane (broadcast loads). All arithmetic is F32.
+ *   Q4_0: area 0 = nibbles (U = 1), area 1 = d (half, at b * rs + lane);                             area k starts at M * nb * (bytes of the
+ *   Q6_K: area 0 = ql + qh (U = 12: ql pieces 0..7, qh pieces 8..11), area 1 = scales (U = 1, xor 0x80), areas before it per block)
+ *         area 2 = d.
  *
- *   mq4_cN   N = 1, 2, 4, 8: out[c * rows + r] = sum_k W[r][k] * x[c * K + k] for c < N, W in Q4_0   (K % 32 == 0)
- *   mq6_cN   the same for Q6_K                                                                      (K % 256 == 0)
- *   mid4     MUL_MAT_ID (the experts of a MoE layer), Q4_0: one (slot, token) pair per blockIdx.y
+ * The 4 weights of a 32-bit word are converted without the slow integer-to-float conversion: a byte b is the mantissa of the float 2^23 + b
+ * (prmt builds it in one instruction), the offset is subtracted afterwards (exact). The high nibble is not shifted down: (w & 0xF0F0F0F0) holds
+ * 16 * nibble, the factor 1/16 is applied to the sum.
  *
- * One warp computes one row (a block of 4 warps = 4 rows; grid-stride over the rows). x must be 16-byte aligned (float4 loads).
+ *   mq4_cN   N = 1, 2, 4, 8: out[c * M + r] = sum_k W[r][k] * x[c * K + k] for c < N, W in Q4_0   (K % 32 == 0)
+ *   mq6_cN   the same for Q6_K                                                                   (K % 256 == 0)
+ *   mid4     MUL_MAT_ID (the experts of a MoE layer; every expert is a slice), Q4_0: one (slot, token) pair per blockIdx.y
+ *
+ * One warp computes one group of 32 rows (a block of 4 warps = 4 groups; grid-stride over the groups). x must be 16-byte aligned (float4 loads).
  */
 
 typedef unsigned char u8;
@@ -26,8 +33,8 @@ typedef unsigned short u16;
 typedef unsigned int u32;
 typedef unsigned long long u64;
 typedef float f4 __attribute__((ext_vector_type(4), aligned(16)));
+typedef unsigned int u4 __attribute__((ext_vector_type(4), aligned(16)));
 
-#define SM __attribute__((address_space(3)))
 #define KERNEL __attribute__((nvptx_kernel))
 
 #define WPB 4 /* warps per block (128 threads) */
@@ -44,89 +51,69 @@ static inline float h2f(u32 h) {
     return f;
 }
 
-static inline u32 ld16(const u8 * p) { return *(const u16 *) p; }
-static inline u32 ld32(const u8 * p) { return ld16(p) | (ld16(p + 2) << 16); }
+static inline float as_f(u32 v) { return __builtin_bit_cast(float, v); }
 
-#ifdef KEPLER
-static inline float shfl_down(float v, u32 o) {
-    float r;
-    __asm__ volatile("shfl.down.b32 %0, %1, %2, 0x1f;" : "=f"(r) : "f"(v), "r"(o));
+/* the float 2^23 + byte K of w (K is a compile-time constant: the selector 0x7540 | K picks byte K of w, three zero bytes and 0x4B) */
+#define MAG(W, K)                                                                  \
+    ({                                                                             \
+        u32 r_;                                                                    \
+        __asm__("prmt.b32 %0, %1, %2, %3;" : "=r"(r_) : "r"(W), "r"(0x4B000000u), "n"(0x7540 | (K))); \
+        as_f(r_);                                                                  \
+    })
+
+static inline f4 f4_mag(u32 w) {
+    f4 r = { MAG(w, 0), MAG(w, 1), MAG(w, 2), MAG(w, 3) };
     return r;
 }
-static inline float wsum(float v, volatile SM float * scr, u32 lane) {
-    (void) scr;
-    (void) lane;
-    v += shfl_down(v, 16);
-    v += shfl_down(v, 8);
-    v += shfl_down(v, 4);
-    v += shfl_down(v, 2);
-    v += shfl_down(v, 1);
-    return v; /* lane 0 holds the sum */
-}
-#else
-/* warp-synchronous reduction through shared memory (Fermi / Kepler execute a warp in lockstep; volatile keeps the order) */
-static inline float wsum(float v, volatile SM float * scr, u32 lane) {
-    scr[lane] = v;
-    if (lane < 16) scr[lane] += scr[lane + 16];
-    if (lane < 8)  scr[lane] += scr[lane + 8];
-    if (lane < 4)  scr[lane] += scr[lane + 4];
-    if (lane < 2)  scr[lane] += scr[lane + 2];
-    if (lane < 1)  scr[lane] += scr[lane + 1];
-    return scr[0];
-}
-#endif
 
-static SM volatile float g_red[WPB * 32];
-
-/* ---- Q4_0: block = half d; u8 qs[16]; value j (< 16) = (qs[j] & 15) - 8, value j + 16 = (qs[j] >> 4) - 8; times d ---- */
-
-/* dot of one 32-value Q4_0 slice: 4 bytes of qs (values 4s..4s+3 and 16+4s..16+4s+3) against x[..] (xl at +4s, xh at +16+4s) */
-static inline float dot4_q4(u32 qs, f4 xl, f4 xh) {
-    const u32 lo = qs & 0x0F0F0F0Fu;
-    const u32 hi = (qs >> 4) & 0x0F0F0F0Fu;
-    float s = ((float) (int) (lo & 0xFF) - 8.0f) * xl.x;
-    s += ((float) (int) ((lo >> 8) & 0xFF) - 8.0f) * xl.y;
-    s += ((float) (int) ((lo >> 16) & 0xFF) - 8.0f) * xl.z;
-    s += ((float) (int) (lo >> 24) - 8.0f) * xl.w;
-    s += ((float) (int) (hi & 0xFF) - 8.0f) * xh.x;
-    s += ((float) (int) ((hi >> 8) & 0xFF) - 8.0f) * xh.y;
-    s += ((float) (int) ((hi >> 16) & 0xFF) - 8.0f) * xh.z;
-    s += ((float) (int) (hi >> 24) - 8.0f) * xh.w;
-    return s;
+static inline f4 splat(float v) {
+    f4 r = { v, v, v, v };
+    return r;
 }
 
-#define MQ4_BODY(NC)                                                                                   \
-    const u32 tid = tid_x();                                                                           \
-    const u32 warp = tid >> 5, lane = tid & 31;                                                        \
-    const u32 nb = K >> 5;                                                                             \
-    const u32 bi = lane >> 2, s = lane & 3;                                                            \
-    volatile SM float * scr = g_red + warp * 32;                                                       \
-    for (u32 row = bid_x() * WPB + warp; row < rows; row += nbid_x() * WPB) {                         \
-        const u8 * rp = w + (u64) row * row_bytes;                                                     \
-        float acc[NC];                                                                                 \
-        for (int c = 0; c < NC; ++c) acc[c] = 0.0f;                                                    \
-        for (u32 b0 = 0; b0 < nb; b0 += 8) {                                                           \
-            const u32 b = b0 + bi;                                                                     \
-            if (b < nb) {                                                                              \
-                const u8 * bp = rp + (u64) b * 18;                                                     \
-                const u32 qs = ld32(bp + 2 + 4 * s);                                                   \
-                const float d = h2f(ld16(bp));                                                         \
-                for (int c = 0; c < NC; ++c) {                                                         \
-                    const float * xc = x + (u64) c * K + b * 32 + 4 * s;                               \
-                    acc[c] += d * dot4_q4(qs, *(const f4 *) xc, *(const f4 *) (xc + 16));              \
-                }                                                                                      \
-            }                                                                                          \
-        }                                                                                              \
-        for (int c = 0; c < NC; ++c) {                                                                 \
-            const float t = wsum(acc[c], scr, lane);                                                   \
-            if (lane == 0) out[(u64) c * rows + row] = t;                                              \
-        }                                                                                              \
-    }
+static inline float dot4(f4 a, f4 b) {
+    return __builtin_fmaf(a.x, b.x, __builtin_fmaf(a.y, b.y, __builtin_fmaf(a.z, b.z, a.w * b.w)));
+}
 
-#define MQ4(NC)                                                                                        \
-    KERNEL void mq4_c##NC(const u8 * __restrict__ w, const float * __restrict__ x, float * __restrict__ out, \
-                          u32 K, u32 rows, u64 row_bytes) {                                            \
-        MQ4_BODY(NC)                                                                                   \
+/* ---- Q4_0: block = half d; u8 qs[16]; value j (< 16) = (qs[j] & 15) - 8, value j + 16 = (qs[j] >> 4) - 8; times d.
+ * Word i (0..3) of the unit holds the bytes 4 i .. 4 i + 3: the low nibbles are the values 4 i .. 4 i + 3 (float4 8 b + i of x), the high nibbles
+ * the values 16 + 4 i .. (float4 8 b + 4 + i). ---- */
+
+#define MQ4(NC)                                                                                                         \
+    KERNEL void mq4_c##NC(const u8 * __restrict__ w, const float * __restrict__ x, float * __restrict__ out, u32 K, u32 M) { \
+        const u32 tid = tid_x();                                                                                        \
+        const u32 warp = tid >> 5, lane = tid & 31;                                                                     \
+        const u32 nb = K >> 5;                                                                                          \
+        const u32 ngrp = (M + 31) >> 5;                                                                                 \
+        for (u32 g = bid_x() * WPB + warp; g < ngrp; g += nbid_x() * WPB) {                                            \
+            const u32 rs = M - g * 32 < 32 ? M - g * 32 : 32;                                                           \
+            const u32 lc = lane < rs ? lane : rs - 1;                                                                   \
+            const u4 * qp = (const u4 *) w + (u64) g * 32 * nb + lc;                                                    \
+            const u16 * dp = (const u16 *) (w + (u64) M * nb * 16) + (u64) g * 32 * nb + lc;                            \
+            float acc[NC];                                                                                              \
+            for (int c = 0; c < NC; ++c) acc[c] = 0.0f;                                                                 \
+            for (u32 b = 0; b < nb; ++b) {                                                                              \
+                const u4 q = qp[(u64) b * rs];                                                                          \
+                const float d = h2f(dp[(u64) b * rs]);                                                                  \
+                float sl[NC], sh[NC];                                                                                   \
+                for (int c = 0; c < NC; ++c) { sl[c] = 0.0f; sh[c] = 0.0f; }                                            \
+                _Pragma("unroll")                                                                                       \
+                for (int i = 0; i < 4; ++i) {                                                                           \
+                    const u32 wd = i == 0 ? q.x : i == 1 ? q.y : i == 2 ? q.z : q.w;                                    \
+                    const f4 vl = f4_mag(wd & 0x0F0F0F0Fu) - splat(8388616.0f);                                         \
+                    const f4 vh = f4_mag(wd & 0xF0F0F0F0u) - splat(8388736.0f);                                         \
+                    for (int c = 0; c < NC; ++c) {                                                                      \
+                        const f4 * xc = (const f4 *) (x + (u64) c * K + (u64) b * 32);                                  \
+                        sl[c] += dot4(vl, xc[i]);                                                                       \
+                        sh[c] += dot4(vh, xc[4 + i]);                                                                   \
+                    }                                                                                                   \
+                }                                                                                                       \
+                for (int c = 0; c < NC; ++c) acc[c] = __builtin_fmaf(d, __builtin_fmaf(sh[c], 0.0625f, sl[c]), acc[c]); \
+            }                                                                                                           \
+            if (lane < rs) {                                                                                            \
+                for (int c = 0; c < NC; ++c) out[(u64) c * M + (u64) g * 32 + lane] = acc[c];                          \
+            }                                                                                                           \
+        }                                                                                                               \
     }
 
 MQ4(1)
@@ -134,60 +121,82 @@ MQ4(2)
 MQ4(4)
 MQ4(8)
 
-/* ---- Q6_K: block = u8 ql[128]; u8 qh[64]; s8 scales[16]; half d (210 bytes, 256 values).
- * Value v = 128 * h + 32 * g + l (h: half, g: 0..3, l: 0..31) = d * scales[v / 16] * (((ql[64 h + 32 (g & 1) + l] >> 4 * (g >> 1)) & 15) |
- *                                                                          (((qh[32 h + l] >> 2 g) & 3) << 4)) - 32).
- * Lane i of a warp owns ql bytes 4i..4i+3 of the block: the low nibbles are the values vlo = 128 h + p .. +3 and the high nibbles the values
- * vhi = vlo + 64 .. +3 (p = (4 i) & 63); their high bits are in qh bytes 32 h + (p & 31) .. +3 at bit 2 (p >> 5) and 2 (p >> 5) + 4. ---- */
+/* ---- Q6_K: block = u8 ql[128]; u8 qh[64]; s8 scales[16]; half d (256 values).
+ * Value v = 128 h + 32 qd + l (h: half, qd: quadrant 0..3, l: 0..31) = d * scales[8 h + 2 qd + l / 16] * (q - 32), q = nibble | field << 4:
+ * the nibble is the low (qd 0, 1) or high (qd 2, 3) half of ql[64 h + 32 (qd & 1) + l], the field the bits 2 qd of qh[32 h + l].
+ * A lane handles the 16 consecutive l (lh = 0, 1) of the 4 quadrants of a half h: the pieces pa = ql[64 h + 16 lh] (unit 4 h + lh),
+ * pb = ql[64 h + 32 + 16 lh] (unit 4 h + 2 + lh), pc = qh[32 h + 16 lh] (unit 8 + 2 h + lh), 4 words each (l = 16 lh + 4 k .. + 3); the
+ * x of (h, qd, l = 16 lh + 4 k) is the float4 32 h + 8 qd + 4 lh + k of the block. ---- */
 
-static inline float dot4_q6(u32 q, f4 xv) {
-    float s = ((float) (int) (q & 0xFF) - 32.0f) * xv.x;
-    s += ((float) (int) ((q >> 8) & 0xFF) - 32.0f) * xv.y;
-    s += ((float) (int) ((q >> 16) & 0xFF) - 32.0f) * xv.z;
-    s += ((float) (int) (q >> 24) - 32.0f) * xv.w;
-    return s;
-}
+#define V6_0(PA, PB, PC) (((PA) & 0x0F0F0F0Fu) | (((PC) << 4) & 0x30303030u))
+#define V6_1(PA, PB, PC) (((PB) & 0x0F0F0F0Fu) | (((PC) << 2) & 0x30303030u))
+#define V6_2(PA, PB, PC) ((((PA) >> 4) & 0x0F0F0F0Fu) | ((PC) & 0x30303030u))
+#define V6_3(PA, PB, PC) ((((PB) >> 4) & 0x0F0F0F0Fu) | (((PC) >> 2) & 0x30303030u))
 
-#define MQ6_BODY(NC)                                                                                   \
-    const u32 tid = tid_x();                                                                           \
-    const u32 warp = tid >> 5, lane = tid & 31;                                                        \
-    const u32 nb = K >> 8;                                                                             \
-    const u32 j = lane * 4, h = j >> 6, p = j & 63, g0 = p >> 5, l = p & 31;                           \
-    const u32 vlo = h * 128 + p, vhi = vlo + 64;                                                       \
-    const u32 slo = vlo >> 4, shi = vhi >> 4;                                                          \
-    const u32 sh_lo = 2 * g0, sh_hi = 2 * g0 + 4;                                                      \
-    const u32 qho = 128 + h * 32 + l;                                                                  \
-    volatile SM float * scr = g_red + warp * 32;                                                       \
-    for (u32 row = bid_x() * WPB + warp; row < rows; row += nbid_x() * WPB) {                         \
-        const u8 * rp = w + (u64) row * row_bytes;                                                     \
-        float acc[NC];                                                                                 \
-        for (int c = 0; c < NC; ++c) acc[c] = 0.0f;                                                    \
-        _Pragma("unroll 2")                                                                            \
-        for (u32 b = 0; b < nb; ++b) {                                                                 \
-            const u8 * bp = rp + (u64) b * 210;                                                        \
-            const u32 ql = ld32(bp + j);                                                               \
-            const u32 qh = ld32(bp + qho);                                                             \
-            const float d = h2f(ld16(bp + 208));                                                       \
-            const float sc_lo = (float) (int) (s8) bp[192 + slo] * d;                                  \
-            const float sc_hi = (float) (int) (s8) bp[192 + shi] * d;                                  \
-            const u32 qlo = (ql & 0x0F0F0F0Fu) | (((qh >> sh_lo) & 0x03030303u) << 4);                 \
-            const u32 qhi = ((ql >> 4) & 0x0F0F0F0Fu) | (((qh >> sh_hi) & 0x03030303u) << 4);          \
-            for (int c = 0; c < NC; ++c) {                                                             \
-                const float * xc = x + (u64) c * K + b * 256;                                          \
-                acc[c] += sc_lo * dot4_q6(qlo, *(const f4 *) (xc + vlo)) +                             \
-                          sc_hi * dot4_q6(qhi, *(const f4 *) (xc + vhi));                              \
-            }                                                                                          \
-        }                                                                                              \
-        for (int c = 0; c < NC; ++c) {                                                                 \
-            const float t = wsum(acc[c], scr, lane);                                                   \
-            if (lane == 0) out[(u64) c * rows + row] = t;                                              \
-        }                                                                                              \
+/* the 16 values of one (h, lh, qd) against x: sum over k of dot(q - 32, x) */
+#define Q6_QUAD(NC, H, LH, QD, VF)                                                                                      \
+    {                                                                                                                   \
+        const int xo = (H) * 32 + (QD) * 8 + 4 * (LH);                                                                  \
+        const f4 v0 = f4_mag(VF(pa.x, pb.x, pc.x)) - splat(8388640.0f);                                                 \
+        const f4 v1 = f4_mag(VF(pa.y, pb.y, pc.y)) - splat(8388640.0f);                                                 \
+        const f4 v2 = f4_mag(VF(pa.z, pb.z, pc.z)) - splat(8388640.0f);                                                 \
+        const f4 v3 = f4_mag(VF(pa.w, pb.w, pc.w)) - splat(8388640.0f);                                                 \
+        const float sc = sw[(H) * 8 + (LH) + 2 * (QD)];                                                                 \
+        for (int c = 0; c < NC; ++c) {                                                                                  \
+            const f4 * xc = (const f4 *) (x + (u64) c * K + (u64) b * 256);                                             \
+            const float s = (dot4(v0, xc[xo]) + dot4(v1, xc[xo + 1])) + (dot4(v2, xc[xo + 2]) + dot4(v3, xc[xo + 3])); \
+            tt[c] = __builtin_fmaf(sc, s, tt[c]);                                                                       \
+        }                                                                                                               \
     }
 
-#define MQ6(NC)                                                                                        \
-    KERNEL void mq6_c##NC(const u8 * __restrict__ w, const float * __restrict__ x, float * __restrict__ out, \
-                          u32 K, u32 rows, u64 row_bytes) {                                            \
-        MQ6_BODY(NC)                                                                                   \
+#define Q6_PIECE(NC, H, LH)                                                                                             \
+    {                                                                                                                   \
+        const u4 pa = qp[(u64) (b * 12 + 4 * (H) + (LH)) * rs];                                                         \
+        const u4 pb = qp[(u64) (b * 12 + 4 * (H) + 2 + (LH)) * rs];                                                     \
+        const u4 pc = qp[(u64) (b * 12 + 8 + 2 * (H) + (LH)) * rs];                                                     \
+        Q6_QUAD(NC, H, LH, 0, V6_0)                                                                                     \
+        Q6_QUAD(NC, H, LH, 1, V6_1)                                                                                     \
+        Q6_QUAD(NC, H, LH, 2, V6_2)                                                                                     \
+        Q6_QUAD(NC, H, LH, 3, V6_3)                                                                                     \
+    }
+
+#define MQ6(NC)                                                                                                         \
+    KERNEL void mq6_c##NC(const u8 * __restrict__ w, const float * __restrict__ x, float * __restrict__ out, u32 K, u32 M) { \
+        const u32 tid = tid_x();                                                                                        \
+        const u32 warp = tid >> 5, lane = tid & 31;                                                                     \
+        const u32 nb = K >> 8;                                                                                          \
+        const u32 ngrp = (M + 31) >> 5;                                                                                 \
+        for (u32 g = bid_x() * WPB + warp; g < ngrp; g += nbid_x() * WPB) {                                            \
+            const u32 rs = M - g * 32 < 32 ? M - g * 32 : 32;                                                           \
+            const u32 lc = lane < rs ? lane : rs - 1;                                                                   \
+            const u4 * qp = (const u4 *) w + (u64) g * 32 * nb * 12 + lc;                                               \
+            const u4 * sp = (const u4 *) (w + (u64) M * nb * 192) + (u64) g * 32 * nb + lc;                             \
+            const u16 * dp = (const u16 *) (w + (u64) M * nb * 208) + (u64) g * 32 * nb + lc;                           \
+            float acc[NC];                                                                                              \
+            for (int c = 0; c < NC; ++c) acc[c] = 0.0f;                                                                 \
+            for (u32 b = 0; b < nb; ++b) {                                                                              \
+                float sw[16]; /* the 16 int8 scales (stored xor 0x80: the byte is scale + 128) */                      \
+                {                                                                                                       \
+                    const u4 s4 = sp[(u64) b * rs];                                                                     \
+                    for (int i = 0; i < 4; ++i) {                                                                       \
+                        const u32 wd = i == 0 ? s4.x : i == 1 ? s4.y : i == 2 ? s4.z : s4.w;                            \
+                        const f4 v = f4_mag(wd) - splat(8388736.0f);                                                    \
+                        sw[4 * i] = v.x; sw[4 * i + 1] = v.y; sw[4 * i + 2] = v.z; sw[4 * i + 3] = v.w;                 \
+                    }                                                                                                   \
+                }                                                                                                       \
+                float tt[NC];                                                                                           \
+                for (int c = 0; c < NC; ++c) tt[c] = 0.0f;                                                              \
+                Q6_PIECE(NC, 0, 0)                                                                                      \
+                Q6_PIECE(NC, 0, 1)                                                                                      \
+                Q6_PIECE(NC, 1, 0)                                                                                      \
+                Q6_PIECE(NC, 1, 1)                                                                                      \
+                const float d = h2f(dp[(u64) b * rs]);                                                                  \
+                for (int c = 0; c < NC; ++c) acc[c] = __builtin_fmaf(d, tt[c], acc[c]);                                 \
+            }                                                                                                           \
+            if (lane < rs) {                                                                                            \
+                for (int c = 0; c < NC; ++c) out[(u64) c * M + (u64) g * 32 + lane] = acc[c];                          \
+            }                                                                                                           \
+        }                                                                                                               \
     }
 
 MQ6(1)
@@ -195,42 +204,47 @@ MQ6(2)
 MQ6(4)
 MQ6(8)
 
-/* ---- MUL_MAT_ID, Q4_0: dst[r, s, t] = sum_k W[ids[s, t]][r][k] * x[k, s or 0, t]  (ggml's ne = [rows, n_ids, n_tokens]).
- * blockIdx.y = t * n_ids + s (a Fermi grid has no third dimension). A negative or too large expert id writes zeros.
+/* ---- MUL_MAT_ID, Q4_0: dst[r, s, t] = sum_k W[ids[s, t]][r][k] * x[k, s or 0, t]  (ggml's ne = [rows, n_ids, n_tokens]); the expert e is the slice
+ * at w + e * slice_bytes (M rows in the R32 layout). blockIdx.y = t * n_ids + s (a Fermi grid has no third dimension). A negative or too large
+ * expert id writes zeros.
  *   ids          int32 [n_ids, n_tokens], the row of token t starts at ids + t * ids_tok_stride
- *   x            the column of (s, t) starts at x + t * x_tok_stride + s * x_slot_stride (x_slot_stride is 0 when one column serves every slot)
- *   expert_bytes the bytes of one expert (rows * row_bytes) ---- */
+ *   x            the column of (s, t) starts at x + t * x_tok_stride + s * x_slot_stride (x_slot_stride is 0 when one column serves every slot) ---- */
 KERNEL void mid4(const u8 * __restrict__ w, const int * __restrict__ ids, const float * __restrict__ x, float * __restrict__ out,
-                 u32 K, u32 rows, u64 row_bytes, u64 expert_bytes, u32 n_ids, u32 n_expert, u32 ids_tok_stride,
-                 u32 x_slot_stride, u32 x_tok_stride) {
+                 u32 K, u32 M, u64 slice_bytes, u32 n_ids, u32 n_expert, u32 ids_tok_stride, u32 x_slot_stride, u32 x_tok_stride) {
     const u32 st = bid_y();
     const u32 t = st / n_ids, sl = st - t * n_ids;
     const int id = ids[(u64) t * ids_tok_stride + sl];
     const u32 tid = tid_x();
     const u32 warp = tid >> 5, lane = tid & 31;
     const u32 nb = K >> 5;
-    const u32 bi = lane >> 2, s = lane & 3;
-    volatile SM float * scr = g_red + warp * 32;
+    const u32 ngrp = (M + 31) >> 5;
     const int valid = id >= 0 && (u32) id < n_expert;
-    const u8 * wb = w + (u64) (valid ? (u32) id : 0u) * expert_bytes;
+    const u8 * wb = w + (u64) (valid ? (u32) id : 0u) * slice_bytes;
     const float * xv = x + (u64) t * x_tok_stride + (u64) sl * x_slot_stride;
-    float * ov = out + (u64) st * rows;
-    for (u32 row = bid_x() * WPB + warp; row < rows; row += nbid_x() * WPB) {
-        const u8 * rp = wb + (u64) row * row_bytes;
+    float * ov = out + (u64) st * M;
+    for (u32 g = bid_x() * WPB + warp; g < ngrp; g += nbid_x() * WPB) {
+        const u32 rs = M - g * 32 < 32 ? M - g * 32 : 32;
+        const u32 lc = lane < rs ? lane : rs - 1;
+        const u4 * qp = (const u4 *) wb + (u64) g * 32 * nb + lc;
+        const u16 * dp = (const u16 *) (wb + (u64) M * nb * 16) + (u64) g * 32 * nb + lc;
         float acc = 0.0f;
         if (valid) {
-            for (u32 b0 = 0; b0 < nb; b0 += 8) {
-                const u32 b = b0 + bi;
-                if (b < nb) {
-                    const u8 * bp = rp + (u64) b * 18;
-                    const u32 qs = ld32(bp + 2 + 4 * s);
-                    const float d = h2f(ld16(bp));
-                    const float * xc = xv + b * 32 + 4 * s;
-                    acc += d * dot4_q4(qs, *(const f4 *) xc, *(const f4 *) (xc + 16));
+            for (u32 b = 0; b < nb; ++b) {
+                const u4 q = qp[(u64) b * rs];
+                const float d = h2f(dp[(u64) b * rs]);
+                const f4 * xc = (const f4 *) (xv + (u64) b * 32);
+                float sl_ = 0.0f, sh_ = 0.0f;
+                _Pragma("unroll")
+                for (int i = 0; i < 4; ++i) {
+                    const u32 wd = i == 0 ? q.x : i == 1 ? q.y : i == 2 ? q.z : q.w;
+                    sl_ += dot4(f4_mag(wd & 0x0F0F0F0Fu) - splat(8388616.0f), xc[i]);
+                    sh_ += dot4(f4_mag(wd & 0xF0F0F0F0u) - splat(8388736.0f), xc[4 + i]);
                 }
+                acc = __builtin_fmaf(d, __builtin_fmaf(sh_, 0.0625f, sl_), acc);
             }
         }
-        const float tt = wsum(acc, scr, lane);
-        if (lane == 0) ov[row] = tt;
+        if (lane < rs) {
+            ov[(u64) g * 32 + lane] = acc;
+        }
     }
 }

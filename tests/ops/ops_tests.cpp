@@ -1305,7 +1305,7 @@ int main() {
             std::fprintf(stderr, "scrapgpu_cuda_register failed: %s\n", scrapgpu_last_error());
             return 1;
         }
-        g_weight_layout = SCRAPGPU_LAYOUT_NATURAL;
+        // g_weight_layout stays R32: the CUDA kernels read the layout of the OpenCL 1.1 backend
 #else
         std::printf("SKIP: built without the CUDA backend\n");
         return 77;

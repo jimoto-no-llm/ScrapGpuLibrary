@@ -23,6 +23,7 @@ enum class WType { Q4_0, Q6_K };
 inline int wtype_block_size(WType t) { return t == WType::Q4_0 ? 32 : 256; }
 inline int wtype_block_bytes(WType t) { return t == WType::Q4_0 ? 18 : 210; }
 inline uint64_t wtype_row_bytes(WType t, int64_t K) { return (uint64_t) (K / wtype_block_size(t)) * (uint64_t) wtype_block_bytes(t); }
+// the R32 slice of `rows` rows has the size of the natural one
 
 struct DeviceInfo {
     int         ordinal = 0;        // the driver's number
@@ -77,16 +78,16 @@ public:
     bool memset8(uint64_t dst, uint8_t v, size_t bytes, CUstream s);
 
     // ---- kernels (all asynchronous on `s`; the pointers are device addresses) ----
-    // out[c * rows + r] = sum_k W[r][k] * x[c * K + k], c < N, r < rows. W: rows rows of K elements in the natural GGUF layout, row_bytes apart
-    // (a multiple of 2; K % block size == 0). x: 16-byte aligned, N columns of K floats.
-    bool mul_mat(CUstream s, WType t, uint64_t w, uint64_t row_bytes, uint32_t rows, uint32_t K, uint64_t x, uint32_t N, uint64_t out);
+    // out[c * rows + r] = sum_k W[r][k] * x[c * K + k], c < N, r < rows. W: one slice (rows rows of K elements, K % block size == 0) in the R32
+    // layout (r32_transfer.h; the address 16-byte aligned). x: 16-byte aligned, N columns of K floats.
+    bool mul_mat(CUstream s, WType t, uint64_t w, uint32_t rows, uint32_t K, uint64_t x, uint32_t N, uint64_t out);
 
     // MUL_MAT_ID with Q4_0 experts: dst[r, s, t] = sum_k W[ids[t * ids_tok_stride + s]][r][k] * x[t * x_tok_stride + s * x_slot_stride + k]
-    // (dst = [rows, n_ids, n_tokens] contiguous). w holds n_expert experts of expert_bytes each; an id outside [0, n_expert) gives zeros.
-    // n_ids * n_tokens <= 65535.
-    bool mul_mat_id_q4_0(CUstream s, uint64_t w, uint64_t row_bytes, uint64_t expert_bytes, uint32_t n_expert, uint32_t rows, uint32_t K,
-                         uint64_t ids, uint32_t ids_tok_stride, uint32_t n_ids, uint32_t n_tokens, uint64_t x, uint32_t x_slot_stride,
-                         uint32_t x_tok_stride, uint64_t out);
+    // (dst = [rows, n_ids, n_tokens] contiguous). w holds n_expert slices (R32, slice_bytes apart, a multiple of 16); an id outside [0, n_expert)
+    // gives zeros. n_ids * n_tokens <= 65535.
+    bool mul_mat_id_q4_0(CUstream s, uint64_t w, uint64_t slice_bytes, uint32_t n_expert, uint32_t rows, uint32_t K, uint64_t ids,
+                         uint32_t ids_tok_stride, uint32_t n_ids, uint32_t n_tokens, uint64_t x, uint32_t x_slot_stride, uint32_t x_tok_stride,
+                         uint64_t out);
 
 private:
     Device() = default;

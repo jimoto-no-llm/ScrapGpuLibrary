@@ -300,15 +300,15 @@ bool Device::launch(CUfunction f, CUstream s, unsigned gx, unsigned gy, void ** 
     return r == CUDA_SUCCESS || fail("cuLaunchKernel", r);
 }
 
-bool Device::mul_mat(CUstream s, WType t, uint64_t w, uint64_t row_bytes, uint32_t rows, uint32_t K, uint64_t x, uint32_t N, uint64_t out) {
+bool Device::mul_mat(CUstream s, WType t, uint64_t w, uint32_t rows, uint32_t K, uint64_t x, uint32_t N, uint64_t out) {
     std::lock_guard<std::recursive_mutex> lock(mu);
     if (!bind()) return false;
     if (rows == 0 || N == 0) return true;
-    if (K % (uint32_t) wtype_block_size(t) != 0 || (x & 15) != 0 || (K & 3) != 0) {
-        err_ = "mul_mat: K is not a whole number of blocks or x is not 16-byte aligned";
+    if (K % (uint32_t) wtype_block_size(t) != 0 || (x & 15) != 0 || (w & 15) != 0) {
+        err_ = "mul_mat: K is not a whole number of blocks, or x / w is not 16-byte aligned";
         return false;
     }
-    const unsigned gx = (unsigned) std::min<uint64_t>(max_grid_x_, (rows + 3) / 4);
+    const unsigned gx = (unsigned) std::min<uint64_t>(max_grid_x_, ((uint64_t) rows + 31) / 32 / 4 + 1);
     uint32_t col = 0;
     while (col < N) {
         const uint32_t rem = N - col;
@@ -316,7 +316,7 @@ bool Device::mul_mat(CUstream s, WType t, uint64_t w, uint64_t row_bytes, uint32
         uint64_t xp = x + (uint64_t) col * K * 4;
         uint64_t op = out + (uint64_t) col * rows * 4;
         CUdeviceptr wp = w;
-        void * args[] = { &wp, &xp, &op, &K, &rows, &row_bytes };
+        void * args[] = { &wp, &xp, &op, &K, &rows };
         if (!launch(t == WType::Q4_0 ? mq4_[k] : mq6_[k], s, gx, 1, args)) {
             return false;
         }
@@ -325,19 +325,20 @@ bool Device::mul_mat(CUstream s, WType t, uint64_t w, uint64_t row_bytes, uint32
     return true;
 }
 
-bool Device::mul_mat_id_q4_0(CUstream s, uint64_t w, uint64_t row_bytes, uint64_t expert_bytes, uint32_t n_expert, uint32_t rows, uint32_t K,
-                             uint64_t ids, uint32_t ids_tok_stride, uint32_t n_ids, uint32_t n_tokens, uint64_t x, uint32_t x_slot_stride,
-                             uint32_t x_tok_stride, uint64_t out) {
+bool Device::mul_mat_id_q4_0(CUstream s, uint64_t w, uint64_t slice_bytes, uint32_t n_expert, uint32_t rows, uint32_t K, uint64_t ids,
+                             uint32_t ids_tok_stride, uint32_t n_ids, uint32_t n_tokens, uint64_t x, uint32_t x_slot_stride, uint32_t x_tok_stride,
+                             uint64_t out) {
     std::lock_guard<std::recursive_mutex> lock(mu);
     if (!bind()) return false;
     if (rows == 0 || n_ids == 0 || n_tokens == 0) return true;
-    if (K % 32 != 0 || (x & 15) != 0 || (x_slot_stride & 3) != 0 || (x_tok_stride & 3) != 0 || (uint64_t) n_ids * n_tokens > 65535) {
-        err_ = "mul_mat_id: K is not a whole number of blocks, x is not 16-byte aligned, or too many (slot, token) pairs";
+    if (K % 32 != 0 || (x & 15) != 0 || (w & 15) != 0 || (slice_bytes & 15) != 0 || (x_slot_stride & 3) != 0 || (x_tok_stride & 3) != 0 ||
+        (uint64_t) n_ids * n_tokens > 65535) {
+        err_ = "mul_mat_id: K is not a whole number of blocks, w / x / slices are not 16-byte aligned, or too many (slot, token) pairs";
         return false;
     }
-    const unsigned gx = (unsigned) std::min<uint64_t>(max_grid_x_, (rows + 3) / 4);
+    const unsigned gx = (unsigned) std::min<uint64_t>(max_grid_x_, ((uint64_t) rows + 31) / 32 / 4 + 1);
     CUdeviceptr wp = w, idp = ids, xp = x, op = out;
-    void * args[] = { &wp, &idp, &xp, &op, &K, &rows, &row_bytes, &expert_bytes, &n_ids, &n_expert, &ids_tok_stride, &x_slot_stride, &x_tok_stride };
+    void * args[] = { &wp, &idp, &xp, &op, &K, &rows, &slice_bytes, &n_ids, &n_expert, &ids_tok_stride, &x_slot_stride, &x_tok_stride };
     return launch(mid4_, s, gx, n_ids * n_tokens, args);
 }
 

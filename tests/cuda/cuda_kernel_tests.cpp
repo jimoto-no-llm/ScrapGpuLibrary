@@ -1,12 +1,14 @@
 // The kernels of the CUDA backend (src/backends/cuda) against a CPU reference: Q4_0 / Q6_K x F32 mat-vec and mat-mat, and MUL_MAT_ID (Q4_0).
-// The weights are random floats quantized with scrapgpu_ref_quantize and dequantized again for the reference (double precision dot products),
-// so the only difference between the GPU and the reference is the F32 accumulation. Passes when the NMSE is below 1e-9.
+// The weights are random floats quantized with scrapgpu_ref_quantize, repacked to the R32 layout on upload (r32_upload) and dequantized again for
+// the reference (double precision dot products), so the only difference between the GPU and the reference is the F32 accumulation. Passes when
+// the NMSE is below 1e-9.
 // Exit code 77 (ctest SKIP_RETURN_CODE) when there is no CUDA device.
 //
 // A Fermi and a Kepler card cannot share a process (the second context fails), so every device whose init() fails after another one
 // succeeded is reported as SKIP; run with SCRAPGPU_CUDA_DEVICES="GT 430" for the other generation.
 
 #include "cuda/device.h"
+#include "cuda/r32_transfer.h"
 #include "scrapgpu/reference.h"
 #include "scrapgpu/tensor.h"
 
@@ -70,6 +72,15 @@ struct Dev {
         }
         return p;
     }
+    // a quantized weight of `rows` rows (natural bytes) in the R32 layout on the device
+    uint64_t up_w(WType t, int64_t K, int64_t rows, const std::vector<uint8_t> & bytes) {
+        uint64_t p = 0;
+        if (!d->alloc(bytes.size(), p) || !r32_upload(*d, t, K, rows, bytes.data(), p, s)) {
+            std::fprintf(stderr, "weight upload failed: %s\n", d->last_error().c_str());
+            std::exit(1);
+        }
+        return p;
+    }
     uint64_t scratch(size_t bytes) {
         uint64_t p = 0;
         if (!d->alloc(bytes, p)) {
@@ -105,9 +116,9 @@ void test_mul_mat(Dev & dv, WType t, int64_t K, int64_t rows, int64_t N) {
             for (int64_t k = 0; k < K; ++k) s += (double) w.deq[(size_t) (r * K + k)] * (double) x[(size_t) (c * K + k)];
             ref[(size_t) (c * rows + r)] = s;
         }
-    const uint64_t dw = dv.up(w.bytes), dx = dv.up(x), dout = dv.scratch((size_t) (rows * N) * 4);
+    const uint64_t dw = dv.up_w(t, K, rows, w.bytes), dx = dv.up(x), dout = dv.scratch((size_t) (rows * N) * 4);
     dv.d->memset8(dout, 0xFF, (size_t) (rows * N) * 4, dv.s); // NaNs: an unwritten element fails
-    if (!dv.d->mul_mat(dv.s, t, dw, wtype_row_bytes(t, K), (uint32_t) rows, (uint32_t) K, dx, (uint32_t) N, dout)) {
+    if (!dv.d->mul_mat(dv.s, t, dw, (uint32_t) rows, (uint32_t) K, dx, (uint32_t) N, dout)) {
         std::printf("FAIL  mul_mat: %s\n", dv.d->last_error().c_str());
         ++g_fail;
         return;
@@ -145,9 +156,21 @@ void test_mul_mat_id(Dev & dv, int64_t K, int64_t rows, int64_t E, int64_t n_ids
             }
         }
     const uint64_t rb = wtype_row_bytes(WType::Q4_0, K);
-    const uint64_t dw = dv.up(w.bytes), dx = dv.up(x), did = dv.up(ids), dout = dv.scratch(ref.size() * 4);
+    const uint64_t slice = rb * (uint64_t) rows; // a multiple of 16 for the sizes tested
+    uint64_t dw = 0;
+    if (!dv.d->alloc((size_t) (slice * (uint64_t) E), dw)) {
+        std::fprintf(stderr, "alloc failed\n");
+        std::exit(1);
+    }
+    for (int64_t e = 0; e < E; ++e) {
+        if (!r32_upload(*dv.d, WType::Q4_0, K, rows, w.bytes.data() + (size_t) (slice * (uint64_t) e), dw + slice * (uint64_t) e, dv.s)) {
+            std::fprintf(stderr, "expert upload failed: %s\n", dv.d->last_error().c_str());
+            std::exit(1);
+        }
+    }
+    const uint64_t dx = dv.up(x), did = dv.up(ids), dout = dv.scratch(ref.size() * 4);
     dv.d->memset8(dout, 0xFF, ref.size() * 4, dv.s);
-    if (!dv.d->mul_mat_id_q4_0(dv.s, dw, rb, rb * (uint64_t) rows, (uint32_t) E, (uint32_t) rows, (uint32_t) K, did, (uint32_t) n_ids, (uint32_t) n_ids,
+    if (!dv.d->mul_mat_id_q4_0(dv.s, dw, slice, (uint32_t) E, (uint32_t) rows, (uint32_t) K, did, (uint32_t) n_ids, (uint32_t) n_ids,
                                (uint32_t) n_tok, dx, x_per_slot ? (uint32_t) K : 0u, (uint32_t) (K * (x_per_slot ? n_ids : 1)), dout)) {
         std::printf("FAIL  mul_mat_id: %s\n", dv.d->last_error().c_str());
         ++g_fail;

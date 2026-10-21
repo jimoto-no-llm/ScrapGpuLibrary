@@ -2,14 +2,17 @@
 // (driver.h: libcuda is dlopen'd; no devices without it). Buffers are device memory (cuMemAlloc); a stream is a CUstream; the kernels are the
 // PTX of kernels/kernels.c (device.h).
 //
-// Ops: MUL_MAT (src0 Q4_0 / Q6_K in the natural GGUF layout, F32 src1 and dst, any number of columns, batches over src1's dims 2 and 3) and
-// MUL_MAT_ID (src0 Q4_0, the experts of a MoE layer), plus the metadata ops (RESHAPE / VIEW / PERMUTE / TRANSPOSE). op_supported inspects the
-// descriptors only. Everything else is UNSUPPORTED, the caller falls back to another backend.
+// Ops: MUL_MAT (src0 Q4_0 / Q6_K in the R32 layout, F32 src1 and dst, any number of columns, batches over src1's dims 2 and 3) and MUL_MAT_ID
+// (src0 Q4_0 in the R32 layout, the experts of a MoE layer), plus the metadata ops (RESHAPE / VIEW / PERMUTE / TRANSPOSE). op_supported inspects
+// the descriptors only. Everything else is UNSUPPORTED, the caller falls back to another backend. The quantized weights are stored in the R32
+// layout (the layout the OpenCL 1.1 backend uses: coalesced 128-bit loads, one row per lane): tensor_upload / tensor_download of a tensor with
+// layout = SCRAPGPU_LAYOUT_R32 repack on the host; they must cover the whole tensor.
 //
 // The contexts are created on first use (buffer_alloc / stream_create), not at registration: with the 390 driver a Fermi and a Kepler card cannot
 // share a process, and the second generation fails there with BACKEND_ERROR.
 
 #include "device.h"
+#include "r32_transfer.h"
 
 #include "scrapgpu/backend.h"
 #include "scrapgpu/cuda.h"
@@ -286,8 +289,9 @@ scrapgpu_status api_check_tensors(const scrapgpu_op_desc * desc, const char ** r
             *reason = "tensor strides or offset overflow the address space";
             return SCRAPGPU_STATUS_UNSUPPORTED;
         }
-        if (td.layout != SCRAPGPU_LAYOUT_NATURAL) {
-            *reason = "the CUDA backend only supports the natural layout (R32 is an OpenCL repacking)";
+        WType wt;
+        if (td.layout == SCRAPGPU_LAYOUT_R32 ? !(wtype_of(td.dtype, wt) && scrapgpu_tensor_r32_eligible(&td)) : td.layout != SCRAPGPU_LAYOUT_NATURAL) {
+            *reason = "the CUDA backend supports the natural layout and the R32 layout of Q4_0 / Q6_K weights";
             return SCRAPGPU_STATUS_UNSUPPORTED;
         }
         return SCRAPGPU_STATUS_OK;
@@ -315,17 +319,17 @@ scrapgpu_status api_supports_mul_mat(const scrapgpu_op_desc * desc, const char *
     const scrapgpu_tensor_desc s0 = api_load_desc(desc->inputs[0]);
     const scrapgpu_tensor_desc s1 = api_load_desc(desc->inputs[1]);
     const scrapgpu_tensor_desc dd = api_load_desc(desc->outputs[0]);
-    WType t;
+    WType t = WType::Q4_0;
     if (!wtype_of(s0.dtype, t)) {
         return api_no("MUL_MAT: the CUDA backend has kernels for Q4_0 and Q6_K weights only", reason);
     }
-    if (s1.dtype != SCRAPGPU_DTYPE_F32 || dd.dtype != SCRAPGPU_DTYPE_F32) {
+    if (s0.layout != SCRAPGPU_LAYOUT_R32) {
+        return api_no("MUL_MAT: quantized weights must be uploaded in the R32 layout", reason);
+    }
+    if (s1.dtype != SCRAPGPU_DTYPE_F32 || dd.dtype != SCRAPGPU_DTYPE_F32 || s1.layout != SCRAPGPU_LAYOUT_NATURAL || dd.layout != SCRAPGPU_LAYOUT_NATURAL) {
         return api_no("MUL_MAT expects an F32 src1 and destination", reason);
     }
     const int64_t K = td_ne(s0, 0);
-    if (K % scrapgpu_cuda::wtype_block_size(t) != 0) {
-        return api_no("MUL_MAT: the row length of src0 must be a multiple of the block size", reason);
-    }
     if (td_ne(s0, 0) != td_ne(s1, 0)) {
         return api_bad("MUL_MAT: the inner dimensions of src0 and src1 differ", reason);
     }
@@ -338,9 +342,9 @@ scrapgpu_status api_supports_mul_mat(const scrapgpu_op_desc * desc, const char *
     if (td_ne(dd, 0) != td_ne(s0, 1) || td_ne(dd, 1) != td_ne(s1, 1) || td_ne(dd, 2) != td_ne(s1, 2) || td_ne(dd, 3) != td_ne(s1, 3)) {
         return api_bad("MUL_MAT: dst must be [ne01, ne11, ne12, ne13]", reason);
     }
-    // what the kernels need: whole rows in src0 (even addresses), contiguous columns, 16-byte aligned x
-    if (s0.nb[0] != td_esz(s0) || s0.nb[1] % 2 != 0 || s0.nb[2] % 2 != 0 || s0.nb[3] % 2 != 0 || s0.offset % 2 != 0) {
-        return api_no("MUL_MAT: src0 needs contiguous rows at even byte offsets", reason);
+    // what the kernels need: 16-byte aligned weights (a repackable tensor already has aligned slices), contiguous columns, 16-byte aligned x
+    if (s0.offset % 16 != 0) {
+        return api_no("MUL_MAT: src0 must be 16-byte aligned", reason);
     }
     if (s1.nb[0] != 4 || dd.nb[0] != 4 || s1.nb[1] != (uint64_t) K * 4 || dd.nb[1] != (uint64_t) td_ne(dd, 0) * 4) {
         return api_no("MUL_MAT: src1 and dst need contiguous columns", reason);
@@ -362,6 +366,9 @@ scrapgpu_status api_supports_mul_mat_id(const scrapgpu_op_desc * desc, const cha
     if (s0.dtype != SCRAPGPU_DTYPE_Q4_0) {
         return api_no("MUL_MAT_ID: the CUDA backend has a kernel for Q4_0 experts only", reason);
     }
+    if (s0.layout != SCRAPGPU_LAYOUT_R32) {
+        return api_no("MUL_MAT_ID: quantized weights must be uploaded in the R32 layout", reason);
+    }
     if (s1.dtype != SCRAPGPU_DTYPE_F32 || dd.dtype != SCRAPGPU_DTYPE_F32 || ids.dtype != SCRAPGPU_DTYPE_I32) {
         return api_no("MUL_MAT_ID expects F32 src1/dst and I32 ids", reason);
     }
@@ -372,13 +379,11 @@ scrapgpu_status api_supports_mul_mat_id(const scrapgpu_op_desc * desc, const cha
           td_ne(dd, 0) == td_ne(s0, 1) && td_ne(dd, 1) == td_ne(ids, 0) && td_ne(dd, 2) == td_ne(ids, 1) && td_ne(dd, 3) == 1)) {
         return api_bad("MUL_MAT_ID: shapes do not match the contract", reason);
     }
-    if (td_ne(s0, 0) % 32 != 0) {
-        return api_no("MUL_MAT_ID: the row length of src0 must be a multiple of 32", reason);
+    if (s0.offset % 16 != 0) {
+        return api_no("MUL_MAT_ID: src0 must be 16-byte aligned", reason);
     }
-    if (s0.nb[0] != td_esz(s0) || s0.nb[1] % 2 != 0 || s0.nb[2] % 2 != 0 || s0.offset % 2 != 0) {
-        return api_no("MUL_MAT_ID: src0 needs contiguous rows at even byte offsets", reason);
-    }
-    if (s1.nb[0] != 4 || dd.nb[0] != 4 || ids.nb[0] != 4 || ids.nb[1] % 4 != 0 || ids.offset % 4 != 0) {
+    if (s1.layout != SCRAPGPU_LAYOUT_NATURAL || dd.layout != SCRAPGPU_LAYOUT_NATURAL || ids.layout != SCRAPGPU_LAYOUT_NATURAL ||
+        s1.nb[0] != 4 || dd.nb[0] != 4 || ids.nb[0] != 4 || ids.nb[1] % 4 != 0 || ids.offset % 4 != 0) {
         return api_no("MUL_MAT_ID: src1, dst and ids need contiguous elements", reason);
     }
     if (s1.offset % 16 != 0 || (td_ne(s1, 1) > 1 && s1.nb[1] % 16 != 0) || (td_ne(s1, 2) > 1 && s1.nb[2] % 16 != 0)) {
@@ -742,16 +747,36 @@ scrapgpu_status api_tensor_transfer(scrapgpu_stream_t * stream, const scrapgpu_t
     if (size == 0) {
         return SCRAPGPU_STATUS_OK;
     }
-    if (td.layout != SCRAPGPU_LAYOUT_NATURAL) {
-        scrapgpu_set_last_error("the CUDA backend only supports the natural layout (R32 is an OpenCL repacking)");
-        return SCRAPGPU_STATUS_UNSUPPORTED;
+    Device * d = s->dev->dev;
+    std::lock_guard<std::recursive_mutex> lock(d->mu);
+    if (td.layout == SCRAPGPU_LAYOUT_R32) {
+        WType wt;
+        if (!wtype_of(td.dtype, wt) || !scrapgpu_tensor_r32_eligible(&td) || td.offset % 16 != 0) {
+            scrapgpu_set_last_error("the tensor cannot be stored in the R32 layout (dtype, contiguity or alignment)");
+            return SCRAPGPU_STATUS_UNSUPPORTED;
+        }
+        if (size != td_nbytes(td)) {
+            scrapgpu_set_last_error("an R32 transfer must cover the whole tensor");
+            return SCRAPGPU_STATUS_UNSUPPORTED;
+        }
+        const uint64_t slice = td.nb[2];
+        for (int64_t i3 = 0; i3 < td_ne(td, 3); ++i3) {
+            for (int64_t i2 = 0; i2 < td_ne(td, 2); ++i2) {
+                const uint64_t off = (uint64_t) i2 * td.nb[2] + (uint64_t) i3 * td.nb[3];
+                const bool ok = to_dev ? r32_upload(*d, wt, td.ne[0], td.ne[1], host + off, b->ptr + td.offset + off, s->s)
+                                       : r32_download(*d, wt, td.ne[0], td.ne[1], host + off, b->ptr + td.offset + off, s->s);
+                if (!ok) {
+                    return api_backend_error(d, to_dev ? "tensor upload (R32)" : "tensor download (R32)");
+                }
+            }
+        }
+        (void) slice;
+        return SCRAPGPU_STATUS_OK;
     }
     if (!td_contiguous(td)) {
         scrapgpu_set_last_error("tensor is not contiguous; use buffer_read / buffer_write for raw strided transfers");
         return SCRAPGPU_STATUS_UNSUPPORTED;
     }
-    Device * d = s->dev->dev;
-    std::lock_guard<std::recursive_mutex> lock(d->mu);
     const bool ok = to_dev ? d->h2d(b->ptr + td.offset, host, size, s->s) : (d->d2h(host, b->ptr + td.offset, size, s->s) && d->stream_sync(s->s));
     return ok ? SCRAPGPU_STATUS_OK : api_backend_error(d, to_dev ? "tensor upload" : "tensor download");
 }
@@ -803,7 +828,7 @@ scrapgpu_status api_exec_mul_mat(cu_api_stream * s, const scrapgpu_op_desc * des
     if (!api_resolve(s, s0, pw) || !api_resolve(s, s1, px) || !api_resolve(s, dd, pd)) {
         return api_invalid("a tensor does not lie inside a buffer of the stream's device");
     }
-    WType t;
+    WType t = WType::Q4_0;
     wtype_of(s0.dtype, t);
     const int64_t K = td_ne(s0, 0), rows = td_ne(s0, 1), N = td_ne(s1, 1);
     const int64_t r2 = td_ne(s1, 2) / td_ne(s0, 2), r3 = td_ne(s1, 3) / td_ne(s0, 3);
@@ -814,7 +839,7 @@ scrapgpu_status api_exec_mul_mat(cu_api_stream * s, const scrapgpu_op_desc * des
             const uint64_t w = pw + (uint64_t) (i2 / r2) * s0.nb[2] + (uint64_t) (i3 / r3) * s0.nb[3];
             const uint64_t x = px + (uint64_t) i2 * s1.nb[2] + (uint64_t) i3 * s1.nb[3];
             const uint64_t o = pd + (uint64_t) i2 * dd.nb[2] + (uint64_t) i3 * dd.nb[3];
-            if (!d->mul_mat(s->s, t, w, s0.nb[1], (uint32_t) rows, (uint32_t) K, x, (uint32_t) N, o)) {
+            if (!d->mul_mat(s->s, t, w, (uint32_t) rows, (uint32_t) K, x, (uint32_t) N, o)) {
                 return api_backend_error(d, "MUL_MAT");
             }
         }
@@ -840,7 +865,7 @@ scrapgpu_status api_exec_mul_mat_id(cu_api_stream * s, const scrapgpu_op_desc * 
     std::lock_guard<std::recursive_mutex> lock(d->mu);
     for (int64_t t0 = 0; t0 < n_tok; t0 += per_launch) {
         const int64_t nt = std::min(per_launch, n_tok - t0);
-        if (!d->mul_mat_id_q4_0(s->s, pw, s0.nb[1], s0.nb[2], (uint32_t) E, (uint32_t) rows, (uint32_t) K, pi + (uint64_t) t0 * ids.nb[1],
+        if (!d->mul_mat_id_q4_0(s->s, pw, s0.nb[2], (uint32_t) E, (uint32_t) rows, (uint32_t) K, pi + (uint64_t) t0 * ids.nb[1],
                                 (uint32_t) (ids.nb[1] / 4), (uint32_t) n_ids, (uint32_t) nt, px + (uint64_t) t0 * s1.nb[2], x_slot, x_tok,
                                 pd + (uint64_t) t0 * dd.nb[2])) {
             return api_backend_error(d, "MUL_MAT_ID");
