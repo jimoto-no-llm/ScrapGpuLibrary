@@ -1,6 +1,7 @@
 // GPU tests of the ops through the public C API only: every op the selected backend reports as
 // supported is run on the device and compared against the CPU reference (scrapgpu_ref_execute).
-// The backend is selected with SCRAPGPU_TEST_BACKEND=opencl11|vulkan|cuda|remote (default opencl11).
+// The backend is selected with SCRAPGPU_TEST_BACKEND=opencl11|vulkan|cuda|remote (default opencl11); SCRAPGPU_TEST_REMOTE_BATCH=1 runs the remote
+// backend with scrapgpu_remote_set_batching.
 // Exit code 77 (ctest SKIP_RETURN_CODE) when no device of the backend exists.
 
 #include "scrapgpu/api.h"
@@ -1279,6 +1280,13 @@ int main() {
         backend = "opencl11";
     }
     if (std::strcmp(backend, "opencl11") == 0) {
+        if (std::getenv("SCRAPGPU_TEST_REMOTE_BATCH") != nullptr && std::atoi(std::getenv("SCRAPGPU_TEST_REMOTE_BATCH")) != 0) {
+            // the same suite with the writes and op executions held back and sent in front of the next call (one round trip)
+            if (scrapgpu_remote_set_batching(g_remote, 1) != SCRAPGPU_STATUS_OK) {
+                std::fprintf(stderr, "scrapgpu_remote_set_batching failed: %s\n", scrapgpu_last_error());
+                return 1;
+            }
+        }
 #if defined(SCRAPGPU_OPS_TEST_WITH_OPENCL11)
         if (scrapgpu_opencl11_register() != SCRAPGPU_STATUS_OK) {
             std::fprintf(stderr, "scrapgpu_opencl11_register failed: %s\n", scrapgpu_last_error());

@@ -168,6 +168,71 @@ void run_tests(int fd) {
         CHECK(status == SCRAPGPU_STATUS_OK);
     }
 
+    // BATCH: malformed batches are refused (the connection keeps working); the response of a good batch is the one of its last request, and a
+    // failing request answers the batch and skips the rest
+    {
+        auto add = [](std::vector<uint8_t> & b, uint32_t op, const std::vector<uint8_t> & req) {
+            sgr::put_u32(b, op);
+            sgr::put_u64(b, req.size());
+            sgr::put_bytes(b, req.data(), req.size());
+        };
+        std::vector<uint8_t> none;
+        uint32_t status = 0;
+        std::vector<uint8_t> storage;
+        { // n = 0
+            std::vector<uint8_t> req;
+            sgr::put_u32(req, 0);
+            CHECK(invoke(fd, sgr::SGR_OP_BATCH, req, status, storage));
+            CHECK(status == SCRAPGPU_STATUS_INVALID_ARGUMENT);
+        }
+        { // a BATCH inside a BATCH
+            std::vector<uint8_t> inner, req;
+            sgr::put_u32(inner, 1);
+            add(inner, sgr::SGR_OP_GET_DEVICE_COUNT, none);
+            sgr::put_u32(req, 1);
+            add(req, sgr::SGR_OP_BATCH, inner);
+            CHECK(invoke(fd, sgr::SGR_OP_BATCH, req, status, storage));
+            CHECK(status == SCRAPGPU_STATUS_INVALID_ARGUMENT);
+        }
+        { // an entry larger than the batch
+            std::vector<uint8_t> req;
+            sgr::put_u32(req, 1);
+            sgr::put_u32(req, sgr::SGR_OP_GET_DEVICE_COUNT);
+            sgr::put_u64(req, 1000);
+            CHECK(invoke(fd, sgr::SGR_OP_BATCH, req, status, storage));
+            CHECK(status == SCRAPGPU_STATUS_INVALID_ARGUMENT);
+        }
+        { // the first request fails (unknown stream): its failure answers, the second does not run
+            std::vector<uint8_t> bad, req;
+            sgr::put_u64(bad, 0xdeadbeefull); // stream
+            sgr::put_u64(bad, 0xdeadbeefull); // buffer
+            sgr::put_u64(bad, 0);
+            sgr::put_u64(bad, 0);
+            sgr::put_u32(bad, 1);
+            sgr::put_u32(bad, 0);
+            sgr::put_u32(req, 2);
+            add(req, sgr::SGR_OP_BUFFER_WRITE, bad);
+            add(req, sgr::SGR_OP_GET_DEVICE_COUNT, none);
+            CHECK(invoke(fd, sgr::SGR_OP_BATCH, req, status, storage));
+            CHECK(status == SCRAPGPU_STATUS_INVALID_ARGUMENT);
+        }
+        { // a good batch: the answer is the one of the last request
+            std::vector<uint8_t> req;
+            sgr::put_u32(req, 2);
+            add(req, sgr::SGR_OP_GET_DEVICE_COUNT, none);
+            add(req, sgr::SGR_OP_GET_DEVICE_COUNT, none);
+            CHECK(invoke(fd, sgr::SGR_OP_BATCH, req, status, storage));
+            CHECK(status == SCRAPGPU_STATUS_OK);
+            sgr::cur c{storage.data(), storage.size()};
+            std::string err;
+            bool present = false;
+            uint64_t count = 99;
+            CHECK(sgr::get_str(c, err, &present) && sgr::get_u64(c, count) && count == 0 + count && c.n == 0);
+        }
+        CHECK(invoke(fd, sgr::SGR_OP_GET_DEVICE_COUNT, none, status, storage));
+        CHECK(status == SCRAPGPU_STATUS_OK);
+    }
+
     // a header announcing a payload above kMaxPayload must not be allocated: the server answers
     // with an error and closes the connection cleanly
     {

@@ -108,8 +108,20 @@ bool read_all(int fd, void * p, size_t n) {
     return true;
 }
 
+// SGR_OP_BATCH: the responses of all requests but the last are not sent; the first failure is remembered and answers the batch
+bool g_quiet = false;
+bool g_sub_failed = false;
+scrapgpu_status g_sub_status = SCRAPGPU_STATUS_OK;
+
 // the response: the call's status, then the last-error string and the op-specific fields
 bool respond(scrapgpu_status status, const std::vector<uint8_t> & body) {
+    if (g_quiet) {
+        if (status != SCRAPGPU_STATUS_OK) {
+            g_sub_failed = true;
+            g_sub_status = status;
+        }
+        return true;
+    }
     std::vector<uint8_t> msg;
     msg.reserve(sgr::kHdrSize + 4 + body.size() + 256);
     const char * err = status == SCRAPGPU_STATUS_OK ? "" : scrapgpu_last_error();
@@ -161,14 +173,17 @@ void srv_shm_create() {
 }
 
 bool srv_shm_resize(size_t size) {
+    // The old mapping stays valid when the object cannot grow: macOS allows ftruncate() of a POSIX shm object once, so the first request above the
+    // initial 1 MiB fails there. The client keeps its own mapping of the old size in that case and sends the data inline; if the server dropped
+    // its mapping here, the next transfer that the client still routes through the shared memory would find none.
+    if (ftruncate(g_shm_fd, (off_t) size) != 0) {
+        return false;
+    }
     if (g_shm != nullptr) {
         munmap(g_shm, g_shm_size);
         g_shm = nullptr;
     }
     g_shm_size = 0;
-    if (ftruncate(g_shm_fd, (off_t) size) != 0) {
-        return false;
-    }
     void * p = mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED, g_shm_fd, 0);
     if (p == MAP_FAILED) {
         return false;
@@ -240,6 +255,44 @@ bool get_op(sgr::cur & c, srv_op & o) {
 bool handle(uint32_t op, sgr::cur c) {
     scrapgpu_clear_last_error();
     switch (op) {
+        case SGR_OP_BATCH: {
+            if (g_quiet) {
+                return fail(SCRAPGPU_STATUS_INVALID_ARGUMENT, "remote: nested BATCH");
+            }
+            uint32_t n = 0;
+            if (!sgr::get_u32(c, n) || n == 0 || n > 64) {
+                return fail(SCRAPGPU_STATUS_INVALID_ARGUMENT, "remote: malformed BATCH");
+            }
+            for (uint32_t i = 0; i < n; ++i) {
+                uint32_t sub_op = 0;
+                uint64_t sub_size = 0;
+                if (!sgr::get_u32(c, sub_op) || !sgr::get_u64(c, sub_size) || sub_size > c.n || sub_op == SGR_OP_BATCH) {
+                    return fail(SCRAPGPU_STATUS_INVALID_ARGUMENT, "remote: malformed BATCH entry");
+                }
+                const sgr::cur sub{sub_size > 0 ? c.p : nullptr, (size_t) sub_size};
+                c.p += sub_size;
+                c.n -= (size_t) sub_size;
+                const bool last = i + 1 == n;
+                g_quiet = !last;
+                g_sub_failed = false;
+                bool alive = true;
+                try {
+                    alive = handle(sub_op, sub);
+                } catch (...) {
+                    g_quiet = false;
+                    throw;
+                }
+                g_quiet = false;
+                if (!alive) {
+                    return false;
+                }
+                if (!last && g_sub_failed) {
+                    // the failure answers the batch; scrapgpu_last_error() still holds its message
+                    return respond(g_sub_status, {});
+                }
+            }
+            return true;
+        }
         case SGR_OP_HELLO: {
             uint32_t version = 0;
             if (!sgr::get_u32(c, version) || version != sgr::kVersion) {
