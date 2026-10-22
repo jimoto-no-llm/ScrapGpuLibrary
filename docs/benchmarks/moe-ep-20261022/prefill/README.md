@@ -91,6 +91,8 @@ SGLX C = `GGML_SGLX_SPLIT=Vulkan0:0.5,Vulkan1:0.2,CL11_0:0.2,CL11_1:0.1`、`-ot 
 | `test-backend-ops -b SGLX0 -o MUL_MAT,GET_ROWS`（C 構成、tb250） | 656 / 658。失敗 2 件は Vulkan0 の NaN（`q4_0 m=40 n=9 k=32`、`m=100 n=9 k=96`）で、前回と同じ ggml-vulkan の既知の問題。Mac の実行は今回していない |
 | 遅延コピーを入れた最初の版 | KLD 9.05 / top-1 11.9 %（同期の抜け）。修正前のコミットは使わないこと |
 
+**【2026-10-22 追記】この問題は修正済み。原因と結果は `../ub320-fix/README.md`（`pdev_ggml` のグラフキャッシュが、reserve で解放された計算バッファを指したままだった）。** 以下は修正前の記述:
+
 **既知の問題（今回の変更前から）**: 全 token の logits を取る `llama-perplexity -b 512 -ub 320` は `pdev_ggml` の Vulkan `set_tensor_async` の `GGML_ASSERT(... unsupported buffer type)` で落ちる（旧プラグインでも同じ、`logs/pp6_old320`）。`-ub` 192 / 256 / 512 では落ちない。pp512 の測定（出力は最後の 1 token）には影響しない。原因は未特定（スレッド競合ではない: `GGML_SGLX_THREADS=0` でも落ちる）。
 
 ## 6. 統合した CUDA pdev

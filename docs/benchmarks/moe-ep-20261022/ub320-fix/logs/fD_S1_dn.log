@@ -1,0 +1,312 @@
+# date: 2026-10-22_17:29:07  host: tb250  tag: fD_S1_dn
+# temps at start:  amd49 amd46 GT 430=43 GT 730=36 GT 710=36    (max 43 C)
+# env: GGML_CL11_PLATFORMS=NVIDIA GGML_SGLX_PROFILE=0 GGML_CL11_DEVICES=GT 730,GT 710 GGML_SGLX_SPLIT=Vulkan0:0.1,Vulkan1:0.4,CL11_0:0.3,CL11_1:0.2 GGML_BACKEND_PATH=/home/eightman/moe-ep/fix/build/libggml-cl11.so VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json GGML_CL11_AUTO_RPC=0 GGML_VK_MEMORY_LOGGER=1 
+# cmd: /home/eightman/moe-ep/src/llama-build/bin/llama-bench -m /home/eightman/moe-ep/models/LFM2.5-8B-A1B-Q4_0.gguf -dev Vulkan0/Vulkan1/SGLX0 -ngl 99 -fa 0 -t 2 -b 512 -ub 320 -r 3 -sm layer -ncmoe 0 -ts 6/1/0 -ot blk\.21\.ffn_down_exps\.weight=Vulkan1;token_embd\.weight=SGLX0 -o jsonl -p 512 -n 128 -pg 512,128
+load_backend: loaded RPC backend from /home/eightman/moe-ep/src/llama-build/bin/libggml-rpc.so
+ggml_vulkan: Found 2 Vulkan devices:
+ggml_vulkan: 0 = AMD Radeon RX 6400 (RADV NAVI24) (radv) | uma: 0 | fp16: 1 | bf16: 0 | fp4: 0 | warp size: 32 | shared memory: 65536 | int dot: 1 | matrix cores: none
+ggml_vulkan: 1 = AMD Radeon Pro WX 2100 (RADV POLARIS12) (radv) | uma: 0 | fp16: 0 | bf16: 0 | fp4: 0 | warp size: 64 | shared memory: 65536 | int dot: 0 | matrix cores: none
+load_backend: loaded Vulkan backend from /home/eightman/moe-ep/src/llama-build/bin/libggml-vulkan.so
+load_backend: loaded CPU backend from /home/eightman/moe-ep/src/llama-build/bin/libggml-cpu.so
+load_backend: loaded CL11 backend from /home/eightman/moe-ep/fix/build/libggml-cl11.so
+ggml_vulkan memory: ggml_backend_vk_buffer_type_alloc_buffer(1029014528)
+ggml_vulkan memory: Vulkan0: +981.34 MiB device at 0x562302336310. Total device: 981.34 MiB, total host: 0 B
+ggml_vulkan memory: ggml_backend_vk_buffer_type_alloc_buffer(1032480384)
+ggml_vulkan memory: Vulkan0: +984.65 MiB device at 0x562302336600. Total device: 1.92 GiB, total host: 0 B
+ggml_vulkan memory: ggml_backend_vk_buffer_type_alloc_buffer(1036043392)
+ggml_vulkan memory: Vulkan0: +988.05 MiB device at 0x562302336980. Total device: 2.88 GiB, total host: 0 B
+ggml_vulkan memory: ggml_backend_vk_buffer_type_alloc_buffer(1041950464)
+ggml_vulkan memory: Vulkan0: +993.68 MiB device at 0x562302336d40. Total device: 3.86 GiB, total host: 0 B
+ggml_vulkan memory: ggml_backend_vk_buffer_type_alloc_buffer(481911040)
+ggml_vulkan memory: Vulkan1: +459.59 MiB device at 0x562302335ca0. Total device: 459.59 MiB, total host: 0 B
+ggml_vulkan memory: ggml_backend_vk_host_buffer_type_alloc_buffer(1048576)
+ggml_vulkan memory: ggml_vk_host_malloc(1048608)
+ggml_vulkan memory: Vulkan0: +1.00 MiB host at 0x562302336050. Total device: 3.86 GiB, total host: 1.00 MiB
+ggml_vulkan memory: ggml_backend_vk_host_buffer_type_alloc_buffer(1048576)
+ggml_vulkan memory: ggml_vk_host_malloc(1048608)
+ggml_vulkan memory: Vulkan0: +1.00 MiB host at 0x562302337230. Total device: 3.86 GiB, total host: 2.00 MiB
+ggml_vulkan memory: ggml_backend_vk_host_buffer_type_alloc_buffer(1048576)
+ggml_vulkan memory: ggml_vk_host_malloc(1048608)
+ggml_vulkan memory: Vulkan0: +1.00 MiB host at 0x5623023376a0. Total device: 3.86 GiB, total host: 3.00 MiB
+ggml_vulkan memory: ggml_backend_vk_host_buffer_type_alloc_buffer(1048576)
+ggml_vulkan memory: ggml_vk_host_malloc(1048608)
+ggml_vulkan memory: Vulkan0: +1.00 MiB host at 0x562302337c00. Total device: 3.86 GiB, total host: 4.00 MiB
+ggml_vulkan memory: ggml_backend_vk_host_buffer_free_buffer()
+ggml_vulkan memory: ggml_vk_host_free(0x7f02e8a4e000)
+ggml_vulkan memory: Vulkan0: -1.00 MiB host at 0x562302336050. Total device: 3.86 GiB, total host: 3.00 MiB
+ggml_vulkan memory: ggml_backend_vk_host_buffer_free_buffer()
+ggml_vulkan memory: ggml_vk_host_free(0x7f02e84ff000)
+ggml_vulkan memory: Vulkan0: -1.00 MiB host at 0x562302337230. Total device: 3.86 GiB, total host: 2.00 MiB
+ggml_vulkan memory: ggml_backend_vk_host_buffer_free_buffer()
+ggml_vulkan memory: ggml_vk_host_free(0x7f02d8aff000)
+ggml_vulkan memory: Vulkan0: -1.00 MiB host at 0x5623023376a0. Total device: 3.86 GiB, total host: 1.00 MiB
+ggml_vulkan memory: ggml_backend_vk_host_buffer_free_buffer()
+ggml_vulkan memory: ggml_vk_host_free(0x7f02d89fe000)
+ggml_vulkan memory: Vulkan0: -1.00 MiB host at 0x562302337c00. Total device: 3.86 GiB, total host: 0 B
+ggml_vulkan memory: ggml_backend_vk_host_buffer_type_alloc_buffer(1048576)
+ggml_vulkan memory: ggml_vk_host_malloc(1048608)
+ggml_vulkan memory: Vulkan0: +1.00 MiB host at 0x562302337740. Total device: 3.86 GiB, total host: 1.00 MiB
+ggml_vulkan memory: ggml_backend_vk_host_buffer_type_alloc_buffer(1048576)
+ggml_vulkan memory: ggml_vk_host_malloc(1048608)
+ggml_vulkan memory: Vulkan0: +1.00 MiB host at 0x5623023372b0. Total device: 3.86 GiB, total host: 2.00 MiB
+ggml_vulkan memory: ggml_backend_vk_host_buffer_type_alloc_buffer(1048576)
+ggml_vulkan memory: ggml_vk_host_malloc(1048608)
+ggml_vulkan memory: Vulkan0: +1.00 MiB host at 0x5623023360d0. Total device: 3.86 GiB, total host: 3.00 MiB
+ggml_vulkan memory: ggml_backend_vk_host_buffer_type_alloc_buffer(1048576)
+ggml_vulkan memory: ggml_vk_host_malloc(1048608)
+ggml_vulkan memory: Vulkan0: +1.00 MiB host at 0x562302375a00. Total device: 3.86 GiB, total host: 4.00 MiB
+ggml_vulkan memory: ggml_vk_ensure_sync_staging_buffer(1048576)
+ggml_vulkan memory: Vulkan1: +1.00 MiB host at 0x5623078c4450. Total device: 459.59 MiB, total host: 1.00 MiB
+ggml_vulkan memory: ggml_backend_vk_host_buffer_free_buffer()
+ggml_vulkan memory: ggml_vk_host_free(0x7f02e8a4e000)
+ggml_vulkan memory: Vulkan0: -1.00 MiB host at 0x562302337740. Total device: 3.86 GiB, total host: 3.00 MiB
+ggml_vulkan memory: ggml_backend_vk_host_buffer_free_buffer()
+ggml_vulkan memory: ggml_vk_host_free(0x7f02e84ff000)
+ggml_vulkan memory: Vulkan0: -1.00 MiB host at 0x5623023372b0. Total device: 3.86 GiB, total host: 2.00 MiB
+ggml_vulkan memory: ggml_backend_vk_host_buffer_free_buffer()
+ggml_vulkan memory: ggml_vk_host_free(0x7f02d8aff000)
+ggml_vulkan memory: Vulkan0: -1.00 MiB host at 0x5623023360d0. Total device: 3.86 GiB, total host: 1.00 MiB
+ggml_vulkan memory: ggml_backend_vk_host_buffer_free_buffer()
+ggml_vulkan memory: ggml_vk_host_free(0x7f02d89fe000)
+ggml_vulkan memory: Vulkan0: -1.00 MiB host at 0x562302375a00. Total device: 3.86 GiB, total host: 0 B
+ggml_vulkan memory: Vulkan1: -1.00 MiB host at 0x5623078c4450. Total device: 459.59 MiB, total host: 0 B
+SGLX: SGLX0 splits the rows of its weights over: Vulkan0 (AMD Radeon RX 6400 (RADV NAVI24)) 0.100, Vulkan1 (AMD Radeon Pro WX 2100 (RADV POLARIS12)) 0.400, CL11_0 (GeForce GT 730) 0.300, CL11_1 (GeForce GT 710) 0.200
+ggml_vulkan memory: ggml_backend_vk_host_buffer_type_alloc_buffer(512000)
+ggml_vulkan memory: ggml_vk_host_malloc(512032)
+ggml_vulkan memory: Vulkan0: +500.03 KiB host at 0x5623023360d0. Total device: 3.86 GiB, total host: 500.03 KiB
+ggml_vulkan memory: ggml_backend_vk_buffer_type_alloc_buffer(6291456)
+ggml_vulkan memory: Vulkan0: +6.00 MiB device at 0x562302337150. Total device: 3.86 GiB, total host: 500.03 KiB
+ggml_vulkan memory: ggml_backend_vk_buffer_type_alloc_buffer(262144)
+ggml_vulkan memory: Vulkan0: +256.00 KiB device at 0x56230234ff40. Total device: 3.86 GiB, total host: 500.03 KiB
+ggml_vulkan memory: ggml_backend_vk_buffer_type_alloc_buffer(32768)
+ggml_vulkan memory: Vulkan1: +32.00 KiB device at 0x5622fed73360. Total device: 459.62 MiB, total host: 0 B
+ggml_vulkan memory: ggml_backend_vk_buffer_type_alloc_buffer(39983364)
+ggml_vulkan memory: Vulkan0: +38.13 MiB device at 0x562302a87e40. Total device: 3.90 GiB, total host: 500.03 KiB
+ggml_vulkan memory: ggml_backend_vk_buffer_type_alloc_buffer(39368852)
+ggml_vulkan memory: Vulkan1: +37.55 MiB device at 0x562302a81f50. Total device: 497.16 MiB, total host: 0 B
+ggml_vulkan memory: ggml_backend_vk_host_buffer_type_alloc_buffer(7237632)
+ggml_vulkan memory: ggml_vk_host_malloc(7237664)
+ggml_vulkan memory: Vulkan0: +6.90 MiB host at 0x562302a27920. Total device: 3.90 GiB, total host: 7.39 MiB
+ggml_vulkan memory: ggml_vk_preallocate_buffers(x_size: 0)
+ggml_vulkan memory: ggml_vk_preallocate_buffers(y_size: 0)
+ggml_vulkan memory: ggml_vk_preallocate_buffers(split_k_size: 0)
+ggml_vulkan memory: ggml_vk_preallocate_buffers(add_partials_size: 0)
+ggml_vulkan memory: Vulkan0: +1.00 KiB device at 0x562302bef480. Total device: 3.90 GiB, total host: 7.39 MiB
+ggml_vulkan memory: ggml_vk_preallocate_buffers(y_size: 737280)
+ggml_vulkan memory: Vulkan0: +720.00 KiB device at 0x562302cdd5c0. Total device: 3.90 GiB, total host: 7.39 MiB
+ggml_vulkan memory: ggml_vk_preallocate_buffers(y_size: 2580480)
+ggml_vulkan memory: Vulkan0: -720.00 KiB device at 0x562302cdd5c0. Total device: 3.90 GiB, total host: 7.39 MiB
+ggml_vulkan memory: Vulkan0: +2.46 MiB device at 0x562302bf1bc0. Total device: 3.90 GiB, total host: 7.39 MiB
+ggml_vulkan memory: ggml_vk_preallocate_buffers(x_size: 524288)
+ggml_vulkan memory: Vulkan0: +512.00 KiB device at 0x562302bf20a0. Total device: 3.90 GiB, total host: 7.39 MiB
+ggml_vulkan memory: ggml_vk_preallocate_buffers(split_k_size: 5380)
+ggml_vulkan memory: Vulkan0: +5.25 KiB device at 0x562302bf2e30. Total device: 3.90 GiB, total host: 7.39 MiB
+ggml_vulkan memory: ggml_vk_ensure_sync_staging_buffer(9175040)
+ggml_vulkan memory: Vulkan0: +8.75 MiB host at 0x562302de8cd0. Total device: 3.90 GiB, total host: 16.14 MiB
+ggml_vulkan memory: ggml_vk_preallocate_buffers(x_size: 0)
+ggml_vulkan memory: ggml_vk_preallocate_buffers(y_size: 0)
+ggml_vulkan memory: ggml_vk_preallocate_buffers(split_k_size: 0)
+ggml_vulkan memory: ggml_vk_preallocate_buffers(add_partials_size: 0)
+ggml_vulkan memory: Vulkan1: +1.00 KiB device at 0x562302e51130. Total device: 497.16 MiB, total host: 0 B
+ggml_vulkan memory: ggml_vk_preallocate_buffers(split_k_size: 5380)
+ggml_vulkan memory: Vulkan1: +5.25 KiB device at 0x562302e5ba60. Total device: 497.17 MiB, total host: 0 B
+ggml_vulkan memory: ggml_vk_preallocate_buffers(split_k_size: 49152)
+ggml_vulkan memory: Vulkan0: -5.25 KiB device at 0x562302bf2e30. Total device: 3.90 GiB, total host: 16.14 MiB
+ggml_vulkan memory: Vulkan0: +48.00 KiB device at 0x562302bf2e30. Total device: 3.90 GiB, total host: 16.14 MiB
+ggml_vulkan memory: ggml_vk_ensure_sync_staging_buffer(8192)
+ggml_vulkan memory: Vulkan1: +8.00 KiB host at 0x562302d8dc50. Total device: 497.17 MiB, total host: 8.00 KiB
+ggml_vulkan memory: ggml_backend_vk_buffer_type_alloc_buffer(21504000)
+ggml_vulkan memory: Vulkan0: +20.51 MiB device at 0x562302bf18c0. Total device: 3.92 GiB, total host: 16.14 MiB
+ggml_vulkan memory: ggml_backend_vk_buffer_type_alloc_buffer(86016000)
+ggml_vulkan memory: Vulkan1: +82.03 MiB device at 0x56230303f360. Total device: 579.20 MiB, total host: 8.00 KiB
+cl11_ensure_program: CL11_0: multi mat-vec (Q / K / V, FFN gate / up in one launch) enabled
+cl11_ensure_program: CL11_0: mat-mat variant: tile 64 x 64, 8 x 4 values per work-item, BK 16, unroll 16, prefetch 0, 128 work-items
+cl11_ensure_program: CL11_0: GeForce GT 730, OpenCL 1.2 CUDA, kernels built (work-group sizes: element-wise 128, row 128, mat-vec 128, mat-mat 16x16)
+cl11_ensure_program: CL11_1: multi mat-vec (Q / K / V, FFN gate / up in one launch) enabled
+cl11_ensure_program: CL11_1: mat-mat variant: tile 64 x 64, 8 x 4 values per work-item, BK 16, unroll 16, prefetch 0, 128 work-items
+cl11_ensure_program: CL11_1: GeForce GT 710, OpenCL 1.2 CUDA, kernels built (work-group sizes: element-wise 128, row 128, mat-vec 128, mat-mat 16x16)
+ggml_vulkan memory: ggml_backend_vk_host_buffer_type_alloc_buffer(8192)
+ggml_vulkan memory: ggml_vk_host_malloc(8224)
+ggml_vulkan memory: Vulkan0: +8.03 KiB host at 0x562305cf9760. Total device: 3.92 GiB, total host: 16.15 MiB
+ggml_vulkan memory: ggml_backend_vk_host_buffer_type_alloc_buffer(51200)
+ggml_vulkan memory: ggml_vk_host_malloc(51232)
+ggml_vulkan memory: Vulkan0: +50.03 KiB host at 0x562305cf9a90. Total device: 3.92 GiB, total host: 16.20 MiB
+ggml_vulkan memory: ggml_backend_vk_buffer_type_alloc_buffer(59392)
+ggml_vulkan memory: Vulkan0: +58.00 KiB device at 0x562305cfc230. Total device: 3.92 GiB, total host: 16.20 MiB
+ggml_vulkan memory: ggml_vk_preallocate_buffers(x_size: 0)
+ggml_vulkan memory: ggml_vk_preallocate_buffers(y_size: 0)
+ggml_vulkan memory: ggml_vk_preallocate_buffers(split_k_size: 0)
+ggml_vulkan memory: ggml_vk_preallocate_buffers(add_partials_size: 0)
+ggml_vulkan memory: Vulkan0: +1.00 KiB device at 0x562305d01f50. Total device: 3.92 GiB, total host: 16.20 MiB
+ggml_vulkan memory: ggml_backend_vk_buffer_type_alloc_buffer(212992)
+ggml_vulkan memory: Vulkan1: +208.00 KiB device at 0x7f02b0037360. Total device: 579.40 MiB, total host: 8.00 KiB
+ggml_vulkan memory: ggml_vk_ensure_sync_staging_buffer(8192)
+ggml_vulkan memory: Vulkan1: +8.00 KiB host at 0x7f02b003cc30. Total device: 579.40 MiB, total host: 16.00 KiB
+ggml_vulkan memory: ggml_vk_preallocate_buffers(x_size: 0)
+ggml_vulkan memory: ggml_vk_preallocate_buffers(y_size: 0)
+ggml_vulkan memory: ggml_vk_preallocate_buffers(split_k_size: 0)
+ggml_vulkan memory: ggml_vk_preallocate_buffers(add_partials_size: 0)
+ggml_vulkan memory: Vulkan1: +1.00 KiB device at 0x7f02b003d4c0. Total device: 579.40 MiB, total host: 16.00 KiB
+ggml_vulkan memory: ggml_vk_ensure_sync_staging_buffer(204800)
+ggml_vulkan memory: Vulkan1: -8.00 KiB host at 0x7f02b003cc30. Total device: 579.40 MiB, total host: 8.00 KiB
+ggml_vulkan memory: Vulkan1: +200.00 KiB host at 0x7f02b003cc30. Total device: 579.40 MiB, total host: 208.00 KiB
+ggml_vulkan memory: ggml_backend_vk_host_buffer_free_buffer()
+ggml_vulkan memory: ggml_vk_host_free(0x7f02e8ad1000)
+ggml_vulkan memory: Vulkan0: -500.03 KiB host at 0x5623023360d0. Total device: 3.92 GiB, total host: 15.71 MiB
+ggml_vulkan memory: Vulkan0: -512.00 KiB device at 0x562302bf20a0. Total device: 3.92 GiB, total host: 15.71 MiB
+ggml_vulkan memory: Vulkan0: -2.46 MiB device at 0x562302bf1bc0. Total device: 3.92 GiB, total host: 15.71 MiB
+ggml_vulkan memory: Vulkan0: -48.00 KiB device at 0x562302bf2e30. Total device: 3.92 GiB, total host: 15.71 MiB
+ggml_vulkan memory: Vulkan0: -1.00 KiB device at 0x562302bef480. Total device: 3.92 GiB, total host: 15.71 MiB
+ggml_vulkan memory: Vulkan1: -5.25 KiB device at 0x562302e5ba60. Total device: 579.40 MiB, total host: 208.00 KiB
+ggml_vulkan memory: Vulkan1: -1.00 KiB device at 0x562302e51130. Total device: 579.40 MiB, total host: 208.00 KiB
+ggml_vulkan memory: ggml_backend_vk_buffer_free_buffer()
+ggml_vulkan memory: Vulkan0: -38.13 MiB device at 0x562302a87e40. Total device: 3.88 GiB, total host: 15.71 MiB
+ggml_vulkan memory: ggml_backend_vk_buffer_free_buffer()
+ggml_vulkan memory: Vulkan1: -37.55 MiB device at 0x562302a81f50. Total device: 541.85 MiB, total host: 208.00 KiB
+ggml_vulkan memory: ggml_backend_vk_host_buffer_free_buffer()
+ggml_vulkan memory: ggml_vk_host_free(0x7f0161a31000)
+ggml_vulkan memory: Vulkan0: -6.90 MiB host at 0x562302a27920. Total device: 3.88 GiB, total host: 8.81 MiB
+ggml_vulkan memory: ggml_backend_vk_buffer_free_buffer()
+ggml_vulkan memory: Vulkan0: -256.00 KiB device at 0x56230234ff40. Total device: 3.88 GiB, total host: 8.81 MiB
+ggml_vulkan memory: ggml_backend_vk_buffer_free_buffer()
+ggml_vulkan memory: Vulkan1: -32.00 KiB device at 0x5622fed73360. Total device: 541.82 MiB, total host: 208.00 KiB
+ggml_vulkan memory: ggml_backend_vk_buffer_free_buffer()
+ggml_vulkan memory: Vulkan0: -6.00 MiB device at 0x562302337150. Total device: 3.88 GiB, total host: 8.81 MiB
+ggml_vulkan memory: ggml_backend_vk_host_buffer_type_alloc_buffer(512000)
+ggml_vulkan memory: ggml_vk_host_malloc(512032)
+ggml_vulkan memory: Vulkan0: +500.03 KiB host at 0x5623029b1570. Total device: 3.88 GiB, total host: 9.30 MiB
+ggml_vulkan memory: ggml_backend_vk_buffer_type_alloc_buffer(3145728)
+ggml_vulkan memory: Vulkan0: +3.00 MiB device at 0x562305d07f90. Total device: 3.88 GiB, total host: 9.30 MiB
+ggml_vulkan memory: ggml_backend_vk_buffer_type_alloc_buffer(262144)
+ggml_vulkan memory: Vulkan0: +256.00 KiB device at 0x562305d084d0. Total device: 3.88 GiB, total host: 9.30 MiB
+ggml_vulkan memory: ggml_backend_vk_buffer_type_alloc_buffer(32768)
+ggml_vulkan memory: Vulkan1: +32.00 KiB device at 0x562302d37040. Total device: 541.85 MiB, total host: 208.00 KiB
+ggml_vulkan memory: ggml_backend_vk_buffer_type_alloc_buffer(15862276)
+ggml_vulkan memory: Vulkan0: +15.13 MiB device at 0x562302d35b40. Total device: 3.89 GiB, total host: 9.30 MiB
+ggml_vulkan memory: ggml_backend_vk_buffer_type_alloc_buffer(15747476)
+ggml_vulkan memory: Vulkan1: +15.02 MiB device at 0x562302370100. Total device: 556.87 MiB, total host: 208.00 KiB
+ggml_vulkan memory: ggml_backend_vk_host_buffer_type_alloc_buffer(2781184)
+ggml_vulkan memory: ggml_vk_host_malloc(2781216)
+ggml_vulkan memory: Vulkan0: +2.65 MiB host at 0x562302e20f20. Total device: 3.89 GiB, total host: 11.95 MiB
+ggml_vulkan memory: ggml_vk_preallocate_buffers(x_size: 0)
+ggml_vulkan memory: ggml_vk_preallocate_buffers(y_size: 0)
+ggml_vulkan memory: ggml_vk_preallocate_buffers(split_k_size: 0)
+ggml_vulkan memory: ggml_vk_preallocate_buffers(add_partials_size: 0)
+ggml_vulkan memory: Vulkan0: +1.00 KiB device at 0x5623078b2c80. Total device: 3.89 GiB, total host: 11.95 MiB
+ggml_vulkan memory: ggml_vk_preallocate_buffers(y_size: 2304)
+ggml_vulkan memory: Vulkan0: +2.25 KiB device at 0x562302d0ea60. Total device: 3.89 GiB, total host: 11.95 MiB
+ggml_vulkan memory: ggml_vk_preallocate_buffers(y_size: 8064)
+ggml_vulkan memory: Vulkan0: -2.25 KiB device at 0x562302d0ea60. Total device: 3.89 GiB, total host: 11.95 MiB
+ggml_vulkan memory: Vulkan0: +7.88 KiB device at 0x562302d0ea60. Total device: 3.89 GiB, total host: 11.95 MiB
+ggml_vulkan memory: ggml_vk_preallocate_buffers(x_size: 0)
+ggml_vulkan memory: ggml_vk_preallocate_buffers(y_size: 0)
+ggml_vulkan memory: ggml_vk_preallocate_buffers(split_k_size: 0)
+ggml_vulkan memory: ggml_vk_preallocate_buffers(add_partials_size: 0)
+ggml_vulkan memory: Vulkan1: +1.00 KiB device at 0x562303014680. Total device: 556.87 MiB, total host: 208.00 KiB
+ggml_vulkan memory: ggml_backend_vk_host_buffer_free_buffer()
+ggml_vulkan memory: ggml_vk_host_free(0x7f02e8ad1000)
+ggml_vulkan memory: Vulkan0: -500.03 KiB host at 0x5623029b1570. Total device: 3.89 GiB, total host: 11.46 MiB
+ggml_vulkan memory: Vulkan0: -7.88 KiB device at 0x562302d0ea60. Total device: 3.89 GiB, total host: 11.46 MiB
+ggml_vulkan memory: Vulkan0: -1.00 KiB device at 0x5623078b2c80. Total device: 3.89 GiB, total host: 11.46 MiB
+ggml_vulkan memory: Vulkan1: -1.00 KiB device at 0x562303014680. Total device: 556.87 MiB, total host: 208.00 KiB
+ggml_vulkan memory: ggml_backend_vk_buffer_free_buffer()
+ggml_vulkan memory: Vulkan0: -15.13 MiB device at 0x562302d35b40. Total device: 3.88 GiB, total host: 11.46 MiB
+ggml_vulkan memory: ggml_backend_vk_buffer_free_buffer()
+ggml_vulkan memory: Vulkan1: -15.02 MiB device at 0x562302370100. Total device: 541.85 MiB, total host: 208.00 KiB
+ggml_vulkan memory: ggml_backend_vk_host_buffer_free_buffer()
+ggml_vulkan memory: ggml_vk_host_free(0x7f02cca57000)
+ggml_vulkan memory: Vulkan0: -2.65 MiB host at 0x562302e20f20. Total device: 3.88 GiB, total host: 8.81 MiB
+ggml_vulkan memory: ggml_backend_vk_buffer_free_buffer()
+ggml_vulkan memory: Vulkan0: -256.00 KiB device at 0x562305d084d0. Total device: 3.88 GiB, total host: 8.81 MiB
+ggml_vulkan memory: ggml_backend_vk_buffer_free_buffer()
+ggml_vulkan memory: Vulkan1: -32.00 KiB device at 0x562302d37040. Total device: 541.82 MiB, total host: 208.00 KiB
+ggml_vulkan memory: ggml_backend_vk_buffer_free_buffer()
+ggml_vulkan memory: Vulkan0: -3.00 MiB device at 0x562305d07f90. Total device: 3.88 GiB, total host: 8.81 MiB
+ggml_vulkan memory: ggml_backend_vk_host_buffer_type_alloc_buffer(512000)
+ggml_vulkan memory: ggml_vk_host_malloc(512032)
+ggml_vulkan memory: Vulkan0: +500.03 KiB host at 0x5623023420f0. Total device: 3.88 GiB, total host: 9.30 MiB
+ggml_vulkan memory: ggml_backend_vk_buffer_type_alloc_buffer(9437184)
+ggml_vulkan memory: Vulkan0: +9.00 MiB device at 0x562302bdf350. Total device: 3.88 GiB, total host: 9.30 MiB
+ggml_vulkan memory: ggml_backend_vk_buffer_type_alloc_buffer(262144)
+ggml_vulkan memory: Vulkan0: +256.00 KiB device at 0x562302e80800. Total device: 3.88 GiB, total host: 9.30 MiB
+ggml_vulkan memory: ggml_backend_vk_buffer_type_alloc_buffer(32768)
+ggml_vulkan memory: Vulkan1: +32.00 KiB device at 0x562302a17300. Total device: 541.85 MiB, total host: 208.00 KiB
+ggml_vulkan memory: ggml_backend_vk_buffer_type_alloc_buffer(44243204)
+ggml_vulkan memory: Vulkan0: +42.19 MiB device at 0x5622fed70490. Total device: 3.93 GiB, total host: 9.30 MiB
+ggml_vulkan memory: ggml_backend_vk_buffer_type_alloc_buffer(39368852)
+ggml_vulkan memory: Vulkan1: +37.55 MiB device at 0x562302de6db0. Total device: 579.40 MiB, total host: 208.00 KiB
+ggml_vulkan memory: ggml_backend_vk_host_buffer_type_alloc_buffer(7565312)
+ggml_vulkan memory: ggml_vk_host_malloc(7565344)
+ggml_vulkan memory: Vulkan0: +7.21 MiB host at 0x562302e2f6b0. Total device: 3.93 GiB, total host: 16.51 MiB
+ggml_vulkan memory: ggml_vk_preallocate_buffers(x_size: 0)
+ggml_vulkan memory: ggml_vk_preallocate_buffers(y_size: 0)
+ggml_vulkan memory: ggml_vk_preallocate_buffers(split_k_size: 0)
+ggml_vulkan memory: ggml_vk_preallocate_buffers(add_partials_size: 0)
+ggml_vulkan memory: Vulkan0: +1.00 KiB device at 0x562302ee3380. Total device: 3.93 GiB, total host: 16.51 MiB
+ggml_vulkan memory: ggml_vk_preallocate_buffers(y_size: 737280)
+ggml_vulkan memory: Vulkan0: +720.00 KiB device at 0x562302de8830. Total device: 3.93 GiB, total host: 16.51 MiB
+ggml_vulkan memory: ggml_vk_preallocate_buffers(y_size: 2580480)
+ggml_vulkan memory: Vulkan0: -720.00 KiB device at 0x562302de8830. Total device: 3.93 GiB, total host: 16.51 MiB
+ggml_vulkan memory: Vulkan0: +2.46 MiB device at 0x562302de8830. Total device: 3.93 GiB, total host: 16.51 MiB
+ggml_vulkan memory: ggml_vk_preallocate_buffers(x_size: 524288)
+ggml_vulkan memory: Vulkan0: +512.00 KiB device at 0x562302df2490. Total device: 3.93 GiB, total host: 16.51 MiB
+ggml_vulkan memory: ggml_vk_preallocate_buffers(split_k_size: 5380)
+ggml_vulkan memory: Vulkan0: +5.25 KiB device at 0x562302dd8c90. Total device: 3.93 GiB, total host: 16.51 MiB
+ggml_vulkan memory: ggml_vk_preallocate_buffers(x_size: 0)
+ggml_vulkan memory: ggml_vk_preallocate_buffers(y_size: 0)
+ggml_vulkan memory: ggml_vk_preallocate_buffers(split_k_size: 0)
+ggml_vulkan memory: ggml_vk_preallocate_buffers(add_partials_size: 0)
+ggml_vulkan memory: Vulkan1: +1.00 KiB device at 0x562302bba090. Total device: 579.40 MiB, total host: 208.00 KiB
+ggml_vulkan memory: ggml_vk_preallocate_buffers(split_k_size: 5380)
+ggml_vulkan memory: Vulkan1: +5.25 KiB device at 0x562303004bf0. Total device: 579.40 MiB, total host: 208.00 KiB
+ggml_vulkan memory: ggml_vk_preallocate_buffers(split_k_size: 49152)
+ggml_vulkan memory: Vulkan0: -5.25 KiB device at 0x562302dd8c90. Total device: 3.93 GiB, total host: 16.51 MiB
+ggml_vulkan memory: Vulkan0: +48.00 KiB device at 0x562302dd8c90. Total device: 3.93 GiB, total host: 16.51 MiB
+ggml_vulkan memory: ggml_backend_vk_host_buffer_free_buffer()
+ggml_vulkan memory: ggml_vk_host_free(0x7f02e8ad1000)
+ggml_vulkan memory: Vulkan0: -500.03 KiB host at 0x5623023420f0. Total device: 3.93 GiB, total host: 16.02 MiB
+ggml_vulkan memory: Vulkan0: -512.00 KiB device at 0x562302df2490. Total device: 3.93 GiB, total host: 16.02 MiB
+ggml_vulkan memory: Vulkan0: -2.46 MiB device at 0x562302de8830. Total device: 3.93 GiB, total host: 16.02 MiB
+ggml_vulkan memory: Vulkan0: -48.00 KiB device at 0x562302dd8c90. Total device: 3.93 GiB, total host: 16.02 MiB
+ggml_vulkan memory: Vulkan0: -1.00 KiB device at 0x562302ee3380. Total device: 3.93 GiB, total host: 16.02 MiB
+ggml_vulkan memory: Vulkan1: -5.25 KiB device at 0x562303004bf0. Total device: 579.40 MiB, total host: 208.00 KiB
+ggml_vulkan memory: Vulkan1: -1.00 KiB device at 0x562302bba090. Total device: 579.40 MiB, total host: 208.00 KiB
+ggml_vulkan memory: ggml_backend_vk_buffer_free_buffer()
+ggml_vulkan memory: Vulkan0: -42.19 MiB device at 0x5622fed70490. Total device: 3.88 GiB, total host: 16.02 MiB
+ggml_vulkan memory: ggml_backend_vk_buffer_free_buffer()
+ggml_vulkan memory: Vulkan1: -37.55 MiB device at 0x562302de6db0. Total device: 541.85 MiB, total host: 208.00 KiB
+ggml_vulkan memory: ggml_backend_vk_host_buffer_free_buffer()
+ggml_vulkan memory: ggml_vk_host_free(0x7f01572c8000)
+ggml_vulkan memory: Vulkan0: -7.21 MiB host at 0x562302e2f6b0. Total device: 3.88 GiB, total host: 8.81 MiB
+ggml_vulkan memory: ggml_backend_vk_buffer_free_buffer()
+ggml_vulkan memory: Vulkan0: -256.00 KiB device at 0x562302e80800. Total device: 3.88 GiB, total host: 8.81 MiB
+ggml_vulkan memory: ggml_backend_vk_buffer_free_buffer()
+ggml_vulkan memory: Vulkan1: -32.00 KiB device at 0x562302a17300. Total device: 541.82 MiB, total host: 208.00 KiB
+ggml_vulkan memory: ggml_backend_vk_buffer_free_buffer()
+ggml_vulkan memory: Vulkan0: -9.00 MiB device at 0x562302bdf350. Total device: 3.88 GiB, total host: 8.81 MiB
+ggml_vulkan memory: ggml_backend_vk_host_buffer_free_buffer()
+ggml_vulkan memory: ggml_vk_host_free(0x7f02d827b000)
+ggml_vulkan memory: Vulkan0: -8.03 KiB host at 0x562305cf9760. Total device: 3.88 GiB, total host: 8.80 MiB
+ggml_vulkan memory: ggml_backend_vk_host_buffer_free_buffer()
+ggml_vulkan memory: ggml_vk_host_free(0x7f02d826e000)
+ggml_vulkan memory: Vulkan0: -50.03 KiB host at 0x562305cf9a90. Total device: 3.88 GiB, total host: 8.75 MiB
+ggml_vulkan memory: ggml_backend_vk_buffer_free_buffer()
+ggml_vulkan memory: Vulkan0: -58.00 KiB device at 0x562305cfc230. Total device: 3.88 GiB, total host: 8.75 MiB
+ggml_vulkan memory: ggml_backend_vk_buffer_free_buffer()
+ggml_vulkan memory: Vulkan0: -20.51 MiB device at 0x562302bf18c0. Total device: 3.86 GiB, total host: 8.75 MiB
+ggml_vulkan memory: ggml_backend_vk_buffer_free_buffer()
+ggml_vulkan memory: Vulkan1: -208.00 KiB device at 0x7f02b0037360. Total device: 541.62 MiB, total host: 208.00 KiB
+ggml_vulkan memory: ggml_backend_vk_buffer_free_buffer()
+ggml_vulkan memory: Vulkan1: -82.03 MiB device at 0x56230303f360. Total device: 459.59 MiB, total host: 208.00 KiB
+ggml_vulkan memory: ggml_backend_vk_buffer_free_buffer()
+ggml_vulkan memory: Vulkan0: -981.34 MiB device at 0x562302336310. Total device: 2.90 GiB, total host: 8.75 MiB
+ggml_vulkan memory: ggml_backend_vk_buffer_free_buffer()
+ggml_vulkan memory: Vulkan0: -984.65 MiB device at 0x562302336600. Total device: 1.94 GiB, total host: 8.75 MiB
+ggml_vulkan memory: ggml_backend_vk_buffer_free_buffer()
+ggml_vulkan memory: Vulkan0: -988.05 MiB device at 0x562302336980. Total device: 993.68 MiB, total host: 8.75 MiB
+ggml_vulkan memory: ggml_backend_vk_buffer_free_buffer()
+ggml_vulkan memory: Vulkan0: -993.68 MiB device at 0x562302336d40. Total device: 1.00 KiB, total host: 8.75 MiB
+ggml_vulkan memory: ggml_backend_vk_buffer_free_buffer()
+ggml_vulkan memory: Vulkan1: -459.59 MiB device at 0x562302335ca0. Total device: 1.00 KiB, total host: 208.00 KiB
+# rc=0  seconds=39
+# temps at end:  amd51 amd47 GT 430=42 GT 730=37 GT 710=36    (max 43 C)

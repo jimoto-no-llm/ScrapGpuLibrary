@@ -1,0 +1,192 @@
+# date: 2026-10-22_17:15:45  host: tb250  tag: fB_prof_n320
+# temps at start:  amd49 amd42 GT 430=44 GT 730=34 GT 710=36    (max 44 C)
+# env: GGML_VK_PERF_LOGGER=1 VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json 
+# cmd: /home/eightman/moe-ep/c1p/bin-patched/llama-bench -m /home/eightman/moe-ep/models/LFM2.5-8B-A1B-Q4_0.gguf -dev Vulkan0/Vulkan1 -ngl 99 -fa 0 -t 2 -b 320 -ub 320 -sm layer -ncmoe 0 -ts 5/1 -o jsonl -p 320 -n 0 -r 2
+load_backend: loaded RPC backend from /home/eightman/moe-ep/c1p/bin-patched/libggml-rpc.so
+ggml_vulkan: Found 2 Vulkan devices:
+ggml_vulkan: 0 = AMD Radeon RX 6400 (RADV NAVI24) (radv) | uma: 0 | fp16: 1 | bf16: 0 | fp4: 0 | warp size: 32 | shared memory: 65536 | int dot: 1 | matrix cores: none
+ggml_vulkan: 1 = AMD Radeon Pro WX 2100 (RADV POLARIS12) (radv) | uma: 0 | fp16: 0 | bf16: 0 | fp4: 0 | warp size: 64 | shared memory: 65536 | int dot: 0 | matrix cores: none
+load_backend: loaded Vulkan backend from /home/eightman/moe-ep/c1p/bin-patched/libggml-vulkan.so
+load_backend: loaded CPU backend from /home/eightman/moe-ep/c1p/bin-patched/libggml-cpu.so
+----------------
+Vulkan Timings:
+ADD: 37 x 64.868 us = 2400.12 us
+CONCAT: 16 x 213.447 us = 3415.16 us
+CONT: 5 x 57.144 us = 285.72 us
+CPY: 16 x 3.822 us = 61.16 us
+GET_ROWS: 16 x 3.862 us = 61.8 us
+GLU: 21 x 195.683 us = 4109.36 us
+MUL: 51 x 178.849 us = 9121.32 us
+MULTI_ADD ADD: 19 x 78.692 us = 1495.16 us
+MUL_MAT f16 m=512 n=320 k=64 batch=32: 5 x 1201.53 us = 6007.67 us (554.163 GFLOPS/s)
+MUL_MAT f16 m=64 n=320 k=512 batch=32: 5 x 758.576 us = 3792.88 us (883.805 GFLOPS/s)
+MUL_MAT f32 m=32 n=320 k=2048: 19 x 102.698 us = 1951.28 us (408.308 GFLOPS/s)
+MUL_MAT q4_0 m=2048 n=320 k=2048: 26 x 447.412 us = 11632.7 us (5998.27 GFLOPS/s)
+MUL_MAT q4_0 m=2048 n=320 k=7168: 2 x 1765.8 us = 3531.59 us (5320.31 GFLOPS/s)
+MUL_MAT q4_0 m=512 n=320 k=2048: 10 x 134.156 us = 1341.56 us (5001.08 GFLOPS/s)
+MUL_MAT q4_0 m=6144 n=320 k=2048: 16 x 1466.18 us = 23458.8 us (5491.22 GFLOPS/s)
+MUL_MAT q4_0 m=7168 n=320 k=2048: 4 x 1444.59 us = 5778.36 us (6502.15 GFLOPS/s)
+MUL_MAT_ID q4_0 m=1792 n=4 k=2048 n_expert=32 batch=320: 38 x 3685.1 us = 140034 us (2548.9 GFLOPS/s)
+MUL_MAT_ID q4_0 m=2048 n=4 k=1792 n_expert=32 batch=320: 19 x 4042.32 us = 76804 us (2323.57 GFLOPS/s)
+RMS_NORM_MUL RMS_NORM(2048,320,1,1): 42 x 40.665 us = 1707.96 us
+RMS_NORM_MUL_ROPE RMS_NORM(64,32,320,1): 5 x 733.624 us = 3668.12 us
+RMS_NORM_MUL_ROPE_VIEW_SET_ROWS RMS_NORM(64,8,320,1): 5 x 194.568 us = 972.84 us
+SCALE: 16 x 4.41 us = 70.56 us
+SET_ROWS: 5 x 81.92 us = 409.6 us
+SOFT_MAX: 5 x 308.36 us = 1541.8 us
+SSM_CONV: 16 x 60.332 us = 965.32 us
+TOPK_MOE_SIGMOID_NORM_BIAS SIGMOID: 19 x 6.44 us = 122.36 us
+Total time: 304741 us.
+----------------
+Vulkan Timings:
+ADD: 15 x 155.274 us = 2329.12 us
+CONCAT: 2 x 1256.72 us = 2513.44 us
+CONT: 1 x 227.84 us = 227.84 us
+CPY: 2 x 11.84 us = 23.68 us
+GET_ROWS: 4 x 13.56 us = 54.24 us
+GLU: 3 x 461.76 us = 1385.28 us
+MUL: 6 x 642.32 us = 3853.92 us
+MUL_MAT f16 m=512 n=320 k=64 batch=32: 1 x 4934.72 us = 4934.72 us (134.931 GFLOPS/s)
+MUL_MAT f16 m=64 n=320 k=512 batch=32: 1 x 1430.72 us = 1430.72 us (468.599 GFLOPS/s)
+MUL_MAT f32 m=32 n=320 k=2048: 2 x 345.04 us = 690.08 us (121.53 GFLOPS/s)
+MUL_MAT q4_0 m=2048 n=320 k=2048: 4 x 3981.76 us = 15927 us (673.998 GFLOPS/s)
+MUL_MAT q4_0 m=512 n=320 k=2048: 2 x 1022.08 us = 2044.16 us (656.431 GFLOPS/s)
+MUL_MAT q4_0 m=6144 n=320 k=2048: 2 x 11721.3 us = 23442.6 us (686.879 GFLOPS/s)
+MUL_MAT_ID q4_0 m=1792 n=4 k=2048 n_expert=32 batch=320: 4 x 27909.6 us = 111638 us (336.549 GFLOPS/s)
+MUL_MAT_ID q4_0 m=2048 n=4 k=1792 n_expert=32 batch=320: 2 x 28870.7 us = 57741.4 us (325.334 GFLOPS/s)
+MUL_MAT_ID_MUL MUL_MAT_ID_VEC q4_0 m=2048 n=4 k=1792 n_expert=32: 1 x 349.12 us = 349.12 us (84.0741 GFLOPS/s)
+MUL_MAT_ID_VEC q4_0 m=1792 n=4 k=2048 n_expert=32: 2 x 213.28 us = 426.56 us (137.626 GFLOPS/s)
+MUL_MAT_VEC f32 m=32 n=1 k=2048: 1 x 14.88 us = 14.88 us (8.80645 GFLOPS/s)
+MUL_MAT_VEC q6_K m=128000 n=1 k=2048: 1 x 5630.08 us = 5630.08 us (93.0999 GFLOPS/s)
+RMS_NORM_MUL RMS_NORM(2048,1,1,1): 2 x 9.6 us = 19.2 us
+RMS_NORM_MUL RMS_NORM(2048,320,1,1): 5 x 269.984 us = 1349.92 us
+RMS_NORM_MUL_ROPE RMS_NORM(64,32,320,1): 1 x 1989.12 us = 1989.12 us
+RMS_NORM_MUL_ROPE_VIEW_SET_ROWS RMS_NORM(64,8,320,1): 1 x 524.96 us = 524.96 us
+SCALE: 2 x 10.4 us = 20.8 us
+SET_ROWS: 1 x 173.28 us = 173.28 us
+SOFT_MAX: 1 x 1580.64 us = 1580.64 us
+SSM_CONV: 2 x 229.28 us = 458.56 us
+TOPK_MOE_SIGMOID_NORM_BIAS SIGMOID: 3 x 14.026 us = 42.08 us
+Total time: 240816 us.
+----------------
+Vulkan Timings:
+ADD: 37 x 64.844 us = 2399.24 us
+CONCAT: 16 x 213.527 us = 3416.44 us
+CONT: 5 x 57.144 us = 285.72 us
+CPY: 16 x 3.805 us = 60.88 us
+GET_ROWS: 16 x 3.762 us = 60.2 us
+GLU: 21 x 195.96 us = 4115.16 us
+MUL: 51 x 178.838 us = 9120.76 us
+MULTI_ADD ADD: 19 x 78.852 us = 1498.2 us
+MUL_MAT f16 m=512 n=320 k=64 batch=32: 5 x 457.936 us = 2289.68 us (1454.01 GFLOPS/s)
+MUL_MAT f16 m=64 n=320 k=512 batch=32: 5 x 767.64 us = 3838.2 us (873.369 GFLOPS/s)
+MUL_MAT f32 m=32 n=320 k=2048: 19 x 102.901 us = 1955.12 us (407.506 GFLOPS/s)
+MUL_MAT q4_0 m=2048 n=320 k=2048: 26 x 447.213 us = 11627.6 us (6000.93 GFLOPS/s)
+MUL_MAT q4_0 m=2048 n=320 k=7168: 2 x 1581.86 us = 3163.72 us (5938.95 GFLOPS/s)
+MUL_MAT q4_0 m=512 n=320 k=2048: 10 x 133.908 us = 1339.08 us (5010.34 GFLOPS/s)
+MUL_MAT q4_0 m=6144 n=320 k=2048: 16 x 1243.15 us = 19890.4 us (6476.38 GFLOPS/s)
+MUL_MAT q4_0 m=7168 n=320 k=2048: 4 x 1442.11 us = 5768.44 us (6513.34 GFLOPS/s)
+MUL_MAT_ID q4_0 m=1792 n=4 k=2048 n_expert=32 batch=320: 38 x 3633.26 us = 138064 us (2585.27 GFLOPS/s)
+MUL_MAT_ID q4_0 m=2048 n=4 k=1792 n_expert=32 batch=320: 19 x 4040.65 us = 76772.4 us (2324.53 GFLOPS/s)
+RMS_NORM_MUL RMS_NORM(2048,320,1,1): 42 x 40.684 us = 1708.76 us
+RMS_NORM_MUL_ROPE RMS_NORM(64,32,320,1): 5 x 733.776 us = 3668.88 us
+RMS_NORM_MUL_ROPE_VIEW_SET_ROWS RMS_NORM(64,8,320,1): 5 x 194.328 us = 971.64 us
+SCALE: 16 x 3.752 us = 60.04 us
+SET_ROWS: 5 x 81.688 us = 408.44 us
+SOFT_MAX: 5 x 308.856 us = 1544.28 us
+SSM_CONV: 16 x 60.395 us = 966.32 us
+TOPK_MOE_SIGMOID_NORM_BIAS SIGMOID: 19 x 6.915 us = 131.4 us
+Total time: 295125 us.
+----------------
+Vulkan Timings:
+ADD: 15 x 150.378 us = 2255.68 us
+CONCAT: 2 x 1197.6 us = 2395.2 us
+CONT: 1 x 232.48 us = 232.48 us
+CPY: 2 x 11.52 us = 23.04 us
+GET_ROWS: 4 x 13.28 us = 53.12 us
+GLU: 3 x 467.04 us = 1401.12 us
+MUL: 6 x 618.853 us = 3713.12 us
+MUL_MAT f16 m=512 n=320 k=64 batch=32: 1 x 1908 us = 1908 us (348.976 GFLOPS/s)
+MUL_MAT f16 m=64 n=320 k=512 batch=32: 1 x 1403.84 us = 1403.84 us (477.571 GFLOPS/s)
+MUL_MAT f32 m=32 n=320 k=2048: 2 x 320.72 us = 641.44 us (130.746 GFLOPS/s)
+MUL_MAT q4_0 m=2048 n=320 k=2048: 4 x 4058.52 us = 16234.1 us (661.251 GFLOPS/s)
+MUL_MAT q4_0 m=512 n=320 k=2048: 2 x 1082.88 us = 2165.76 us (619.574 GFLOPS/s)
+MUL_MAT q4_0 m=6144 n=320 k=2048: 2 x 11481 us = 22961.9 us (701.256 GFLOPS/s)
+MUL_MAT_ID q4_0 m=1792 n=4 k=2048 n_expert=32 batch=320: 4 x 28039 us = 112156 us (334.995 GFLOPS/s)
+MUL_MAT_ID q4_0 m=2048 n=4 k=1792 n_expert=32 batch=320: 2 x 27785.6 us = 55571.2 us (338.039 GFLOPS/s)
+MUL_MAT_ID_MUL MUL_MAT_ID_VEC q4_0 m=2048 n=4 k=1792 n_expert=32: 1 x 337.12 us = 337.12 us (87.0667 GFLOPS/s)
+MUL_MAT_ID_VEC q4_0 m=1792 n=4 k=2048 n_expert=32: 2 x 212.48 us = 424.96 us (138.145 GFLOPS/s)
+MUL_MAT_VEC f32 m=32 n=1 k=2048: 1 x 14.4 us = 14.4 us (9.1 GFLOPS/s)
+MUL_MAT_VEC q6_K m=128000 n=1 k=2048: 1 x 5595.2 us = 5595.2 us (93.6803 GFLOPS/s)
+RMS_NORM_MUL RMS_NORM(2048,1,1,1): 2 x 9.12 us = 18.24 us
+RMS_NORM_MUL RMS_NORM(2048,320,1,1): 5 x 267.456 us = 1337.28 us
+RMS_NORM_MUL_ROPE RMS_NORM(64,32,320,1): 1 x 2056.8 us = 2056.8 us
+RMS_NORM_MUL_ROPE_VIEW_SET_ROWS RMS_NORM(64,8,320,1): 1 x 544.64 us = 544.64 us
+SCALE: 2 x 8.08 us = 16.16 us
+SET_ROWS: 1 x 181.92 us = 181.92 us
+SOFT_MAX: 1 x 1582.24 us = 1582.24 us
+SSM_CONV: 2 x 232.24 us = 464.48 us
+TOPK_MOE_SIGMOID_NORM_BIAS SIGMOID: 3 x 13.973 us = 41.92 us
+Total time: 235732 us.
+----------------
+Vulkan Timings:
+ADD: 37 x 64.991 us = 2404.68 us
+CONCAT: 16 x 213.12 us = 3409.92 us
+CONT: 5 x 57.08 us = 285.4 us
+CPY: 16 x 3.78 us = 60.48 us
+GET_ROWS: 16 x 3.797 us = 60.76 us
+GLU: 21 x 195.961 us = 4115.2 us
+MUL: 51 x 178.829 us = 9120.32 us
+MULTI_ADD ADD: 19 x 78.814 us = 1497.48 us
+MUL_MAT f16 m=512 n=320 k=64 batch=32: 5 x 455.744 us = 2278.72 us (1461.01 GFLOPS/s)
+MUL_MAT f16 m=64 n=320 k=512 batch=32: 5 x 760.008 us = 3800.04 us (882.14 GFLOPS/s)
+MUL_MAT f32 m=32 n=320 k=2048: 19 x 103.351 us = 1963.68 us (405.73 GFLOPS/s)
+MUL_MAT q4_0 m=2048 n=320 k=2048: 26 x 447.387 us = 11632.1 us (5998.6 GFLOPS/s)
+MUL_MAT q4_0 m=2048 n=320 k=7168: 2 x 1579.62 us = 3159.24 us (5947.37 GFLOPS/s)
+MUL_MAT q4_0 m=512 n=320 k=2048: 10 x 133.444 us = 1334.44 us (5027.76 GFLOPS/s)
+MUL_MAT q4_0 m=6144 n=320 k=2048: 16 x 1242.47 us = 19879.6 us (6479.89 GFLOPS/s)
+MUL_MAT q4_0 m=7168 n=320 k=2048: 4 x 1441.86 us = 5767.44 us (6514.47 GFLOPS/s)
+MUL_MAT_ID q4_0 m=1792 n=4 k=2048 n_expert=32 batch=320: 38 x 3601.8 us = 136869 us (2607.85 GFLOPS/s)
+MUL_MAT_ID q4_0 m=2048 n=4 k=1792 n_expert=32 batch=320: 19 x 4002.42 us = 76046 us (2346.73 GFLOPS/s)
+RMS_NORM_MUL RMS_NORM(2048,320,1,1): 42 x 40.657 us = 1707.6 us
+RMS_NORM_MUL_ROPE RMS_NORM(64,32,320,1): 5 x 733.96 us = 3669.8 us
+RMS_NORM_MUL_ROPE_VIEW_SET_ROWS RMS_NORM(64,8,320,1): 5 x 194.424 us = 972.12 us
+SCALE: 16 x 3.715 us = 59.44 us
+SET_ROWS: 5 x 81.784 us = 408.92 us
+SOFT_MAX: 5 x 307.688 us = 1538.44 us
+SSM_CONV: 16 x 60.347 us = 965.56 us
+TOPK_MOE_SIGMOID_NORM_BIAS SIGMOID: 19 x 6.873 us = 130.6 us
+Total time: 293137 us.
+----------------
+Vulkan Timings:
+ADD: 15 x 147.733 us = 2216 us
+CONCAT: 2 x 1212.32 us = 2424.64 us
+CONT: 1 x 224.48 us = 224.48 us
+CPY: 2 x 11.44 us = 22.88 us
+GET_ROWS: 4 x 13.72 us = 54.88 us
+GLU: 3 x 466.56 us = 1399.68 us
+MUL: 6 x 611.946 us = 3671.68 us
+MUL_MAT f16 m=512 n=320 k=64 batch=32: 1 x 1904.96 us = 1904.96 us (349.533 GFLOPS/s)
+MUL_MAT f16 m=64 n=320 k=512 batch=32: 1 x 1369.28 us = 1369.28 us (489.625 GFLOPS/s)
+MUL_MAT f32 m=32 n=320 k=2048: 2 x 337.04 us = 674.08 us (124.415 GFLOPS/s)
+MUL_MAT q4_0 m=2048 n=320 k=2048: 4 x 3928.64 us = 15714.6 us (683.112 GFLOPS/s)
+MUL_MAT q4_0 m=512 n=320 k=2048: 2 x 1140.8 us = 2281.6 us (588.118 GFLOPS/s)
+MUL_MAT q4_0 m=6144 n=320 k=2048: 2 x 11241 us = 22481.9 us (716.229 GFLOPS/s)
+MUL_MAT_ID q4_0 m=1792 n=4 k=2048 n_expert=32 batch=320: 4 x 29906.3 us = 119625 us (314.079 GFLOPS/s)
+MUL_MAT_ID q4_0 m=2048 n=4 k=1792 n_expert=32 batch=320: 2 x 27487 us = 54973.9 us (341.712 GFLOPS/s)
+MUL_MAT_ID_MUL MUL_MAT_ID_VEC q4_0 m=2048 n=4 k=1792 n_expert=32: 1 x 362.24 us = 362.24 us (81.029 GFLOPS/s)
+MUL_MAT_ID_VEC q4_0 m=1792 n=4 k=2048 n_expert=32: 2 x 214.8 us = 429.6 us (136.653 GFLOPS/s)
+MUL_MAT_VEC f32 m=32 n=1 k=2048: 1 x 15.68 us = 15.68 us (8.35714 GFLOPS/s)
+MUL_MAT_VEC q6_K m=128000 n=1 k=2048: 1 x 5697.76 us = 5697.76 us (91.994 GFLOPS/s)
+RMS_NORM_MUL RMS_NORM(2048,1,1,1): 2 x 9.12 us = 18.24 us
+RMS_NORM_MUL RMS_NORM(2048,320,1,1): 5 x 301.568 us = 1507.84 us
+RMS_NORM_MUL_ROPE RMS_NORM(64,32,320,1): 1 x 2060 us = 2060 us
+RMS_NORM_MUL_ROPE_VIEW_SET_ROWS RMS_NORM(64,8,320,1): 1 x 544.96 us = 544.96 us
+SCALE: 2 x 8.08 us = 16.16 us
+SET_ROWS: 1 x 182.4 us = 182.4 us
+SOFT_MAX: 1 x 1576.32 us = 1576.32 us
+SSM_CONV: 2 x 229.76 us = 459.52 us
+TOPK_MOE_SIGMOID_NORM_BIAS SIGMOID: 3 x 13.866 us = 41.6 us
+Total time: 241952 us.
+# rc=0  seconds=8
+# temps at end:  amd50 amd46 GT 430=44 GT 730=34 GT 710=35    (max 44 C)

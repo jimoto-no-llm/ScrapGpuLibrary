@@ -1,0 +1,24 @@
+# date: 2026-10-22_17:33:19  host: tb250  tag: f8_C_ub128
+# temps at start:  amd53 amd58 GT 430=43 GT 730=34 GT 710=36    (max 43 C)
+# env: GGML_CL11_PLATFORMS=NVIDIA GGML_SGLX_PROFILE=1 GGML_CL11_DEVICES=GT 730,GT 710 GGML_SGLX_SPLIT=Vulkan0:0.5,Vulkan1:0.2,CL11_0:0.2,CL11_1:0.1 GGML_BACKEND_PATH=/home/eightman/moe-ep/fix/build/libggml-cl11.so VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json GGML_CL11_AUTO_RPC=0 
+# cmd: /home/eightman/moe-ep/src/llama-build/bin/llama-perplexity -m /home/eightman/moe-ep/models/LFM2.5-8B-A1B-Q4_0.gguf -f /home/eightman/moe-ep/kl/text.txt -c 512 --chunks 4 -b 512 -ub 128 -t 2 -fa off -dev Vulkan0,Vulkan1,SGLX0 -ngl 99 -sm layer -ts 5/1/0 -ot token_embd\.weight=SGLX0 --kl-divergence-base /home/eightman/moe-ep/kl/base.kld --kl-divergence
+SGLX: SGLX0 splits the rows of its weights over: Vulkan0 (AMD Radeon RX 6400 (RADV NAVI24)) 0.500, Vulkan1 (AMD Radeon Pro WX 2100 (RADV POLARIS12)) 0.200, CL11_0 (GeForce GT 730) 0.200, CL11_1 (GeForce GT 710) 0.100
+0.01.749.863 W common_fit_params: failed to fit params to free device memory: n_gpu_layers already set by user to 99, abort
+0.10.496.528 W llama_kv_cache: the V embeddings have different sizes across layers and FA is not enabled - padding V cache to 512
+0.10.739.543 I cmn          init: llama threadpool init, n_threads = 2
+cl11_ensure_program: CL11_0: multi mat-vec (Q / K / V, FFN gate / up in one launch) enabled
+cl11_ensure_program: CL11_0: mat-mat variant: tile 64 x 64, 8 x 4 values per work-item, BK 16, unroll 16, prefetch 0, 128 work-items
+cl11_ensure_program: CL11_0: GeForce GT 730, OpenCL 1.2 CUDA, kernels built (work-group sizes: element-wise 128, row 128, mat-vec 128, mat-mat 16x16)
+cl11_ensure_program: CL11_1: multi mat-vec (Q / K / V, FFN gate / up in one launch) enabled
+cl11_ensure_program: CL11_1: mat-mat variant: tile 64 x 64, 8 x 4 values per work-item, BK 16, unroll 16, prefetch 0, 128 work-items
+cl11_ensure_program: CL11_1: GeForce GT 710, OpenCL 1.2 CUDA, kernels built (work-group sizes: element-wise 128, row 128, mat-vec 128, mat-mat 16x16)
+SGLX: uploaded 205.1 MiB (q6_K 2048 x 128000) in 401.8 ms: Vulkan0[0..64000) Vulkan1[64000..89600) CL11_0[89600..115200) CL11_1[115200..128000)
+0.11.240.241 I 
+0.11.240.312 I system_info: n_threads = 2 (n_threads_batch = 2) / 2 | CPU : SSE3 = 1 | SSSE3 = 1 | LLAMAFILE = 1 | OPENMP = 1 | REPACK = 1 | 
+0.11.727.407 I kl_divergence: computing over 4 chunks, n_ctx=512, batch_size=512, n_seq=1
+0.13.934.815 I kl_divergence: 2.21 seconds per pass - ETA SGLX profile MUL_MAT N>1: calls 6, mean 99.343 ms (max 101.077), gather 0.002, scatter 8.804;  Vulkan0: submit 0.432 ms, done at 34.001 ms (max 36.569)  Vulkan1: submit 0.009 ms, done at 70.010 ms (max 72.417)  CL11_0: submit 0.323 ms, done at 89.859 ms (max 92.578)  CL11_1: submit 0.411 ms, done at 90.540 ms (max 93.264)
+SGLX profile token phases (N=1): GET_ROWS 0.000 ms; layers on the other devices (GET_ROWS end -> MUL_MAT start) 42.029 ms; after MUL_MAT (-> next GET_ROWS: logits, sampling, next graph) 0.000 ms
+SGLX profile GET_ROWS with N>1: 17 calls, mean 0.606 ms (max 1.294); graph_compute calls (any N): 34, mean 39.333 ms (max 453.328)
+SGLX profile upload: 1 weights, 401.8 ms in total
+# rc=0  seconds=74
+# temps at end:  amd49 amd50 GT 430=42 GT 730=36 GT 710=36    (max 42 C)
