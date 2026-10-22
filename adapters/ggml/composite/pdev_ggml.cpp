@@ -331,6 +331,13 @@ private:
                 return nullptr;
             }
             p->reserved_N = N;
+            // ggml_gallocr_reserve replaced the compute buffer: the tensors of every graph made before still point at the freed buffer (their
+            // data pointers equal the new ones, so ggml_gallocr_alloc_graph would not notice and set_tensor_async would read a dead
+            // ggml_backend_buffer, an "unsupported buffer type" assert in ggml-vulkan: llama-perplexity -ub 320 after a smaller graph). Drop them.
+            for (auto & old : p->graphs) {
+                ggml_free(old.ctx);
+            }
+            p->graphs.clear();
         }
         p->graphs.push_front(g);
         while (p->graphs.size() > 4) {
