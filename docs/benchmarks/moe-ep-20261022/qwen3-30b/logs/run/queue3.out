@@ -1,0 +1,18 @@
+sw_amd_ts42-6_n33 pp128=20.01 tg32=6.36
+sw_amd_ts42-6_n32 pp128=7.38 tg32=4.50
+sw_amd_ts42-6_n31 pp128=7.39 tg32=4.44
+sw_amd_ts42-6_n30 pp128=5.08 tg32=4.94
+sw_amd_ts42-6_n29 pp128=6.84 tg32=4.62
+sw_amd_ts43-5_n33 pp128=6.80 tg32=5.94
+sw_amd_ts43-5_n32 pp128=6.87 tg32=5.43
+sw_amd_ts43-5_n31 pp128=8.32 tg32=4.11
+sw_amd_ts41-7_n33 pp128=19.52 tg32=4.54
+sw_amd_ts41-7_n32 pp128=20.03 tg32=4.59
+sw_amd_ts41-7_n31 pp128=6.73 tg32=4.47
+sw_amd_ts41-7_n30 pp128=6.80 tg32=4.11
+sw_amd_ts41-7_n29 pp128=6.88 tg32=3.83
+sw_rx_ub1024_n40 pp128=18.07 tg32=6.01
+sw_rx_ub1024_n39 pp128=18.67 tg32=6.13
+sw_rx_ub2048_n40 pp128=18.42 tg32=6.06
+sw_rx_ub2048_n39 pp128=18.83 tg32=6.11
+Q3DONE

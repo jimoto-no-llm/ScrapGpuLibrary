@@ -1,0 +1,1 @@
+a63f06070fccd2e3a329f3bfe5e996709a7f305d04c6acf2c8ae900c4723fffa  Qwen3-30B-A3B-Q3_K_M.gguf

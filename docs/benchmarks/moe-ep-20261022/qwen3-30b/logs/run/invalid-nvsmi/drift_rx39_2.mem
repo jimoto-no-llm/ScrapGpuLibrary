@@ -1,0 +1,7 @@
+t=0 card1:vram=15,gtt=13 card5:vram=5,gtt=7 nv=0/0/0/ sysused=6554 cached=19330 rss=16696
+t=4 card1:vram=3709,gtt=13 card5:vram=5,gtt=7 nv=0/0/0/ sysused=6563 cached=19330 rss=13432
+t=8 card1:vram=3858,gtt=24 card5:vram=5,gtt=7 nv=0/0/0/ sysused=6567 cached=19330 rss=13434
+t=12 card1:vram=3858,gtt=24 card5:vram=5,gtt=7 nv=0/0/0/ sysused=6567 cached=19330 rss=13434
+t=16 card1:vram=3858,gtt=24 card5:vram=5,gtt=7 nv=0/0/0/ sysused=6554 cached=19330 rss=13434
+t=20 card1:vram=3858,gtt=24 card5:vram=5,gtt=7 nv=0/0/0/ sysused=6555 cached=19330 rss=13434
+t=24 card1:vram=3858,gtt=24 card5:vram=5,gtt=7 nv=0/0/0/ sysused=6555 cached=19330 rss=13434
