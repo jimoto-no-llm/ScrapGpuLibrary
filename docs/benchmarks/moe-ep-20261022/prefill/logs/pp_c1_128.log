@@ -1,0 +1,12 @@
+# date: 2026-10-22_16:31:11  host: tb250  tag: pp_c1_128
+# temps at start:  amd49 amd58 GT 430=44 GT 730=36 GT 710=38    (max 44 C)
+# env: VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json 
+# cmd: /home/eightman/moe-ep/src/llama-build/bin/llama-perplexity -m /home/eightman/moe-ep/models/LFM2.5-8B-A1B-Q4_0.gguf -f /home/eightman/moe-ep/kl/text.txt -c 512 --chunks 4 -b 128 -ub 128 -t 2 -fa off -dev Vulkan0,Vulkan1 -ngl 99 -sm layer -ts 5/1 --kl-divergence-base /home/eightman/moe-ep/kl/base.kld --kl-divergence
+0.00.554.596 W common_fit_params: failed to fit params to free device memory: n_gpu_layers already set by user to 99, abort
+0.06.825.328 W llama_kv_cache: the V embeddings have different sizes across layers and FA is not enabled - padding V cache to 512
+0.06.851.199 I cmn          init: llama threadpool init, n_threads = 2
+0.06.900.197 I 
+0.06.900.262 I system_info: n_threads = 2 (n_threads_batch = 2) / 2 | CPU : SSE3 = 1 | SSSE3 = 1 | LLAMAFILE = 1 | OPENMP = 1 | REPACK = 1 | 
+0.06.911.040 I kl_divergence: computing over 4 chunks, n_ctx=512, batch_size=128, n_seq=1
+0.08.966.086 I kl_divergence: 2.06 seconds per pass - ETA # rc=0  seconds=15
+# temps at end:  amd51 amd60 GT 430=44 GT 730=36 GT 710=37    (max 44 C)

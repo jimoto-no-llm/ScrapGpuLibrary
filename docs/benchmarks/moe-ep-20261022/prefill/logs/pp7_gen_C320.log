@@ -1,0 +1,40 @@
+# date: 2026-10-22_16:42:43  host: tb250  tag: pp7_gen_C320
+# temps at start:  amd45 amd50 GT 430=46 GT 730=35 GT 710=36    (max 46 C)
+# env: GGML_CL11_PLATFORMS=NVIDIA GGML_SGLX_PROFILE=0 GGML_CL11_DEVICES=GT 730,GT 710 GGML_SGLX_SPLIT=Vulkan0:0.5,Vulkan1:0.2,CL11_0:0.2,CL11_1:0.1 GGML_BACKEND_PATH=/home/eightman/moe-ep/pp/build-cl11/libggml-cl11.so VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json GGML_CL11_AUTO_RPC=0 
+# cmd: /home/eightman/moe-ep/src/llama-build/bin/llama-completion -m /home/eightman/moe-ep/models/LFM2.5-8B-A1B-Q4_0.gguf -dev Vulkan0,Vulkan1,SGLX0 -ngl 99 -fa off -t 2 -b 512 -ub 320 -sm layer -ts 5,1,0 -ot token_embd\.weight=SGLX0 -f prompt.txt -n 24 --temp 0 -no-cnv -s 1
+0.01.145.489 I llama_completion: llama backend init
+0.01.145.501 I llama_completion: load the model and apply lora adapter, if any
+SGLX: SGLX0 splits the rows of its weights over: Vulkan0 (AMD Radeon RX 6400 (RADV NAVI24)) 0.500, Vulkan1 (AMD Radeon Pro WX 2100 (RADV POLARIS12)) 0.200, CL11_0 (GeForce GT 730) 0.200, CL11_1 (GeForce GT 710) 0.100
+0.01.661.840 W common_fit_params: failed to fit params to free device memory: n_gpu_layers already set by user to 99, abort
+0.06.888.273 W llama_kv_cache: the V embeddings have different sizes across layers and FA is not enabled - padding V cache to 512
+0.07.990.957 W ggml_vulkan: Failed to allocate pinned memory (Requested buffer size exceeds device buffer size limit: ErrorOutOfDeviceMemory)
+0.08.013.664 I cmn          init: llama threadpool init, n_threads = 2
+cl11_ensure_program: CL11_0: multi mat-vec (Q / K / V, FFN gate / up in one launch) enabled
+cl11_ensure_program: CL11_0: mat-mat variant: tile 64 x 64, 8 x 4 values per work-item, BK 16, unroll 16, prefetch 0, 128 work-items
+cl11_ensure_program: CL11_0: GeForce GT 730, OpenCL 1.2 CUDA, kernels built (work-group sizes: element-wise 128, row 128, mat-vec 128, mat-mat 16x16)
+cl11_ensure_program: CL11_1: multi mat-vec (Q / K / V, FFN gate / up in one launch) enabled
+cl11_ensure_program: CL11_1: mat-mat variant: tile 64 x 64, 8 x 4 values per work-item, BK 16, unroll 16, prefetch 0, 128 work-items
+cl11_ensure_program: CL11_1: GeForce GT 710, OpenCL 1.2 CUDA, kernels built (work-group sizes: element-wise 128, row 128, mat-vec 128, mat-mat 16x16)
+0.09.242.995 I 
+0.09.243.053 I system_info: n_threads = 2 (n_threads_batch = 2) / 2 | CPU : SSE3 = 1 | SSSE3 = 1 | LLAMAFILE = 1 | OPENMP = 1 | REPACK = 1 | 
+0.09.243.054 I 
+0.09.244.691 I sampler seed: 4294967295
+0.09.244.705 I sampler params: 
+	repeat_last_n = 64, repeat_penalty = 1.000, frequency_penalty = 0.000, presence_penalty = 0.000
+	dry_multiplier = 0.000, dry_base = 1.750, dry_allowed_length = 2, dry_penalty_last_n = 64
+	top_k = 40, top_p = 0.950, min_p = 0.050, xtc_probability = 0.000, xtc_threshold = 0.100, typical_p = 1.000, top_n_sigma = -1.000, temp = 0.000
+	mirostat = 0, mirostat_lr = 0.100, mirostat_ent = 5.000, adaptive_target = -1.000, adaptive_decay = 0.900
+0.09.244.712 I sampler chain: logits -> ?penalties -> ?dry -> ?top-n-sigma -> top-k -> ?typical -> top-p -> min-p -> ?xtc -> temp-ext -> greedy 
+0.09.244.712 I generate: n_ctx = 128000, n_batch = 512, n_predict = 24, n_keep = 1
+0.09.244.713 I 
+0.11.096.447 I common_perf_print:    sampling time =      21.00 ms
+0.11.096.450 I common_perf_print:    samplers time =       6.62 ms /   635 tokens
+0.11.096.456 I common_perf_print:        load time =    7471.41 ms
+0.11.096.459 I common_perf_print: prompt eval time =    1298.17 ms /   611 tokens (    2.12 ms per token,   470.66 tokens per second)
+0.11.096.463 I common_perf_print:        eval time =     530.50 ms /    23 runs   (   23.07 ms per token,    43.36 tokens per second)
+0.11.096.465 I common_perf_print:       total time =    1853.46 ms /   634 tokens
+0.11.096.467 I common_perf_print: unaccounted time =       3.80 ms /   0.2 %      (total - sampling - prompt eval - eval) / (total)
+0.11.096.467 I common_perf_print:    graphs reused =         22
+0.11.097.502 W ~llama_context:    Vulkan0 compute buffer size of  38.1311 MiB, does not match expectation of  37.5061 MiB
+# rc=0  seconds=12
+# temps at end:  amd47 amd50 GT 430=45 GT 730=35 GT 710=36    (max 46 C)

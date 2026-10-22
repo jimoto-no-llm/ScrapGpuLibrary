@@ -1,0 +1,28 @@
+-- The C compiler identification is GNU 14.2.0
+-- The CXX compiler identification is GNU 14.2.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/cc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Looking for include file OpenCL/cl.h
+-- Looking for include file OpenCL/cl.h - not found
+-- Looking for CL_VERSION_3_0
+-- Looking for CL_VERSION_3_0 - found
+-- Found OpenCL: /usr/lib/x86_64-linux-gnu/libOpenCL.so (found version "3.0")
+-- CL11: llama.cpp source /home/eightman/moe-ep/src/llama.cpp: ggml 0.26.0, backend API 3, commit 23b0202
+CMake Warning at CMakeLists.txt:126 (message):
+  CL11 is written for llama.cpp b11384 (commit 0faee50, ggml 0.25.3, backend
+  API 3); this tree has ggml 0.26.0 / backend API 3.  The ggml backend API is
+  not stable, expect compile errors or a plugin that refuses to load.
+
+
+-- CL11: linking /home/eightman/moe-ep/src/llama-build/bin/libggml-base.so
+-- Configuring done (1.9s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/eightman/moe-ep/pp/build-cl11

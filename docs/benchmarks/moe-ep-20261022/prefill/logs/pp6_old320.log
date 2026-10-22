@@ -1,0 +1,35 @@
+# date: 2026-10-22_16:41:42  host: tb250  tag: pp6_old320
+# temps at start:  amd43 amd49 GT 430=45 GT 730=35 GT 710=36    (max 46 C)
+# env: GGML_CL11_PLATFORMS=NVIDIA GGML_SGLX_PROFILE=0 GGML_CL11_DEVICES=GT 730,GT 710 GGML_SGLX_SPLIT=Vulkan0:0.5,Vulkan1:0.2,CL11_0:0.2,CL11_1:0.1 GGML_BACKEND_PATH=/home/eightman/moe-ep/sglx/build-cl11/libggml-cl11.so VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json GGML_CL11_AUTO_RPC=0 
+# cmd: /home/eightman/moe-ep/src/llama-build/bin/llama-perplexity -m /home/eightman/moe-ep/models/LFM2.5-8B-A1B-Q4_0.gguf -f /home/eightman/moe-ep/kl/text.txt -c 512 --chunks 4 -b 512 -ub 320 -t 2 -fa off -dev Vulkan0,Vulkan1,SGLX0 -ngl 99 -sm layer -ts 5/1/0 -ot token_embd\.weight=SGLX0 --kl-divergence-base /home/eightman/moe-ep/kl/base.kld --kl-divergence
+SGLX: SGLX0 splits the rows of its weights over: Vulkan0 (AMD Radeon RX 6400 (RADV NAVI24)) 0.500, Vulkan1 (AMD Radeon Pro WX 2100 (RADV POLARIS12)) 0.200, CL11_0 (GeForce GT 730) 0.200, CL11_1 (GeForce GT 710) 0.100
+0.01.659.770 W common_fit_params: failed to fit params to free device memory: n_gpu_layers already set by user to 99, abort
+0.06.887.971 W llama_kv_cache: the V embeddings have different sizes across layers and FA is not enabled - padding V cache to 512
+0.07.092.869 I cmn          init: llama threadpool init, n_threads = 2
+cl11_ensure_program: CL11_0: multi mat-vec (Q / K / V, FFN gate / up in one launch) enabled
+cl11_ensure_program: CL11_0: mat-mat variant: tile 64 x 64, 8 x 4 values per work-item, BK 16, unroll 16, prefetch 0, 128 work-items
+cl11_ensure_program: CL11_0: GeForce GT 730, OpenCL 1.2 CUDA, kernels built (work-group sizes: element-wise 128, row 128, mat-vec 128, mat-mat 16x16)
+cl11_ensure_program: CL11_1: multi mat-vec (Q / K / V, FFN gate / up in one launch) enabled
+cl11_ensure_program: CL11_1: mat-mat variant: tile 64 x 64, 8 x 4 values per work-item, BK 16, unroll 16, prefetch 0, 128 work-items
+cl11_ensure_program: CL11_1: GeForce GT 710, OpenCL 1.2 CUDA, kernels built (work-group sizes: element-wise 128, row 128, mat-vec 128, mat-mat 16x16)
+0.07.575.232 I 
+0.07.575.299 I system_info: n_threads = 2 (n_threads_batch = 2) / 2 | CPU : SSE3 = 1 | SSSE3 = 1 | LLAMAFILE = 1 | OPENMP = 1 | REPACK = 1 | 
+0.07.585.295 I kl_divergence: computing over 4 chunks, n_ctx=512, batch_size=512, n_seq=1
+0.09.077.513 I kl_divergence: 1.49 seconds per pass - ETA /home/eightman/moe-ep/src/llama.cpp/ggml/src/ggml-vulkan/ggml-vulkan.cpp:13204: GGML_ASSERT((tensor->buffer->buft == ggml_backend_vk_get_default_buffer_type(backend) || tensor->buffer->buft == ggml_backend_vk_host_buffer_type()) && "unsupported buffer type") failed
+/home/eightman/moe-ep/src/llama-build/bin/libggml-base.so.0(+0x198a5) [0x7fb66914d8a5]
+/home/eightman/moe-ep/src/llama-build/bin/libggml-base.so.0(ggml_print_backtrace+0x1df) [0x7fb66914dc7f]
+/home/eightman/moe-ep/src/llama-build/bin/libggml-base.so.0(ggml_abort+0x11e) [0x7fb66914de0e]
+/home/eightman/moe-ep/src/llama-build/bin/libggml-vulkan.so(+0x1266b9) [0x7fb6617266b9]
+/home/eightman/moe-ep/src/llama-build/bin/libggml-vulkan.so(+0x126703) [0x7fb661726703]
+/home/eightman/moe-ep/sglx/build-cl11/libggml-cl11.so(+0x20f2e) [0x7fb65499cf2e]
+/home/eightman/moe-ep/sglx/build-cl11/libggml-cl11.so(+0x1ce49) [0x7fb654998e49]
+/home/eightman/moe-ep/src/llama-build/bin/libggml-base.so.0(ggml_backend_sched_graph_compute_async+0x3dc) [0x7fb66916b36c]
+/home/eightman/moe-ep/src/llama-build/bin/libllama.so.0(_ZN13llama_context13graph_computeEP11ggml_cgraphb+0xdb) [0x7fb669405d9b]
+/home/eightman/moe-ep/src/llama-build/bin/libllama.so.0(_ZN13llama_context14process_ubatchERK12llama_ubatch14llm_graph_typeP22llama_memory_context_iR11ggml_status+0x106) [0x7fb669409826]
+/home/eightman/moe-ep/src/llama-build/bin/libllama.so.0(_ZN13llama_context6decodeERK15llama_batch_ext+0x38a) [0x7fb669411e3a]
+/home/eightman/moe-ep/src/llama-build/bin/libllama-perplexity-impl.so(_Z16llama_perplexityiPPc+0x1fb7) [0x7fb669d0f507]
+/lib/x86_64-linux-gnu/libc.so.6(+0x29ca8) [0x7fb669b26ca8]
+/lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x85) [0x7fb669b26d65]
+/home/eightman/moe-ep/src/llama-build/bin/llama-perplexity(+0x1081) [0x5648fd964081]
+# rc=134  seconds=11
+# temps at end:  amd45 amd51 GT 430=46 GT 730=35 GT 710=36    (max 46 C)
