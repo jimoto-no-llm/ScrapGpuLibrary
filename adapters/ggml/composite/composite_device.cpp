@@ -128,6 +128,7 @@ struct composite {
     ggml_backend_device      dev  = {};
 
     bool profile = false;
+    bool lazy_copy = true;            // GGML_SGLX_LAZY_COPY=0 turns the lazy input copy (cpy_tensor_async) off
     bool hostbuf = false;             // GGML_SGLX_HOSTBUF=1
     bool trace = false;               // GGML_SGLX_TRACE=1 (with GGML_SGLX_PROFILE): one line per graph_compute call
     bool serial = false;              // GGML_SGLX_SERIAL=1: wait for each device right after its submit (to measure what the overlap gives)
@@ -737,7 +738,12 @@ struct backend_ctx {
     // only when a node of the next graph_compute reads the tensor. A ubatch without outputs gets an input for an output projection that is
     // never computed (llama-bench pp: every ubatch but the last), and copying it would stall the host until the previous device finished,
     // which is what stops the next ubatch from overlapping with it.
-    std::vector<std::pair<const ggml_tensor *, ggml_tensor *>> pending;
+    struct pending_copy {
+        ggml_backend_t       src_backend;
+        const ggml_tensor *  src;
+        ggml_tensor *        dst;
+    };
+    std::vector<pending_copy> pending;
 };
 
 
@@ -750,11 +756,11 @@ void backend_free(ggml_backend_t backend) {
     delete backend;
 }
 
-bool backend_cpy_tensor_async(ggml_backend_t, ggml_backend_t backend_dst, const ggml_tensor * src, ggml_tensor * dst) {
-    if (backend_dst == nullptr || backend_dst->iface.free != backend_free) {
+bool backend_cpy_tensor_async(ggml_backend_t backend_src, ggml_backend_t backend_dst, const ggml_tensor * src, ggml_tensor * dst) {
+    if (backend_dst == nullptr || backend_dst->iface.free != backend_free || g_c == nullptr || !g_c->lazy_copy) {
         return false;
     }
-    ((backend_ctx *) backend_dst->context)->pending.emplace_back(src, dst);
+    ((backend_ctx *) backend_dst->context)->pending.push_back({ backend_src, src, dst });
     return true;
 }
 
@@ -778,11 +784,13 @@ enum ggml_status backend_graph_compute(ggml_backend_t backend, ggml_cgraph * cgr
                     continue;
                 }
                 for (int k = 0; k < GGML_MAX_SRC; ++k) {
-                    used = used || (node->src[k] != nullptr && (node->src[k] == pc.second || node->src[k]->view_src == pc.second));
+                    used = used || (node->src[k] != nullptr && (node->src[k] == pc.dst || node->src[k]->view_src == pc.dst));
                 }
             }
             if (used) {
-                ggml_backend_tensor_copy(const_cast<ggml_tensor *>(pc.first), pc.second);
+                // what the scheduler would have done in place of the lazy copy: wait for the device that produced the tensor, then copy
+                ggml_backend_synchronize(pc.src_backend);
+                ggml_backend_tensor_copy(const_cast<ggml_tensor *>(pc.src), pc.dst);
             }
         }
         bx->pending.clear();
@@ -1015,6 +1023,7 @@ void attach(ggml_backend_reg_t reg, const std::vector<std::pair<std::string, cl1
         return;
     }
     c->profile = getenv("GGML_SGLX_PROFILE") != nullptr && atoi(getenv("GGML_SGLX_PROFILE")) != 0;
+    c->lazy_copy = getenv("GGML_SGLX_LAZY_COPY") == nullptr || atoi(getenv("GGML_SGLX_LAZY_COPY")) != 0;
     c->hostbuf = getenv("GGML_SGLX_HOSTBUF") != nullptr && atoi(getenv("GGML_SGLX_HOSTBUF")) != 0;
     c->trace = getenv("GGML_SGLX_TRACE") != nullptr && atoi(getenv("GGML_SGLX_TRACE")) != 0;
     c->serial = getenv("GGML_SGLX_SERIAL") != nullptr && atoi(getenv("GGML_SGLX_SERIAL")) != 0;
