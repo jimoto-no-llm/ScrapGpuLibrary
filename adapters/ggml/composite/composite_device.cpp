@@ -102,6 +102,7 @@ struct split_rec {
     size_t    row_bytes = 0;
     bool      uploaded = false;
     bool      failed = false;
+    uint64_t  gen = 0;                // composite::gen of the plan in `parts` (a newer one: cut the rows again with the tuned ratios)
     std::vector<part> parts;
 };
 
@@ -138,6 +139,15 @@ struct composite {
     clock_type::time_point t_gr_end{}, t_mm_end{};
     acc gap_layers, gap_host, gr_ms;
     acc gr_big_ms, gc_big_ms;          // GET_ROWS with more than one index / whole graph_compute calls, any N (GGML_SGLX_PROFILE)
+    // GGML_SGLX_AUTOTUNE=<rounds>[,<calls>]: measure every device alone (serial submit + wait) for <calls> token-generation MUL_MATs (default 24),
+    // set the ratios so that all devices finish together (time alone = a + b * rows, b fitted from two rounds), and re-plan the weights; <rounds> times
+    int      at_rounds = 0;
+    int      at_calls = 24;
+    int      at_round = 0;             // rounds finished
+    int      at_seen = 0;              // N == 1 calls since the last re-plan
+    std::vector<double> at_time, at_rows; // per pdev, sums over the measured calls
+    std::vector<std::vector<std::pair<double, double>>> at_hist; // per pdev: (rows, ms alone) of every finished round
+    uint64_t gen = 0;
     prof_set prof[2];                 // [0]: N == 1, [1]: N > 1
     acc upload_ms;
     std::vector<float> xs;            // gathered input columns
@@ -198,6 +208,12 @@ bool ensure_init(composite * c) {
             p = make_pdev_cuda(atoi(s.first.c_str() + 4));
             if (!p) {
                 SGLX_LOG("GGML_SGLX_SPLIT: no CUDA device %s (plugin built without CL11_WITH_CUDA, no libcuda, or not in SCRAPGPU_CUDA_DEVICES)\n", s.first.c_str());
+                return false;
+            }
+        } else if (s.first.size() > 6 && s.first.rfind("REMOTE", 0) == 0 && s.first.find_first_not_of("0123456789", 6) == std::string::npos) {
+            p = make_pdev_scrapgpu(atoi(s.first.c_str() + 6));
+            if (!p) {
+                SGLX_LOG("GGML_SGLX_SPLIT: no remote device %s (plugin built without CL11_WITH_REMOTE, or the scrapgpu-device-server could not be started: see GGML_SGLX_REMOTE_*)\n", s.first.c_str());
                 return false;
             }
         } else {
@@ -357,10 +373,14 @@ split_rec * get_rec(composite * c, buffer_ctx * bc, const ggml_tensor * w) {
         free_rec(c, *rec); // the same bytes used as another matrix
         rec->failed = false;
     }
+    if (rec != nullptr && rec->gen != c->gen && !rec->parts.empty()) {
+        free_rec(c, *rec); // the ratios were tuned: cut the rows again
+    }
     if (rec == nullptr) {
         bc->recs.emplace_back();
         rec = &bc->recs.back();
     }
+    rec->gen = c->gen;
     rec->data = data;
     rec->type = w->type;
     rec->K = w->ne[0];
@@ -626,6 +646,110 @@ bool do_get_rows(const ggml_tensor * op) {
     return true;
 }
 
+// one measured call of GGML_SGLX_AUTOTUNE; after the last one of a round the ratios are set and the weights are cut again on their next use
+void autotune_note(composite * c, const std::vector<double> & t_alone, const std::vector<double> & n_rows) {
+    if (c->at_time.size() != c->pdevs.size()) {
+        c->at_time.assign(c->pdevs.size(), 0.0);
+        c->at_rows.assign(c->pdevs.size(), 0.0);
+    }
+    for (size_t j = 0; j < c->pdevs.size(); ++j) {
+        c->at_time[j] += t_alone[j];
+        c->at_rows[j] += n_rows[j];
+    }
+    if (c->at_seen < 3 + c->at_calls) {
+        return;
+    }
+    const size_t n = c->pdevs.size();
+    const double calls = (double) c->at_calls;
+    std::string line;
+    double total_rows = 0.0;
+    if (c->at_hist.size() != n) {
+        c->at_hist.assign(n, {});
+    }
+    for (size_t j = 0; j < n; ++j) {
+        const double rows = c->at_rows[j] / calls;
+        const double ms = c->at_time[j] / calls;
+        total_rows += rows;
+        if (rows > 0.0) {
+            c->at_hist[j].emplace_back(rows, ms);
+        }
+        char buf[120];
+        snprintf(buf, sizeof(buf), "%s%s %.3f ms (%.0f rows)", j != 0 ? ", " : "", c->pdevs[j]->name().c_str(), ms, rows);
+        line += buf;
+    }
+    ++c->at_round;
+    // time of a device alone = a + b * rows (a: transfers and launches, b: the kernel): b from the last two rounds when the rows differ
+    // enough, else a = 0 (proportional); then every device gets the rows that make them all finish together: a_j + b_j * r_j = T, sum r_j = M
+    std::vector<double> a(n, 0.0), b(n, 0.0), r(n, 0.0);
+    std::vector<bool> live(n, false);
+    for (size_t j = 0; j < n; ++j) {
+        const auto & h = c->at_hist[j];
+        if (c->weights[j] <= 0.0 || h.empty()) {
+            continue;
+        }
+        live[j] = true;
+        const auto last = h.back();
+        b[j] = last.second / last.first;
+        if (h.size() >= 2) {
+            const auto prev = h[h.size() - 2];
+            const double dr = last.first - prev.first;
+            const double dt = last.second - prev.second;
+            if (std::fabs(dr) > 0.03 * last.first && dt / dr > 0.02 * b[j]) {
+                b[j] = dt / dr;
+                a[j] = std::max(0.0, last.second - b[j] * last.first);
+            }
+        }
+    }
+    double T = 0.0;
+    for (int it = 0; it < (int) n; ++it) {
+        double inv = 0.0, ab = 0.0;
+        for (size_t j = 0; j < n; ++j) {
+            if (live[j]) {
+                inv += 1.0 / b[j];
+                ab += a[j] / b[j];
+            }
+        }
+        if (inv <= 0.0) {
+            break;
+        }
+        T = (total_rows + ab) / inv;
+        bool dropped = false;
+        for (size_t j = 0; j < n; ++j) {
+            if (live[j] && T <= a[j]) { // slower than T before it computes anything: leave it out
+                live[j] = false;
+                dropped = true;
+            }
+        }
+        if (!dropped) {
+            break;
+        }
+    }
+    double wsum = 0.0;
+    for (size_t j = 0; j < n; ++j) {
+        r[j] = live[j] ? std::max(0.0, (T - a[j]) / b[j]) : 0.0;
+        // a step of at most a factor 2 per round
+        if (r[j] > 0.0 && !c->at_hist[j].empty()) {
+            const double cur = c->at_hist[j].back().first;
+            r[j] = std::min(std::max(r[j], 0.5 * cur), 2.0 * cur);
+        }
+        wsum += r[j];
+    }
+    if (wsum > 0.0) {
+        std::string nw;
+        for (size_t j = 0; j < n; ++j) {
+            c->weights[j] = r[j] / wsum;
+            char buf[80];
+            snprintf(buf, sizeof(buf), "%s%s %.3f", j != 0 ? ", " : "", c->pdevs[j]->name().c_str(), c->weights[j]);
+            nw += buf;
+        }
+        SGLX_LOG("autotune round %d: alone %s -> ratios %s (predicted %.2f ms)\n", c->at_round, line.c_str(), nw.c_str(), T);
+        ++c->gen;
+    }
+    c->at_seen = 0;
+    std::fill(c->at_time.begin(), c->at_time.end(), 0.0);
+    std::fill(c->at_rows.begin(), c->at_rows.end(), 0.0);
+}
+
 bool do_mul_mat(composite * c, ggml_tensor * op) {
     const ggml_tensor * w = op->src[0];
     const ggml_tensor * x = op->src[1];
@@ -672,7 +796,30 @@ bool do_mul_mat(composite * c, ggml_tensor * op) {
     // start every device, then wait for them (a device is waited for once, after its last piece)
     std::vector<double> t_submit(c->pdevs.size(), 0.0);
     std::vector<double> t_done(c->pdevs.size(), -1.0);
-    for (size_t i = 0; i < rec->parts.size(); ++i) {
+    // the pdevs with a worker thread first: their work starts while the host thread submits the others
+    std::vector<size_t> order;
+    for (int pass = 0; pass < 2; ++pass) {
+        for (size_t i = 0; i < rec->parts.size(); ++i) {
+            if (c->pdevs[rec->parts[i].pdev]->threaded() == (pass == 0)) {
+                order.push_back(i);
+            }
+        }
+    }
+    // GGML_SGLX_AUTOTUNE: a call that measures every device alone
+    const bool measuring = c->at_round < c->at_rounds && N == 1 && c->at_seen >= 3 && c->at_seen < 3 + c->at_calls;
+    if (N == 1 && c->at_round < c->at_rounds) {
+        ++c->at_seen;
+    }
+    std::vector<double> t_alone(c->pdevs.size(), 0.0);
+    std::vector<double> n_rows(c->pdevs.size(), 0.0);
+    if (measuring) {
+        // the pdevs with a worker thread are submitted in the same order but waited for at once: serial for all
+        order.clear();
+        for (size_t i = 0; i < rec->parts.size(); ++i) {
+            order.push_back(i);
+        }
+    }
+    for (size_t i : order) {
         const part & p = rec->parts[i];
         const auto ts = clock_type::now();
         if (!c->pdevs[p.pdev]->submit(p.p, xp, N, outp[i])) {
@@ -683,9 +830,11 @@ bool do_mul_mat(composite * c, ggml_tensor * op) {
             return false;
         }
         t_submit[p.pdev] += ms_since(ts);
-        if (c->serial) {
+        if (c->serial || measuring) {
             c->pdevs[p.pdev]->wait();
             t_done[p.pdev] = ms_since(t0);
+            t_alone[p.pdev] += ms_since(ts);
+            n_rows[p.pdev] += (double) (p.r1 - p.r0);
         }
     }
     bool ok = true;
@@ -694,7 +843,7 @@ bool do_mul_mat(composite * c, ggml_tensor * op) {
         for (const auto & p : rec->parts) {
             used = used || p.pdev == (int) j;
         }
-        if (used && !c->serial) {
+        if (used && !c->serial && !measuring) {
             ok = c->pdevs[j]->wait() && ok;
             t_done[j] = ms_since(t0);
         }
@@ -703,6 +852,9 @@ bool do_mul_mat(composite * c, ggml_tensor * op) {
         return false;
     }
 
+    if (measuring) {
+        autotune_note(c, t_alone, n_rows);
+    }
     const auto tsc = clock_type::now();
     if (N > 1) {
         for (size_t i = 0; i < rec->parts.size(); ++i) {
@@ -713,7 +865,7 @@ bool do_mul_mat(composite * c, ggml_tensor * op) {
             }
         }
     }
-    if (c->profile && ++c->prof_calls > 3 + (uint64_t) (N == 1 ? 0 : 0)) { // the first calls compile shaders and pay the first use
+    if (c->profile && !measuring && ++c->prof_calls > 3 + (uint64_t) (N == 1 ? 0 : 0)) { // the first calls compile shaders and pay the first use
         ps.total.add(ms_since(t0));
         ps.gather.add(t_gather);
         ps.scatter.add(ms_since(tsc));
@@ -1027,6 +1179,14 @@ void attach(ggml_backend_reg_t reg, const std::vector<std::pair<std::string, cl1
     c->hostbuf = getenv("GGML_SGLX_HOSTBUF") != nullptr && atoi(getenv("GGML_SGLX_HOSTBUF")) != 0;
     c->trace = getenv("GGML_SGLX_TRACE") != nullptr && atoi(getenv("GGML_SGLX_TRACE")) != 0;
     c->serial = getenv("GGML_SGLX_SERIAL") != nullptr && atoi(getenv("GGML_SGLX_SERIAL")) != 0;
+    if (getenv("GGML_SGLX_AUTOTUNE") != nullptr) {
+        const char * at = getenv("GGML_SGLX_AUTOTUNE");
+        c->at_rounds = atoi(at);
+        const char * comma = strchr(at, ',');
+        if (comma != nullptr && atoi(comma + 1) > 0) {
+            c->at_calls = atoi(comma + 1);
+        }
+    }
     if (getenv("GGML_SGLX_PROFILE_EVERY") != nullptr) {
         c->profile_every = atoi(getenv("GGML_SGLX_PROFILE_EVERY"));
     }

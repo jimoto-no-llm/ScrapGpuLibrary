@@ -8,6 +8,12 @@
 //
 //   GGML_SGLX_SPLIT=Vulkan0:0.5,Vulkan1:0.2,CL11_0:0.15,CL11_1:0.15      device[:ratio],...   (no ratio: the default weight of the device)
 //   GGML_SGLX_PROFILE=1                                                  times of the MUL_MAT (and of the uploads) on stderr
+//   GGML_SGLX_AUTOTUNE=2[,24]                                            measure each device alone for 24 token-generation MUL_MATs, then set the
+//                                                                        ratios so that the devices finish together (time = a + b * rows, fitted
+//                                                                        over the rounds) and cut the weights again; 2 rounds (off by default)
+//
+// Device names in the split: the ggml devices ("Vulkan0", "MTL0", "CPU"), "CL11_<i>" (this plugin), "CUDA<i>" (pdev_cuda.cpp) and "REMOTE<i>" (a device of a
+// scrapgpu-device-server in another process, pdev_scrapgpu.cpp: the Fermi GT 430 that cannot share a process with the Kepler cards).
 //
 // The device exists only when GGML_SGLX_SPLIT is set. It lives in the CL11 plugin (libggml-cl11.so) because the CL11 devices that it uses
 // are the very cl11_device objects of the plugin (one cl_context per GPU), see attach().
@@ -34,6 +40,11 @@ std::unique_ptr<pdev> make_pdev_cl11(cl11_device * d);
 // an NVIDIA GPU through the CUDA backend of src/backends/cuda (pdev_cuda.cpp); `index` is the number in "CUDA<index>". nullptr when the plugin is
 // built without CL11_WITH_CUDA, there is no libcuda, or there is no such device.
 std::unique_ptr<pdev> make_pdev_cuda(int index);
+
+// a device of a scrapgpu-device-server (the ScrapGpu C API, "remote" backend; pdev_scrapgpu.cpp); `index` is the number in "REMOTE<index>". The server is
+// started (or connected to) on the first call, see the head of pdev_scrapgpu.cpp. nullptr when the plugin is built without CL11_WITH_REMOTE or the
+// server cannot be reached.
+std::unique_ptr<pdev> make_pdev_scrapgpu(int index);
 
 // Called once by the CL11 registry after it probed its devices: reads GGML_SGLX_SPLIT and, when it is set, creates the device SGLX0.
 // `cl11` are the CL11 devices of the plugin as (name "CL11_<i>", device); the physical devices of the split are resolved on first use.

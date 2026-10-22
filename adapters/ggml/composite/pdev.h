@@ -54,6 +54,9 @@ public:
     virtual bool submit(piece * p, const float * x, int64_t N, float * out) = 0;
     // blocks until everything submitted since the last wait() is finished and written to its `out`
     virtual bool wait() = 0;
+    // true when submit() only queues the job for a worker thread of the pdev (a synchronous API such as the remote backend): the composite
+    // submits such pdevs first, so that their work and the wake-up of the worker overlap with the submissions of the others
+    virtual bool threaded() const { return false; }
     // GGML_SGLX_PROFILE: where submit() spent its time (empty when the pdev keeps no timers)
     virtual std::string stats() { return std::string(); }
 };
