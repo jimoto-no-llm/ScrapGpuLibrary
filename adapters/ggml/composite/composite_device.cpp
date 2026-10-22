@@ -128,12 +128,15 @@ struct composite {
     ggml_backend_device      dev  = {};
 
     bool profile = false;
+    bool hostbuf = false;             // GGML_SGLX_HOSTBUF=1
+    bool trace = false;               // GGML_SGLX_TRACE=1 (with GGML_SGLX_PROFILE): one line per graph_compute call
     bool serial = false;              // GGML_SGLX_SERIAL=1: wait for each device right after its submit (to measure what the overlap gives)
     int  profile_every = 128;
     uint64_t prof_calls = 0;
     // phases of one token seen from this device: GET_ROWS (input embedding) -> [the layers on the other devices] -> MUL_MAT -> [logits, sampling, next graph]
     clock_type::time_point t_gr_end{}, t_mm_end{};
     acc gap_layers, gap_host, gr_ms;
+    acc gr_big_ms, gc_big_ms;          // GET_ROWS with more than one index / whole graph_compute calls, any N (GGML_SGLX_PROFILE)
     prof_set prof[2];                 // [0]: N == 1, [1]: N > 1
     acc upload_ms;
     std::vector<float> xs;            // gathered input columns
@@ -274,6 +277,10 @@ void print_profile(composite * c) {
     if (c->gap_layers.n != 0) {
         fprintf(stderr, "SGLX profile token phases (N=1): GET_ROWS %.3f ms; layers on the other devices (GET_ROWS end -> MUL_MAT start) %.3f ms; after MUL_MAT (-> next GET_ROWS: logits, sampling, next graph) %.3f ms\n",
                 c->gr_ms.mean(), c->gap_layers.mean(), c->gap_host.mean());
+    }
+    if (c->gr_big_ms.n != 0) {
+        fprintf(stderr, "SGLX profile GET_ROWS with N>1: %llu calls, mean %.3f ms (max %.3f); graph_compute calls (any N): %llu, mean %.3f ms (max %.3f)\n",
+                (unsigned long long) c->gr_big_ms.n, c->gr_big_ms.mean(), c->gr_big_ms.mx, (unsigned long long) c->gc_big_ms.n, c->gc_big_ms.mean(), c->gc_big_ms.mx);
     }
     if (c->upload_ms.n != 0) {
         fprintf(stderr, "SGLX profile upload: %llu weights, %.1f ms in total\n", (unsigned long long) c->upload_ms.n, c->upload_ms.sum);
@@ -510,8 +517,10 @@ size_t buft_get_alignment(ggml_backend_buffer_type_t) {
 }
 
 bool buft_is_host(ggml_backend_buffer_type_t) {
-    // false on purpose: with true the loader reads straight into the tensors and bypasses set_tensor, which tells the buffer when a weight changed
-    return false;
+    // false by default, on purpose: with true the loader reads straight into the tensors and bypasses set_tensor, which tells the buffer when a weight changed.
+    // GGML_SGLX_HOSTBUF=1: true, and GET_ROWS is left to the CPU backend (which can then read the shared embedding in place); the weights are read when the
+    // first MUL_MAT needs them, after the load, and a model weight does not change afterwards.
+    return g_c != nullptr && g_c->hostbuf;
 }
 
 const ggml_backend_buffer_type_i buft_i = {
@@ -718,7 +727,13 @@ bool do_mul_mat(composite * c, ggml_tensor * op) {
 
 struct backend_ctx {
     composite * c;
+    // inputs that the scheduler wants copied into this backend (cpy_tensor_async): the copy waits for the producing device, so it is done
+    // only when a node of the next graph_compute reads the tensor. A ubatch without outputs gets an input for an output projection that is
+    // never computed (llama-bench pp: every ubatch but the last), and copying it would stall the host until the previous device finished,
+    // which is what stops the next ubatch from overlapping with it.
+    std::vector<std::pair<const ggml_tensor *, ggml_tensor *>> pending;
 };
+
 
 const char * backend_get_name(ggml_backend_t) {
     return "SGLX0";
@@ -727,6 +742,14 @@ const char * backend_get_name(ggml_backend_t) {
 void backend_free(ggml_backend_t backend) {
     delete (backend_ctx *) backend->context;
     delete backend;
+}
+
+bool backend_cpy_tensor_async(ggml_backend_t, ggml_backend_t backend_dst, const ggml_tensor * src, ggml_tensor * dst) {
+    if (backend_dst == nullptr || backend_dst->iface.free != backend_free) {
+        return false;
+    }
+    ((backend_ctx *) backend_dst->context)->pending.emplace_back(src, dst);
+    return true;
 }
 
 void backend_synchronize(ggml_backend_t) {
@@ -738,6 +761,39 @@ enum ggml_status backend_graph_compute(ggml_backend_t backend, ggml_cgraph * cgr
     if (!ensure_init(c)) {
         return GGML_STATUS_FAILED;
     }
+    {
+        // the copies of inputs that a node of this graph reads (see backend_ctx::pending)
+        backend_ctx * bx = (backend_ctx *) backend->context;
+        for (const auto & pc : bx->pending) {
+            bool used = false;
+            for (int i = 0; i < cgraph->n_nodes && !used; ++i) {
+                const ggml_tensor * node = cgraph->nodes[i];
+                if ((node->flags & GGML_TENSOR_FLAG_COMPUTE) == 0 || ggml_is_empty(node) || ggml_op_is_empty(node->op)) {
+                    continue;
+                }
+                for (int k = 0; k < GGML_MAX_SRC; ++k) {
+                    used = used || (node->src[k] != nullptr && (node->src[k] == pc.second || node->src[k]->view_src == pc.second));
+                }
+            }
+            if (used) {
+                ggml_backend_tensor_copy(const_cast<ggml_tensor *>(pc.first), pc.second);
+            }
+        }
+        bx->pending.clear();
+    }
+    const auto t_gc0 = clock_type::now();
+    struct gc_timer {
+        composite * c; clock_type::time_point t0;
+        int n_nodes;
+        ~gc_timer() {
+            if (c->profile) {
+                c->gc_big_ms.add(ms_since(t0));
+                if (c->trace) {
+                    fprintf(stderr, "SGLX trace: graph_compute %d nodes %.3f ms (t=%.3f)\n", n_nodes, ms_since(t0), std::chrono::duration<double, std::milli>(clock_type::now().time_since_epoch()).count());
+                }
+            }
+        }
+    } gc_timer_guard{ c, t_gc0, cgraph->n_nodes };
     for (int i = 0; i < cgraph->n_nodes; ++i) {
         ggml_tensor * node = cgraph->nodes[i];
         if ((node->flags & GGML_TENSOR_FLAG_COMPUTE) == 0 || ggml_is_empty(node) || ggml_op_is_empty(node->op)) {
@@ -753,6 +809,9 @@ enum ggml_status backend_graph_compute(ggml_backend_t backend, ggml_cgraph * cgr
                     return GGML_STATUS_FAILED;
                 }
                 c->t_gr_end = clock_type::now();
+                if (c->profile && node->src[1]->ne[0] > 1) {
+                    c->gr_big_ms.add(std::chrono::duration<double, std::milli>(c->t_gr_end - t0).count());
+                }
                 if (c->profile && node->src[1]->ne[0] == 1) {
                     c->gr_ms.add(std::chrono::duration<double, std::milli>(c->t_gr_end - t0).count());
                 }
@@ -778,6 +837,11 @@ enum ggml_status backend_graph_compute(ggml_backend_t backend, ggml_cgraph * cgr
     return GGML_STATUS_SUCCESS;
 }
 
+// Events: every op of this backend is finished when graph_compute returns, so an event is already signalled when it is recorded.
+// They exist so that ggml's scheduler may use pipeline parallelism with the other devices (llama.cpp turns it on only when every device has events).
+void backend_event_record(ggml_backend_t, ggml_backend_event_t) {}
+void backend_event_wait(ggml_backend_t, ggml_backend_event_t) {}
+
 const ggml_backend_i backend_i = {
     /* .get_name                = */ backend_get_name,
     /* .free                    = */ backend_free,
@@ -785,15 +849,15 @@ const ggml_backend_i backend_i = {
     /* .get_tensor_async        = */ nullptr,
     /* .set_tensor_2d_async     = */ nullptr,
     /* .get_tensor_2d_async     = */ nullptr,
-    /* .cpy_tensor_async        = */ nullptr,
+    /* .cpy_tensor_async        = */ backend_cpy_tensor_async,
     /* .synchronize             = */ backend_synchronize,
     /* .graph_plan_create       = */ nullptr,
     /* .graph_plan_free         = */ nullptr,
     /* .graph_plan_update       = */ nullptr,
     /* .graph_plan_compute      = */ nullptr,
     /* .graph_compute           = */ backend_graph_compute,
-    /* .event_record            = */ nullptr,
-    /* .event_wait              = */ nullptr,
+    /* .event_record            = */ backend_event_record,
+    /* .event_wait              = */ backend_event_wait,
     /* .graph_optimize          = */ nullptr,
 };
 
@@ -833,10 +897,10 @@ void dev_get_props(ggml_backend_dev_t dev, ggml_backend_dev_props * props) {
     props->device_id = nullptr;
     dev_get_memory(dev, &props->memory_free, &props->memory_total);
     props->caps = {
-        /* .async                = */ false,
+        /* .async                = */ true,  // graph_compute is synchronous, so "async" is trivially true (needed for pipeline parallelism)
         /* .host_buffer          = */ false,
         /* .buffer_from_host_ptr = */ false,
-        /* .events               = */ false,
+        /* .events               = */ true,
         /* .mmap_support         = */ false,
     };
 }
@@ -858,6 +922,16 @@ ggml_backend_buffer_type_t dev_get_buffer_type(ggml_backend_dev_t dev) {
     return &dev_c(dev)->buft;
 }
 
+ggml_backend_event_t dev_event_new(ggml_backend_dev_t dev) {
+    return new ggml_backend_event{ /* .device = */ dev, /* .context = */ nullptr };
+}
+
+void dev_event_free(ggml_backend_dev_t, ggml_backend_event_t event) {
+    delete event;
+}
+
+void dev_event_synchronize(ggml_backend_dev_t, ggml_backend_event_t) {}
+
 bool dev_supports_op(ggml_backend_dev_t dev, const ggml_tensor * op) {
     composite * c = dev_c(dev);
     switch (op->op) {
@@ -870,7 +944,7 @@ bool dev_supports_op(ggml_backend_dev_t dev, const ggml_tensor * op) {
         case GGML_OP_MUL_MAT:
             return mul_mat_shape_ok(c, op);
         case GGML_OP_GET_ROWS:
-            return get_rows_shape_ok(op);
+            return !c->hostbuf && get_rows_shape_ok(op);
         default:
             return false;
     }
@@ -893,9 +967,9 @@ const ggml_backend_device_i dev_i = {
     /* .supports_op          = */ dev_supports_op,
     /* .supports_buft        = */ dev_supports_buft,
     /* .offload_op           = */ nullptr,
-    /* .event_new            = */ nullptr,
-    /* .event_free           = */ nullptr,
-    /* .event_synchronize    = */ nullptr,
+    /* .event_new            = */ dev_event_new,
+    /* .event_free           = */ dev_event_free,
+    /* .event_synchronize    = */ dev_event_synchronize,
 };
 
 } // namespace
@@ -935,6 +1009,8 @@ void attach(ggml_backend_reg_t reg, const std::vector<std::pair<std::string, cl1
         return;
     }
     c->profile = getenv("GGML_SGLX_PROFILE") != nullptr && atoi(getenv("GGML_SGLX_PROFILE")) != 0;
+    c->hostbuf = getenv("GGML_SGLX_HOSTBUF") != nullptr && atoi(getenv("GGML_SGLX_HOSTBUF")) != 0;
+    c->trace = getenv("GGML_SGLX_TRACE") != nullptr && atoi(getenv("GGML_SGLX_TRACE")) != 0;
     c->serial = getenv("GGML_SGLX_SERIAL") != nullptr && atoi(getenv("GGML_SGLX_SERIAL")) != 0;
     if (getenv("GGML_SGLX_PROFILE_EVERY") != nullptr) {
         c->profile_every = atoi(getenv("GGML_SGLX_PROFILE_EVERY"));
