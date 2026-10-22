@@ -1,0 +1,11 @@
+device remote:GeForce GT 430, backend cuda; 4608 rows x 2048, q6_K
+upload of 7.4 MiB: 30.0 ms
+stream_sync, idle (one round trip)                      0.020 ms  (min 0.013)
+buffer_write x (non-blocking flag)                      0.072 ms  (min 0.047)
+buffer_write x (blocking flag)                          0.070 ms  (min 0.044)
+op_execute MUL_MAT, enqueue only                        0.030 ms  (min 0.019)
+stream_sync after it (the kernel + one round trip)      0.693 ms  (min 0.658)
+op_execute + stream_sync (kernel alone, device idle)    0.741 ms  (min 0.707)
+buffer_read result, device idle                         0.104 ms  (min 0.076)
+job: write x + op_execute + read (blocking)             0.856 ms  (min 0.813)
+weights 7.74 MB: the kernel alone = 10.4 GB/s

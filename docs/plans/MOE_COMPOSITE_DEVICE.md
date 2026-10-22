@@ -454,7 +454,7 @@ public:
 | U2 複合デバイスの本体 | `adapters/ggml/composite/composite.h`、`composite_device.cpp`（reg への追加、device、buft、buffer、ホストの影、分割）、`composite_graph.cpp`（照合、plan のキャッシュ、実行、フォールバック）。`ggml-cl11.cpp` の reg の初期化に数行（フックだけ）。`adapters/ggml/CMakeLists.txt` | U3 の `pdev.h` | `test-backend-ops -b SGLX0 -o MUL_MAT_ID` が、Mac の pdev_cl11 1 枚で全件通る |
 | U3 pdev の IF と CL11 実装 | `adapters/ggml/composite/pdev.h`、`pdev_cl11.cpp`、`src/backends/opencl11/ops_moe.cpp`（ホスト ids の入口）、`ops.h` | なし（`pdev.h` を最初に固める） | `pdev.h` を確定したうえで、`pdev_cl11` の単体テスト（tools の小さなドライバ）が CPU 参照と一致する |
 | U4 `pdev_ggml` | `adapters/ggml/composite/pdev_ggml.cpp` | U3 の `pdev.h` | Mac の ggml-cpu（と、あれば Metal）を包んで、U3 と同じテストが通る |
-| U5 `pdev_scrapgpu` | `adapters/ggml/composite/pdev_scrapgpu.cpp` | U3 の `pdev.h` | `SCRAPGPU_TEST_BACKEND=remote` 相当で、MoE の job が通る |
+| U5 `pdev_scrapgpu` | `adapters/ggml/composite/pdev_scrapgpu.cpp` | U3 の `pdev.h` | `SCRAPGPU_TEST_BACKEND=remote` 相当で、MoE の job が通る。**出力射影（MUL_MAT）の行分割では実装済み**（`REMOTE<i>`、GT 430、`docs/benchmarks/moe-ep-20261022/gt430/README.md`）。MoE ブロックの job はまだ |
 | U6 融合カーネル | `src/backends/opencl11/kernels/moe_fused.cl`、`src/backends/opencl11/ops_moe_fused.cpp`、`opencl11_kernels.cmake`（1 行）、`kernels.h` / `kernels.cpp`（カーネルの番号） | U3 | 3 種類の調整値で、NMSE が既存の生成経路と一致する。build-option identity の差分を記録する |
 | U7 CUDA backend | `src/backends/cuda/*`、`include/scrapgpu/cuda.h`、ルートの `CMakeLists.txt` のオプション `SCRAPGPU_BUILD_CUDA`、`tests/` の CUDA の場合 | なし | 実機が無い環境ではビルドと `dlopen` の失敗の扱いまで。カーネルは TB250 で検証する（ユーザーの実行） |
 | U8 正しさのツールと計測スクリプト | `adapters/ggml/tools/moe_composite_check.cpp`、`adapters/ggml/tools/composite-bench/*.sh` | U2・U3 | Mac で `all OK`。TB250 用のスクリプトは `DRY_RUN=1` でコマンドを出せる |
