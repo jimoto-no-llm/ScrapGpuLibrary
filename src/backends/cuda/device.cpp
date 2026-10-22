@@ -14,7 +14,9 @@
 namespace scrapgpu_cuda {
 namespace {
 
+constexpr int kRows[3] = { 1, 2, 4 };    // groups of 32 rows per warp of the mq4 / mq6 kernels
 constexpr int kCols[4] = { 1, 2, 4, 8 }; // columns of the mq4 / mq6 kernels, in the order of the arrays
+constexpr uint32_t kXsMax = 2048;        // XS_MAX of kernels.c: floats of shared memory for the sums of x
 
 std::string lower(std::string s) {
     std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return (char) std::tolower(c); });
@@ -149,8 +151,28 @@ bool Device::init() {
     }
     d->cuCtxSetCurrent(ctx_);
 
-    // the PTX: Kepler GK110 / GK208 and newer take the sm_35 build, the rest the sm_20 build
+    // the PTX: Kepler GK110 / GK208 and newer take the sm_35 build, the rest the sm_20 build. SCRAPGPU_CUDA_PTX=<file> loads another PTX text
+    // (for kernel experiments: kernels/gen_ptx.sh on a machine with clang, copy the file; no rebuild of the library)
     const char * ptx = info_.kepler_or_newer() ? kPtxSm35 : kPtxSm20;
+    std::string ptx_file;
+    if (const char * path = getenv("SCRAPGPU_CUDA_PTX")) {
+        if (path[0] != '\0') {
+            if (FILE * f = fopen(path, "rb")) {
+                char buf[65536];
+                size_t n;
+                while ((n = fread(buf, 1, sizeof(buf), f)) > 0) {
+                    ptx_file.append(buf, n);
+                }
+                fclose(f);
+                ptx = ptx_file.c_str();
+            } else {
+                err_ = std::string("cannot read SCRAPGPU_CUDA_PTX ") + path;
+                d->cuCtxDestroy(ctx_);
+                ctx_ = nullptr;
+                return false;
+            }
+        }
+    }
     char log[4096] = {};
     int opts[2] = { CU_JIT_ERROR_LOG_BUFFER, CU_JIT_ERROR_LOG_BUFFER_SIZE_BYTES };
     void * vals[2] = { log, (void *) (uintptr_t) sizeof(log) };
@@ -167,10 +189,17 @@ bool Device::init() {
     }
     bool ok = true;
     for (int i = 0; i < 4; ++i) {
-        char n4[16], n6[16];
-        snprintf(n4, sizeof(n4), "mq4_c%d", kCols[i]);
-        snprintf(n6, sizeof(n6), "mq6_c%d", kCols[i]);
-        ok = ok && d->cuModuleGetFunction(&mq4_[i], mod_, n4) == CUDA_SUCCESS && d->cuModuleGetFunction(&mq6_[i], mod_, n6) == CUDA_SUCCESS;
+        for (int r = 0; r < 3; ++r) {
+            char n4[24], n6[24];
+            snprintf(n4, sizeof(n4), "mq4_c%dr%d", kCols[i], kRows[r]);
+            snprintf(n6, sizeof(n6), "mq6_c%dr%d", kCols[i], kRows[r]);
+            // the R = 1 kernels must exist, the others are optional
+            if (d->cuModuleGetFunction(&mq4_[i][r], mod_, n4) != CUDA_SUCCESS) { mq4_[i][r] = nullptr; ok = ok && r != 0; }
+            if (d->cuModuleGetFunction(&mq6_[i][r], mod_, n6) != CUDA_SUCCESS) { mq6_[i][r] = nullptr; ok = ok && r != 0; }
+        }
+    }
+    if (const char * e = getenv("SCRAPGPU_CUDA_NRR")) {
+        nrr_override_ = atoi(e);
     }
     ok = ok && d->cuModuleGetFunction(&mid4_, mod_, "mid4") == CUDA_SUCCESS;
     if (!ok) {
@@ -304,20 +333,36 @@ bool Device::mul_mat(CUstream s, WType t, uint64_t w, uint32_t rows, uint32_t K,
     std::lock_guard<std::recursive_mutex> lock(mu);
     if (!bind()) return false;
     if (rows == 0 || N == 0) return true;
-    if (K % (uint32_t) wtype_block_size(t) != 0 || (x & 15) != 0 || (w & 15) != 0) {
-        err_ = "mul_mat: K is not a whole number of blocks, or x / w is not 16-byte aligned";
+    if (K % (uint32_t) wtype_block_size(t) != 0 || (x & 15) != 0 || (w & 15) != 0 || K / 16 > kXsMax) {
+        err_ = "mul_mat: K is not a whole number of blocks (or too large), or x / w is not 16-byte aligned";
         return false;
     }
-    const unsigned gx = (unsigned) std::min<uint64_t>(max_grid_x_, ((uint64_t) rows + 31) / 32 / 4 + 1);
+    const uint64_t ngrp = ((uint64_t) rows + 31) / 32;
     uint32_t col = 0;
     while (col < N) {
-        const uint32_t rem = N - col;
+        // the kernels keep the sums of x over groups of 16 values of every column of the chunk in shared memory (kXsMax floats)
+        const uint32_t rem = std::min<uint32_t>(N - col, kXsMax / (K / 16));
         const int k = rem >= 8 ? 3 : rem >= 4 ? 2 : rem >= 2 ? 1 : 0;
+        CUfunction* table = t == WType::Q4_0 ? mq4_[k] : mq6_[k];
+        // rows per lane: as many as keep about 32 warps per SM busy
+        int ri = 0;
+        for (int r = 2; r >= 1; --r) {
+            if (table[r] != nullptr && ngrp / (uint64_t) kRows[r] >= (uint64_t) info_.sm_count * 32) {
+                ri = r;
+                break;
+            }
+        }
+        if (nrr_override_ > 0) {
+            ri = nrr_override_ >= 4 ? 2 : nrr_override_ >= 2 ? 1 : 0;
+            if (table[ri] == nullptr) ri = 0;
+        }
+        const uint64_t warps = (ngrp + (uint64_t) kRows[ri] - 1) / (uint64_t) kRows[ri];
+        const unsigned gx = (unsigned) std::min<uint64_t>(max_grid_x_, (warps + 3) / 4);
         uint64_t xp = x + (uint64_t) col * K * 4;
         uint64_t op = out + (uint64_t) col * rows * 4;
         CUdeviceptr wp = w;
         void * args[] = { &wp, &xp, &op, &K, &rows };
-        if (!launch(t == WType::Q4_0 ? mq4_[k] : mq6_[k], s, gx, 1, args)) {
+        if (!launch(table[ri], s, gx, 1, args)) {
             return false;
         }
         col += (uint32_t) kCols[k];
@@ -331,7 +376,7 @@ bool Device::mul_mat_id_q4_0(CUstream s, uint64_t w, uint64_t slice_bytes, uint3
     std::lock_guard<std::recursive_mutex> lock(mu);
     if (!bind()) return false;
     if (rows == 0 || n_ids == 0 || n_tokens == 0) return true;
-    if (K % 32 != 0 || (x & 15) != 0 || (w & 15) != 0 || (slice_bytes & 15) != 0 || (x_slot_stride & 3) != 0 || (x_tok_stride & 3) != 0 ||
+    if (K % 32 != 0 || K / 16 > kXsMax || (x & 15) != 0 || (w & 15) != 0 || (slice_bytes & 15) != 0 || (x_slot_stride & 3) != 0 || (x_tok_stride & 3) != 0 ||
         (uint64_t) n_ids * n_tokens > 65535) {
         err_ = "mul_mat_id: K is not a whole number of blocks, w / x / slices are not 16-byte aligned, or too many (slot, token) pairs";
         return false;

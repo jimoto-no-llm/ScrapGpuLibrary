@@ -104,8 +104,9 @@ private:
     bool        init_tried_ = false;
     std::string err_;
     unsigned    max_grid_x_ = 65535;
-    CUfunction  mq4_[4] = {};
-    CUfunction  mq6_[4] = {};
+    CUfunction  mq4_[4][3] = {}; // [columns 1, 2, 4, 8][rows per lane 1, 2, 4]; nullptr when the kernel does not exist
+    CUfunction  mq6_[4][3] = {};
+    int         nrr_override_ = 0; // SCRAPGPU_CUDA_NRR (experiments)
     CUfunction  mid4_ = nullptr;
 };
 

@@ -167,6 +167,7 @@ int main(int argc, char ** argv) {
 #if defined(MMB_WITH_CUDA)
     } else if (be == "cuda") {
         check(scrapgpu_cuda_register(), "register cuda");
+        g.wlayout = SCRAPGPU_LAYOUT_R32;
 #endif
     } else {
         std::fprintf(stderr, "backend not built: %s\n", be.c_str());
