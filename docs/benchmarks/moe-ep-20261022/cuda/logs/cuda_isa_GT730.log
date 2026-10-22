@@ -1,0 +1,6 @@
+# date: 2026-10-22_00:49:50  host: tb250  tag: cuda_isa_GT730
+# temps at start:  amd52 amd40 GT 430=47 GT 730=37 GT 710=36    (max 47 C)
+# env: 
+# cmd: /home/eightman/moe-ep/cuda/bB/scrapgpu_cuda_isa_bench /home/eightman/moe-ep/cuda/isa35.ptx 0
+# rc=0  seconds=3
+# temps at end:  amd52 amd39 GT 430=47 GT 730=37 GT 710=36    (max 47 C)

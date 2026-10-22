@@ -1,0 +1,4 @@
+device=GeForce GT 710 backend=opencl11 driver=OpenCL 1.2 CUDA tuning=Kepler (sm_3x)
+mid q4_0 experts=32 rows=1792 k=2048 used=4 tokens=32  weights read per op 252.00 MiB
+  throughput: best 109.733 ms  median 109.743 ms  = 2.41 / 2.41 GB/s
+  latency   : best 109.641 ms  median 109.739 ms  = 2.41 / 2.41 GB/s

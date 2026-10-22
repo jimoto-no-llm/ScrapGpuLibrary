@@ -1,0 +1,4 @@
+device=GeForce GT 430 backend=cuda driver=CUDA driver tuning=sm_20
+mid q4_0 experts=32 rows=1792 k=2048 used=4 tokens=32  weights read per op 252.00 MiB
+  throughput: best 27.592 ms  median 27.617 ms  = 9.58 / 9.57 GB/s
+  latency   : best 27.570 ms  median 27.600 ms  = 9.58 / 9.57 GB/s

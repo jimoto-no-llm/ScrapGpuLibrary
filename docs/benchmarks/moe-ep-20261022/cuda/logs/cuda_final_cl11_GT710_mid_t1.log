@@ -1,0 +1,9 @@
+# date: 2026-10-22_15:44:42  host: tb250  tag: cuda_final_cl11_GT710_mid_t1
+# temps at start:  amd51 amd50 GT 430=44 GT 730=36 GT 710=36    (max 44 C)
+# env: 
+# cmd: env GGML_CL11_PLATFORMS=NVIDIA GGML_CL11_DEVICES=GT 710 /home/eightman/moe-ep/cuda/bB/scrapgpu_mm_bench opencl11 mid --tokens 1
+cl11_ensure_program: CL11_0: multi mat-vec (Q / K / V, FFN gate / up in one launch) enabled
+cl11_ensure_program: CL11_0: mat-mat variant: tile 64 x 64, 8 x 4 values per work-item, BK 16, unroll 16, prefetch 0, 128 work-items
+cl11_ensure_program: CL11_0: GeForce GT 710, OpenCL 1.2 CUDA, kernels built (work-group sizes: element-wise 128, row 128, mat-vec 128, mat-mat 16x16)
+# rc=0  seconds=3
+# temps at end:  amd50 amd49 GT 430=44 GT 730=36 GT 710=37    (max 44 C)

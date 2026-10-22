@@ -1,0 +1,4 @@
+device=GeForce GT 710 backend=opencl11 driver=OpenCL 1.2 CUDA tuning=Kepler (sm_3x)
+mv q6_K k=2048 rows=128000 n=1 weight=205.1 MiB
+  throughput: best 21.136 ms  median 21.143 ms  = 10.17 / 10.17 GB/s (weights read once per column chunk)
+  latency   : best 21.131 ms  median 21.145 ms

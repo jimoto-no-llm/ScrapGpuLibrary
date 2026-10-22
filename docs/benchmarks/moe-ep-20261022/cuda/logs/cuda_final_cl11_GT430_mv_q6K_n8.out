@@ -1,0 +1,4 @@
+device=GeForce GT 430 backend=opencl11 driver=OpenCL 1.1 CUDA tuning=Fermi (sm_2x)
+mv q6_K k=2048 rows=128000 n=8 weight=205.1 MiB
+  throughput: best 610.557 ms  median 610.574 ms  = 0.35 / 0.35 GB/s (weights read once per column chunk)
+  latency   : best 610.575 ms  median 610.620 ms

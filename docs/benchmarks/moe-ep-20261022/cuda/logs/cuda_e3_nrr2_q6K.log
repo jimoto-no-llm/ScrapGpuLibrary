@@ -1,0 +1,6 @@
+# date: 2026-10-22_15:18:33  host: tb250  tag: cuda_e3_nrr2_q6K
+# temps at start:  amd36 amd34 GT 430=46 GT 730=35 GT 710=34    (max 46 C)
+# env: 
+# cmd: env SCRAPGPU_CUDA_NRR=2 SCRAPGPU_CUDA_PTX=/home/eightman/moe-ep/cuda/k35c.ptx SCRAPGPU_CUDA_DEVICES=GT 730 /home/eightman/moe-ep/cuda/bB/scrapgpu_mm_bench cuda mv --type q6_K --iters 10 --reps 5
+# rc=0  seconds=3
+# temps at end:  amd36 amd34 GT 430=46 GT 730=35 GT 710=35    (max 46 C)
