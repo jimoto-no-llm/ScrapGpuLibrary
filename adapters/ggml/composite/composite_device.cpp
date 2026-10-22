@@ -193,6 +193,12 @@ bool ensure_init(composite * c) {
                 SGLX_LOG("GGML_SGLX_SPLIT: no CL11 device %s\n", s.first.c_str());
                 return false;
             }
+        } else if (s.first.size() > 4 && s.first.rfind("CUDA", 0) == 0 && s.first.find_first_not_of("0123456789", 4) == std::string::npos) {
+            p = make_pdev_cuda(atoi(s.first.c_str() + 4));
+            if (!p) {
+                SGLX_LOG("GGML_SGLX_SPLIT: no CUDA device %s (plugin built without CL11_WITH_CUDA, no libcuda, or not in SCRAPGPU_CUDA_DEVICES)\n", s.first.c_str());
+                return false;
+            }
         } else {
             ggml_backend_dev_t d = find_ggml_device(s.first.c_str());
             if (d == nullptr) {

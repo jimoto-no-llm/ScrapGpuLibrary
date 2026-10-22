@@ -79,6 +79,7 @@ set(SGLX_SOURCES
     composite/composite_device.cpp
     composite/pdev_ggml.cpp
     composite/pdev_cl11.cpp
+    composite/pdev_cuda.cpp
     composite/composite.h
     composite/pdev.h)
 
@@ -174,6 +175,23 @@ else()
         BUILD_RPATH "${_base_dir}"
         INSTALL_RPATH "${_base_dir}")
     install(TARGETS ${TARGET_NAME} LIBRARY DESTINATION lib)
+endif()
+
+# NVIDIA GPUs as physical devices of the SGLX composite device through the CUDA Driver API ("CUDA0", "CUDA1", ... in GGML_SGLX_SPLIT, see
+# composite/pdev_cuda.cpp): the CUDA backend of src/backends/cuda, with libcuda loaded at run time. No CUDA toolkit and no libcuda are needed to
+# build or to load the plugin (without libcuda there are 0 CUDA devices). Out-of-tree builds only.
+option(CL11_WITH_CUDA "SGLX: NVIDIA GPUs through the CUDA Driver API (composite/pdev_cuda.cpp, src/backends/cuda)" OFF)
+if (CL11_WITH_CUDA)
+    if (NOT EXISTS "${CL11_SRC_DIR}/backends/cuda/device.cpp")
+        message(FATAL_ERROR "CL11_WITH_CUDA needs the repository tree (src/backends/cuda), not the in-tree copy")
+    endif()
+    target_sources(${TARGET_NAME} PRIVATE
+        "${CL11_SRC_DIR}/backends/cuda/driver.cpp"
+        "${CL11_SRC_DIR}/backends/cuda/device.cpp"
+        "${CL11_SRC_DIR}/backends/cuda/r32_transfer.cpp")
+    target_include_directories(${TARGET_NAME} PRIVATE "${CL11_SRC_DIR}/backends")
+    target_compile_definitions(${TARGET_NAME} PRIVATE SGLX_WITH_CUDA)
+    target_link_libraries(${TARGET_NAME} PRIVATE ${CMAKE_DL_LIBS})
 endif()
 
 target_link_libraries(${TARGET_NAME} PRIVATE scrapgpu_opencl11 scrapgpu_tensor ${OpenCL_LIBRARIES})

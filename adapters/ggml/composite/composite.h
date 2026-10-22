@@ -31,6 +31,10 @@ namespace sglx {
 // a CL11 physical device (pdev_cl11.cpp)
 std::unique_ptr<pdev> make_pdev_cl11(cl11_device * d);
 
+// an NVIDIA GPU through the CUDA backend of src/backends/cuda (pdev_cuda.cpp); `index` is the number in "CUDA<index>". nullptr when the plugin is
+// built without CL11_WITH_CUDA, there is no libcuda, or there is no such device.
+std::unique_ptr<pdev> make_pdev_cuda(int index);
+
 // Called once by the CL11 registry after it probed its devices: reads GGML_SGLX_SPLIT and, when it is set, creates the device SGLX0.
 // `cl11` are the CL11 devices of the plugin as (name "CL11_<i>", device); the physical devices of the split are resolved on first use.
 void attach(ggml_backend_reg_t reg, const std::vector<std::pair<std::string, cl11_device *>> & cl11);
