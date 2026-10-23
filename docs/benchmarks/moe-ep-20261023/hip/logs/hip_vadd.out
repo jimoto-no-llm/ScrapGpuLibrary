@@ -1,0 +1,3 @@
+devices: 1
+AMD Radeon RX 6400 arch=gfx1034 mem=3.98 GiB cu=6
+bad=0  vadd 1.862 ms  108.1 GB/s

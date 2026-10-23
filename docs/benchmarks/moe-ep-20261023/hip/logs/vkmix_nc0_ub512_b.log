@@ -1,0 +1,15 @@
+# date: 2026-10-23_16:30:22  host: tb250  tag: vkmix_nc0_ub512_b
+# temps at start:  amd49 amd39 GT 430=43 GT 730=32 GT 710=33    (max 44 C)
+# env: LD_LIBRARY_PATH=/mnt/hdd/rocm/v713/lib/python3.13/site-packages/_rocm_sdk_devel/lib:/mnt/hdd/rocm/v713/lib/python3.13/site-packages/_rocm_sdk_devel/lib/llvm/lib VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json 
+# cmd: /home/eightman/moe-ep/hip/llama-build/bin/llama-bench -m /home/eightman/moe-ep/models/LFM2.5-8B-A1B-Q4_0.gguf -dev Vulkan0/Vulkan1 -ngl 99 -fa 0 -t 2 -b 512 -ub 512 -r 5 -sm layer -ts 5/1 -ncmoe 0 -o jsonl -p 512 -n 128 -pg 512,128
+ggml_cuda_init: found 1 ROCm devices (Total VRAM: 4080 MiB):
+  Device 0: AMD Radeon RX 6400, gfx1034 (0x1034), VMM: no, Wave Size: 32, VRAM: 4080 MiB
+load_backend: loaded ROCm backend from /home/eightman/moe-ep/hip/llama-build/bin/libggml-hip.so
+load_backend: loaded RPC backend from /home/eightman/moe-ep/hip/llama-build/bin/libggml-rpc.so
+ggml_vulkan: Found 2 Vulkan devices:
+ggml_vulkan: 0 = AMD Radeon RX 6400 (RADV NAVI24) (radv) | uma: 0 | fp16: 1 | bf16: 0 | fp4: 0 | warp size: 32 | shared memory: 65536 | int dot: 1 | matrix cores: none
+ggml_vulkan: 1 = AMD Radeon Pro WX 2100 (RADV POLARIS12) (radv) | uma: 0 | fp16: 0 | bf16: 0 | fp4: 0 | warp size: 64 | shared memory: 65536 | int dot: 0 | matrix cores: none
+load_backend: loaded Vulkan backend from /home/eightman/moe-ep/hip/llama-build/bin/libggml-vulkan.so
+load_backend: loaded CPU backend from /home/eightman/moe-ep/hip/llama-build/bin/libggml-cpu.so
+# rc=0  seconds=41
+# temps at end:  amd53 amd51 GT 430=44 GT 730=32 GT 710=33    (max 44 C)

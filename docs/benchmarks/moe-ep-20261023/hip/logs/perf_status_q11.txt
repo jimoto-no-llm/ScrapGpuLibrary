@@ -1,0 +1,4 @@
+0000:03:00.0 perf=manual
+0000:06:00.0 perf=manual
+0000:03:00.0 perf=manual
+0000:06:00.0 perf=manual
