@@ -77,9 +77,11 @@ busy_check() { # refuse while a process holds an NVIDIA device node or a DRM nod
 
 unload_all() {
     for m in nvidia_drm nvidia_modeset nvidia_uvm nvidia_peermem nvidia nouveau; do
+        # rmmod with the kernel module name: modprobe -r cannot resolve nvidia_drm etc., because the files are
+        # named nvidia-legacy-390xx-*.ko / nvidia-tesla-470-*.ko.
         # /sys/module, not `lsmod | grep -q`: with pipefail, grep -q closing the pipe early made the test fail
         # and left the module loaded.
-        if [ -d /sys/module/$m ]; then log "rmmod $m"; modprobe -r "$m"; fi
+        if [ -d /sys/module/$m ]; then log "rmmod $m"; rmmod "$m"; fi
     done
     udevadm settle 2>/dev/null || true   # an autoload (modalias / nvidia-modprobe) racing the unload shows up here
     for m in nvidia nouveau; do
