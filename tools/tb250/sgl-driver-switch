@@ -170,7 +170,10 @@ case "${1:-}" in
             f=/sys/kernel/debug/dri/${card#card}/pstate
             [ -r "$f" ] || { echo "$d: $f missing (debugfs not mounted, or nouveau without pstate)"; continue; }
             echo "== $d ($card)"; cat "$f"
-            [ "$2" = set ] && { echo "${3:?pstate id}" > "$f"; echo "-- after:"; cat "$f"; }
+            if [ "$2" = set ]; then
+                [[ "${3:-}" =~ ^([0-9a-f]{2}|ac|dc)$ ]] || { echo "pstate id must be two hex digits, ac or dc" >&2; exit 2; }
+                echo "$3" > "$f"; echo "-- after:"; cat "$f"
+            fi
         done
         exit 0 ;;
     nv390)
