@@ -101,6 +101,17 @@ struct ggml_moe_slots : moe_slots {
     ggml_tensor *         d    = nullptr;
     ggml_gallocr_t        galloc_dec = nullptr;   // decode graphs (one token, 1..8 ids)
     ggml_gallocr_t        galloc_pair = nullptr;  // pair graphs (P pairs, one id each)
+    ggml_gallocr_t        galloc_pre = nullptr;   // prefill graphs (moe_prefill)
+    int                   pre_reserved_N = 0;     // largest N bucket reserved
+    int                   pre_U = 0;
+    struct pre_entry {
+        int            Nb = 0;
+        int            U = 0;
+        ggml_context * ctx = nullptr;
+        ggml_cgraph *  gf = nullptr;
+        ggml_tensor *  x = nullptr, * ids = nullptr, * w = nullptr, * acc = nullptr;
+    };
+    std::list<pre_entry> pre;
     int64_t               reserved_P = 0;
     bool                  dec_reserved = false;
 
@@ -137,6 +148,12 @@ struct ggml_moe_slots : moe_slots {
         if (galloc_pair != nullptr) {
             ggml_gallocr_free(galloc_pair);
         }
+        for (auto & e : pre) {
+            ggml_free(e.ctx);
+        }
+        if (galloc_pre != nullptr) {
+            ggml_gallocr_free(galloc_pre);
+        }
         if (hin.buf != nullptr) {
             ggml_backend_buffer_free(hin.buf);
         }
@@ -160,6 +177,8 @@ struct ggml_moe_slots : moe_slots {
     }
 };
 
+constexpr int kZeroSlots = 8;
+
 class pdev_ggml final : public pdev {
 public:
     explicit pdev_ggml(ggml_backend_dev_t dev) : dev_(dev) {
@@ -176,8 +195,13 @@ public:
         }
         // Vulkan1, Vulkan2, ...: no pinned memory, own thread (GGML_SGLX_THREADS=0 / 1 forces it off / on for every ggml device)
         const bool vk_other = name_.rfind("Vulkan", 0) == 0 && name_ != "Vulkan0";
+        // a backend whose graph_compute does not return before the work is done (CL11: caps.async = false) runs on its own thread too, so that the host can
+        // go on with the other devices and the cpu
+        ggml_backend_dev_props props;
+        ggml_backend_dev_get_props(dev, &props);
+        const bool blocking = !props.caps.async && ggml_backend_dev_type(dev) != GGML_BACKEND_DEVICE_TYPE_CPU;
         const char * te = getenv("GGML_SGLX_THREADS");
-        threaded_ = te != nullptr ? atoi(te) != 0 : vk_other;
+        threaded_ = te != nullptr ? atoi(te) != 0 : (vk_other || blocking);
         if (threaded_) {
             host_buft_ = nullptr;
             th_ = std::thread([this] {
@@ -421,9 +445,11 @@ public:
         m->n_slots = n_slots;
         ggml_init_params ip = { ggml_tensor_overhead() * 4 + 1024, nullptr, true };
         m->ctx = ggml_init(ip);
-        m->g = ggml_new_tensor_3d(m->ctx, sh.t_gate, sh.n_embd, sh.n_ff, n_slots);
-        m->u = ggml_new_tensor_3d(m->ctx, sh.t_up, sh.n_embd, sh.n_ff, n_slots);
-        m->d = ggml_new_tensor_3d(m->ctx, sh.t_down, sh.n_ff, sh.n_embd, n_slots);
+        // kZeroSlots slots more than asked for; they hold zeros (moe_zero_slot is the first). The pairs of moe_prefill that are not for this device are spread over them: one expert
+        // with many tokens is slow in some mul_mat_id kernels (and wrong in Metal's).
+        m->g = ggml_new_tensor_3d(m->ctx, sh.t_gate, sh.n_embd, sh.n_ff, n_slots + kZeroSlots);
+        m->u = ggml_new_tensor_3d(m->ctx, sh.t_up, sh.n_embd, sh.n_ff, n_slots + kZeroSlots);
+        m->d = ggml_new_tensor_3d(m->ctx, sh.t_down, sh.n_ff, sh.n_embd, n_slots + kZeroSlots);
         ggml_set_name(m->g, "sglx_moe_gate");
         ggml_set_name(m->u, "sglx_moe_up");
         ggml_set_name(m->d, "sglx_moe_down");
@@ -437,6 +463,13 @@ public:
         ggml_backend_buffer_set_usage(m->buf, GGML_BACKEND_BUFFER_USAGE_WEIGHTS);
         m->galloc_dec  = ggml_gallocr_new(ggml_backend_get_default_buffer_type(be_));
         m->galloc_pair = ggml_gallocr_new(ggml_backend_get_default_buffer_type(be_));
+        m->galloc_pre  = ggml_gallocr_new(ggml_backend_get_default_buffer_type(be_));
+        {
+            std::vector<char> z(std::max(m->g->nb[2], std::max(m->u->nb[2], m->d->nb[2])) * kZeroSlots, 0);
+            ggml_backend_tensor_set(m->g, z.data(), (size_t) n_slots * m->g->nb[2], m->g->nb[2] * kZeroSlots);
+            ggml_backend_tensor_set(m->u, z.data(), (size_t) n_slots * m->u->nb[2], m->u->nb[2] * kZeroSlots);
+            ggml_backend_tensor_set(m->d, z.data(), (size_t) n_slots * m->d->nb[2], m->d->nb[2] * kZeroSlots);
+        }
         return m;
     }
 
@@ -446,6 +479,10 @@ public:
         }
         moe_pending_.erase(std::remove(moe_pending_.begin(), moe_pending_.end(), static_cast<ggml_moe_slots *>(s)), moe_pending_.end());
         delete static_cast<ggml_moe_slots *>(s);
+    }
+
+    int moe_zero_slot(moe_slots * s) override {
+        return static_cast<ggml_moe_slots *>(s)->n_slots;
     }
 
     bool moe_upload(moe_slots * s, int slot, const void * gate, const void * up, const void * down) override {
@@ -460,12 +497,229 @@ public:
     }
 
 
+
+    // the graph of moe_prefill for a bucket of Nb tokens and U experts per token (llama.cpp's form: x [K,1,Nb], ids [U,Nb]), the weighted sum over the U experts included
+    ggml_moe_slots::pre_entry * pre_graph(ggml_moe_slots * m, int Nb, int U) {
+        for (auto it = m->pre.begin(); it != m->pre.end(); ++it) {
+            if (it->Nb == Nb && it->U == U) {
+                if (it != m->pre.begin()) {
+                    m->pre.splice(m->pre.begin(), m->pre, it);
+                }
+                return &m->pre.front();
+            }
+        }
+        const moe_shape & sh = m->sh;
+        ggml_moe_slots::pre_entry e;
+        e.Nb = Nb; e.U = U;
+        ggml_init_params ip = { ggml_tensor_overhead() * (size_t) (24 + U * 2) + ggml_graph_overhead_custom(64, false) + 4096, nullptr, true };
+        e.ctx = ggml_init(ip);
+        e.x   = ggml_new_tensor_3d(e.ctx, GGML_TYPE_F32, sh.n_embd, 1, Nb);
+        e.ids = ggml_new_tensor_2d(e.ctx, GGML_TYPE_I32, U, Nb);
+        e.w   = ggml_new_tensor_3d(e.ctx, GGML_TYPE_F32, 1, U, Nb);
+        ggml_set_input(e.x); ggml_set_input(e.ids); ggml_set_input(e.w);
+        ggml_tensor * up = ggml_mul_mat_id(e.ctx, m->u, e.x, e.ids);
+        ggml_tensor * gt = ggml_mul_mat_id(e.ctx, m->g, e.x, e.ids);
+        ggml_tensor * h  = ggml_swiglu_split(e.ctx, gt, up);
+        ggml_tensor * y  = ggml_mul_mat_id(e.ctx, m->d, h, e.ids);   // [K, U, Nb]
+        ggml_tensor * yw = ggml_mul(e.ctx, y, e.w);
+        ggml_tensor * acc = ggml_view_2d(e.ctx, yw, sh.n_embd, Nb, yw->nb[2], 0);
+        for (int k = 1; k < U; ++k) {
+            acc = ggml_add(e.ctx, acc, ggml_view_2d(e.ctx, yw, sh.n_embd, Nb, yw->nb[2], (size_t) k * yw->nb[1]));
+        }
+        if (U == 1) {
+            acc = ggml_cont(e.ctx, acc);
+        }
+        e.acc = acc;
+        ggml_set_output(e.acc);
+        e.gf = ggml_new_graph_custom(e.ctx, 64, false);
+        ggml_build_forward_expand(e.gf, e.acc);
+        if (Nb > m->pre_reserved_N) {
+            if (!ggml_gallocr_reserve(m->galloc_pre, e.gf)) {
+                fprintf(stderr, "SGLX: %s: cannot reserve the compute buffer for the prefill of %d tokens\n", name_.c_str(), Nb);
+                ggml_free(e.ctx);
+                return nullptr;
+            }
+            for (auto & old : m->pre) {
+                ggml_free(old.ctx);
+            }
+            m->pre.clear();
+            m->pre_reserved_N = Nb;
+        }
+        m->pre.push_front(e);
+        while (m->pre.size() > 8) {
+            ggml_free(m->pre.back().ctx);
+            m->pre.pop_back();
+        }
+        return &m->pre.front();
+    }
+
+    static int pre_bucket(int64_t n) {
+        int b = 64;
+        while (b < n) { b *= 2; }
+        return b;
+    }
+
+    bool moe_reserve(moe_slots * s, int max_tokens, int n_used) override {
+        auto * m = static_cast<ggml_moe_slots *>(s);
+        return pre_graph(m, pre_bucket(max_tokens), n_used) != nullptr && m->pre_reserved_N >= pre_bucket(max_tokens);
+    }
+
+    bool moe_prefill(moe_slots * s, int ring_first, const moe_src * ex, int n_ex, const float * x, int64_t N_x, int n_used, const int32_t * ids, const float * w, float * acc,
+                     void (*overlap)(void *), void * overlap_ctx) override {
+        auto * m = static_cast<ggml_moe_slots *>(s);
+        const int64_t K = m->sh.n_embd;
+        if (N_x < 1 || N_x > 1024 || n_used < 1 || n_ex < 0 || ring_first < 0 || ring_first + n_ex > m->n_slots) {
+            return false;
+        }
+        const int Nb = pre_bucket(N_x);
+        // 1. the experts into the ring (staging and DMA overlap; the host thread runs `overlap` once everything is staged)
+        const size_t bg = m->g->nb[2], bu = m->u->nb[2], bd = m->d->nb[2];
+        const int C = 16;
+        const int groups = (n_ex + C - 1) / C;
+        std::mutex mu;
+        std::condition_variable cvs;
+        int staged = 0, uploaded = 0;
+        bool failed = false;
+        std::thread t_dma_th;
+        if (groups > 0) {
+            const size_t cap = (size_t) C * (bg + bu + bd);
+            if (cap > m->stg_cap) {
+                for (int i = 0; i < 3; ++i) {
+                    if (m->stg_buf[i] != nullptr) {
+                        ggml_backend_buffer_free(m->stg_buf[i]);
+                        m->stg_buf[i] = nullptr;
+                    }
+                    m->stg_ptr[i] = nullptr;
+                    if (host_buft_ != nullptr) {
+                        m->stg_buf[i] = ggml_backend_buft_alloc_buffer(host_buft_, cap);
+                        if (m->stg_buf[i] != nullptr) {
+                            m->stg_ptr[i] = (char *) ggml_backend_buffer_get_base(m->stg_buf[i]);
+                        }
+                    }
+                    if (m->stg_ptr[i] == nullptr) {
+                        m->stg_plain[i].resize(cap + 64);
+                        m->stg_ptr[i] = m->stg_plain[i].data();
+                    }
+                }
+                m->stg_cap = cap;
+            }
+            t_dma_th = std::thread([&] {
+                for (int i = 0; i < groups; ++i) {
+                    {
+                        std::unique_lock<std::mutex> lk(mu);
+                        cvs.wait(lk, [&] { return failed || staged > i; });
+                        if (failed) { return; }
+                    }
+                    const char * src = m->stg_ptr[i % 3];
+                    const int e0 = i * C, e1 = std::min(n_ex, e0 + C);
+                    const size_t n = (size_t) (e1 - e0);
+                    ggml_tensor * ts[3] = { m->g, m->u, m->d };
+                    const size_t bs[3] = { bg, bu, bd };
+                    size_t off = 0;
+                    for (int k = 0; k < 3; ++k) {
+                        ggml_backend_tensor_set(ts[k], src + off, (size_t) (ring_first + e0) * bs[k], n * bs[k]);
+                        off += (size_t) C * bs[k];
+                    }
+                    {
+                        std::lock_guard<std::mutex> lk(mu);
+                        uploaded = i + 1;
+                    }
+                    cvs.notify_all();
+                }
+            });
+        }
+        auto stage_group = [&](int i) {
+            char * dst = m->stg_ptr[i % 3];
+            const int e0 = i * C, e1 = std::min(n_ex, e0 + C);
+            for (int k = 0; k < 3; ++k) {
+                const size_t b = k == 0 ? bg : (k == 1 ? bu : bd);
+                const size_t off = (size_t) C * (k == 0 ? 0 : (k == 1 ? bg : bg + bu));
+                for (int e = e0; e < e1; ++e) {
+                    const void * src = k == 0 ? ex[e].gate : (k == 1 ? ex[e].up : ex[e].down);
+                    memcpy(dst + off + (size_t) (e - e0) * b, src, b);
+                }
+            }
+            {
+                std::lock_guard<std::mutex> lk(mu);
+                staged = i + 1;
+            }
+            cvs.notify_all();
+        };
+        for (int i = 0; i < groups; ++i) {
+            {
+                std::unique_lock<std::mutex> lk(mu);
+                cvs.wait(lk, [&] { return failed || i - uploaded < 3; });   // a staging area is free once the group that used it was uploaded
+            }
+            stage_group(i);
+        }
+        if (overlap != nullptr) {
+            overlap(overlap_ctx);
+        }
+        // 2. the graph: inputs while the last groups are still going
+        ggml_moe_slots::pre_entry * g = pre_graph(m, Nb, n_used);
+        if (g == nullptr) {
+            { std::lock_guard<std::mutex> lk(mu); failed = true; }
+            cvs.notify_all();
+            if (t_dma_th.joinable()) { t_dma_th.join(); }
+            return false;
+        }
+        if (!ggml_gallocr_alloc_graph(m->galloc_pre, g->gf)) {
+            { std::lock_guard<std::mutex> lk(mu); failed = true; }
+            cvs.notify_all();
+            if (t_dma_th.joinable()) { t_dma_th.join(); }
+            return false;
+        }
+        const int zero = m->n_slots;
+        std::vector<float> xb;
+        std::vector<int32_t> idb((size_t) n_used * (size_t) Nb, zero);
+        std::vector<float> wb((size_t) n_used * (size_t) Nb, 0.0f);
+        const float * xp = x;
+        if (N_x < Nb) {
+            xb.assign((size_t) K * (size_t) Nb, 0.0f);          // the padding columns are zeros: 0 * garbage could be NaN
+            memcpy(xb.data(), x, (size_t) K * (size_t) N_x * sizeof(float));
+            xp = xb.data();
+        }
+        memcpy(idb.data(), ids, (size_t) n_used * (size_t) N_x * sizeof(int32_t));
+        memcpy(wb.data(), w, (size_t) n_used * (size_t) N_x * sizeof(float));
+        for (size_t i = 0; i < idb.size(); ++i) {
+            if (idb[i] == zero) {
+                idb[i] = zero + (int32_t) (i % (size_t) kZeroSlots);
+            }
+        }
+        ids = idb.data();
+        w = wb.data();
+        ggml_backend_tensor_set(g->x, xp, 0, (size_t) K * (size_t) Nb * sizeof(float));
+        ggml_backend_tensor_set(g->ids, ids, 0, (size_t) n_used * (size_t) Nb * sizeof(int32_t));
+        ggml_backend_tensor_set(g->w, w, 0, (size_t) n_used * (size_t) Nb * sizeof(float));
+        // 3. wait for the experts, then compute
+        {
+            std::unique_lock<std::mutex> lk(mu);
+            cvs.wait(lk, [&] { return failed || uploaded >= groups; });
+        }
+        if (t_dma_th.joinable()) {
+            t_dma_th.join();
+        }
+        if (failed) {
+            return false;
+        }
+        const ggml_status st = ggml_backend_graph_compute(be_, g->gf);
+        if (st != GGML_STATUS_SUCCESS) {
+            fprintf(stderr, "SGLX: %s: prefill graph_compute failed (%d)\n", name_.c_str(), (int) st);
+            return false;
+        }
+        ggml_backend_tensor_get(g->acc, acc, 0, (size_t) K * (size_t) N_x * sizeof(float));
+        return true;
+    }
+
     bool moe_stream(moe_slots * s, int ring_first, int ring_n, const moe_src * ex, int n_exp, const float * x, int64_t N_x, const int32_t * pair_exp,
                     const int32_t * pair_tok, int n_pairs, float * out) override {
         auto * m = static_cast<ggml_moe_slots *>(s);
         if (n_exp <= 0 || n_pairs <= 0) {
             return true;
         }
+        const auto t_call0 = clk::now();
+        auto msd = [](clk::time_point a, clk::time_point b) { return std::chrono::duration<double, std::milli>(b - a).count(); };
+        double t_wait = 0, t_comp = 0, t_stage = 0, t_dma = 0;
         if (ring_n < 2 || ring_first < 0 || ring_first + ring_n > m->n_slots || N_x > 1024) {
             return false;
         }
@@ -525,7 +779,7 @@ public:
         // The DMA thread copies a staged group into its half of the ring with the blocking tensor_set (ggml-vulkan sleeps in waitForFences there; the
         // asynchronous path would spin on a core for the whole transfer, and the host has two). The main thread stages the groups ahead of the DMA (memcpy from the
         // mmap into pinned memory) and computes the groups that arrived, so the three overlap.
-        std::thread t_dma([&] {
+        std::thread t_dma_th([&] {
             for (int i = 0; i < groups; ++i) {
                 {
                     std::unique_lock<std::mutex> lk(mu);
@@ -539,11 +793,13 @@ public:
                 ggml_tensor * ts[3] = { m->g, m->u, m->d };
                 const size_t bs[3] = { bg, bu, bd };
                 size_t off = 0;
+                const auto td0 = clk::now();
                 for (int k = 0; k < 3; ++k) {
                     const size_t slot0 = (size_t) ring_first + (size_t) half * (size_t) C;
                     ggml_backend_tensor_set(ts[k], src + off, slot0 * bs[k], n * bs[k]);
                     off += (size_t) C * bs[k];
                 }
+                t_dma += msd(td0, clk::now());
                 {
                     std::lock_guard<std::mutex> lk(mu);
                     uploaded = i + 1;
@@ -552,6 +808,7 @@ public:
             }
         });
         auto stage_group = [&](int i) {
+            const auto ts0 = clk::now();
             char * dst = m->stg_ptr[i % 3];
             const int e0 = i * C, e1 = std::min(n_exp, e0 + C);
             for (int k = 0; k < 3; ++k) {
@@ -562,6 +819,7 @@ public:
                     memcpy(dst + off + (size_t) (e - e0) * b, src, b);
                 }
             }
+            t_stage += msd(ts0, clk::now());
             {
                 std::lock_guard<std::mutex> lk(mu);
                 staged = i + 1;
@@ -580,8 +838,10 @@ public:
                 stage_group(st_n);
             }
             {
+                const auto tw0 = clk::now();
                 std::unique_lock<std::mutex> lk(mu);
                 cvs.wait(lk, [&] { return failed || uploaded > i; });
+                t_wait += msd(tw0, clk::now());
                 if (failed) { ok = false; break; }
             }
             const int e0 = i * C, e1 = std::min(n_exp, e0 + C);
@@ -596,6 +856,7 @@ public:
                     pt[(size_t) q] = pair_tok[pi];
                 }
                 tmp.resize((size_t) K * (size_t) n);
+                const auto tc0 = clk::now();
                 ok = moe_submit_impl(m, x, N_x, ps.data(), pt.data(), n, tmp.data());
                 // while the device computes, stage the next group
                 if (ok) {
@@ -604,6 +865,7 @@ public:
                     if (st_n < groups && st_n - up_n < 3) { stage_group(st_n); }
                     ok = wait_impl();
                 }
+                t_comp += msd(tc0, clk::now());
                 if (ok) {
                     for (int q = 0; q < n; ++q) {
                         memcpy(out + (size_t) order[(size_t) (p + q)] * (size_t) K, tmp.data() + (size_t) q * (size_t) K, (size_t) K * sizeof(float));
@@ -618,7 +880,11 @@ public:
             cvs.notify_all();
         }
         if (!ok) { fail(); }
-        t_dma.join();
+        t_dma_th.join();
+        ++st_calls_;
+        st_total_ += msd(t_call0, clk::now());
+        st_wait_ += t_wait; st_comp_ += t_comp; st_stage_ += t_stage; st_dma_ += t_dma;
+        st_groups_ += (uint64_t) groups; st_experts_ += (uint64_t) n_exp; st_pairs_ += (uint64_t) n_pairs;
         return ok;
     }
 
@@ -635,6 +901,13 @@ public:
     }
 
     std::string stats() override {
+        if (st_calls_ != 0) {
+            char b[300];
+            snprintf(b, sizeof(b), "stream: %llu calls, %.1f ms each (%.1f groups, %.1f experts, %.0f pairs): main waits for the upload %.1f, computes %.1f, stages %.1f; DMA thread %.1f ms",
+                     (unsigned long long) st_calls_, st_total_ / (double) st_calls_, (double) st_groups_ / (double) st_calls_, (double) st_experts_ / (double) st_calls_,
+                     (double) st_pairs_ / (double) st_calls_, st_wait_ / (double) st_calls_, st_comp_ / (double) st_calls_, st_stage_ / (double) st_calls_, st_dma_ / (double) st_calls_);
+            return b;
+        }
         if (tn_ == 0) {
             return std::string();
         }
@@ -706,7 +979,7 @@ private:
         int n_dec = 0, n_pair = 0;
         for (auto it = m->graphs.begin(); it != m->graphs.end();) {
             int & cnt = it->mode == 0 ? n_dec : n_pair;
-            if (++cnt > (it->mode == 0 ? 9 : 4)) {
+            if (++cnt > (it->mode == 0 ? 9 : 9)) {
                 ggml_free(it->ctx);
                 it = m->graphs.erase(it);
             } else {
@@ -721,7 +994,7 @@ private:
         const bool one = N_x == 1;
         int64_t P = n_pairs;
         if (!one) {
-            P = P <= 64 ? 64 : (P <= 256 ? 256 : 1024);
+            P = P <= 64 ? 64 : (P + 127) / 128 * 128;   // buckets of 128 pairs (up to 1024)
             if (n_pairs > 1024 || N_x > 1024) {
                 fprintf(stderr, "SGLX: %s: moe_submit: at most 1024 pairs and 1024 columns per call\n", name_.c_str());
                 return false;
@@ -846,6 +1119,9 @@ private:
     double   tm_[5] = { 0, 0, 0, 0, 0 };
     uint64_t tn_ = 0;
     uint64_t calls_ = 0;
+    // moe_stream (ms): the whole call, waiting for the upload, computing, staging in the main thread, the DMA thread (blocking transfers), groups and experts
+    double   st_total_ = 0, st_wait_ = 0, st_comp_ = 0, st_stage_ = 0, st_dma_ = 0;
+    uint64_t st_calls_ = 0, st_groups_ = 0, st_experts_ = 0, st_pairs_ = 0;
 };
 
 } // namespace

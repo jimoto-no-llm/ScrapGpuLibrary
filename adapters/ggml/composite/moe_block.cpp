@@ -26,6 +26,8 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <deque>
+#include <functional>
 #include <list>
 #include <map>
 #include <memory>
@@ -121,6 +123,13 @@ struct cpu_graph {
 
 struct block {
     ggml_tensor * up = nullptr, * gate = nullptr, * glu = nullptr, * down = nullptr;
+    // the weighting and the sum that follow (MUL(down, weights), then the ADD chain of the n_used slices): when they are found, a prefill is finished on the devices and the
+    // host writes the sum (`fin`, [n_embd, N]) directly; the nodes are then skipped
+    ggml_tensor *              mul = nullptr;
+    std::vector<ggml_tensor *> adds;
+    ggml_tensor *              fin = nullptr;
+    bool                       tail_done = false;   // set by run_block when it has written `fin`
+    int                        jdown = -1;          // index of `down` in the graph
 };
 
 struct state {
@@ -136,10 +145,11 @@ struct state {
     double                    halflife = 4096.0;   // tokens
     bool                      freeze = false;
     bool                      profile = false;
-    long                      reserve_mib = 256;   // device memory left free when the slot count is automatic
+    long                      reserve_mib = 320;   // device memory left free when the slot count is automatic
     int                       plan_min_tokens = 16;
-    int                       ring_main = 24;      // GGML_SGLX_MOE_RING: ring slots of the main class on the first device (0 = no streaming)
-    int                       stream_tau = 2;      // experts with more than this many pairs in a prefill ubatch are streamed, the others run on the cpu
+    int                       ring_main = 96;      // GGML_SGLX_MOE_RING: ring slots of the main class on the first device (0 = no streaming)
+    int                       stream_tau = 3;
+    bool                      fused_prefill = true;  // GGML_SGLX_MOE_FUSED=0: pair outputs to the host and the weighted sum there (the first implementation)      // experts with more than this many pairs in a prefill ubatch are streamed, the others run on the cpu
     int                       order = 0;            // 0: submit the GPUs, then the CPU, then wait; 1: CPU first
     int                       max_gpus_per_layer = 0; // 0 = no limit (not used yet)
 
@@ -149,16 +159,18 @@ struct state {
     std::map<const ggml_tensor *, int> layer_of;    // an expert tensor -> index into layers
     std::map<int, int>        layer_by_il;
     int64_t                   n_expert_max = 0;
+    int                       max_il = -1;            // the last layer with experts
 
     // devices
     bool                      devs_inited = false;
+    bool                      cpu_inited = false;
     std::vector<dev_rec>      devs;
 
     // cpu
     ggml_backend_t            cpu = nullptr;
     cpu_kernel                kern;                 // decode on the cold experts without a ggml graph (moe_cpu.cpp)
     bool                      kern_ok = false;
-    int                       kern_spin_us = 500;
+    int                       kern_spin_us = 3000;
     std::vector<std::vector<std::unique_ptr<cpu_graph>>> cold; // [class][n-1]
 
     // statistics and placement
@@ -228,15 +240,16 @@ bool parse_env(state & st) {
     st.n_threads = (int) envi("GGML_SGLX_MOE_THREADS", 2);
     st.poll = (int) envi("GGML_SGLX_MOE_POLL", 50);
     st.use_kern = envi("GGML_SGLX_MOE_CPUKERN", 1) != 0;
-    st.kern_spin_us = (int) envi("GGML_SGLX_MOE_SPIN_US", 500);
+    st.kern_spin_us = (int) envi("GGML_SGLX_MOE_SPIN_US", 3000);
     st.halflife = (double) envi("GGML_SGLX_MOE_HALFLIFE", 4096);
     st.freeze = envi("GGML_SGLX_MOE_FREEZE", 0) != 0;
     st.profile = envi("GGML_SGLX_PROFILE", 0) != 0;
-    st.reserve_mib = envi("GGML_SGLX_MOE_RESERVE_MIB", 256);
+    st.reserve_mib = envi("GGML_SGLX_MOE_RESERVE_MIB", 320);
     st.plan_min_tokens = (int) envi("GGML_SGLX_MOE_PLAN_TOKENS", 16);
     st.order = (int) envi("GGML_SGLX_MOE_ORDER", 0);
-    st.ring_main = (int) envi("GGML_SGLX_MOE_RING", 24);
-    st.stream_tau = (int) envi("GGML_SGLX_MOE_STREAM_TAU", 2);
+    st.ring_main = (int) envi("GGML_SGLX_MOE_RING", 96);
+    st.stream_tau = (int) envi("GGML_SGLX_MOE_STREAM_TAU", 3);
+    st.fused_prefill = envi("GGML_SGLX_MOE_FUSED", 1) != 0;
     return true;
 }
 
@@ -298,6 +311,7 @@ void complete_layer(state & st, int idx) {
     sh.n_ff = L.up->ne[1];
     L.cls = class_of(st, sh, L.gate, L.up, L.down);
     st.classes[L.cls].n_layers++;
+    st.max_il = std::max(st.max_il, L.il);
     sync_classes(st);
     L.n_expert = L.up->ne[2];
     L.dev.assign((size_t) L.n_expert, -1);
@@ -364,7 +378,52 @@ int main_class(const state & st) {
     return best;
 }
 
-void init_devices(state & st) {
+void ensure_cpu(state & st) {
+    if (st.cpu_inited) {
+        return;
+    }
+    st.cpu_inited = true;
+    ggml_backend_dev_t cd = find_ggml_device("CPU");
+    if (cd != nullptr) {
+        st.cpu = ggml_backend_dev_init(cd, nullptr);
+        if (st.cpu != nullptr) {
+            ggml_backend_reg_t creg = ggml_backend_dev_backend_reg(cd);
+            using fn_t = void (*)(ggml_backend_t, int);
+            auto fn = (fn_t) ggml_backend_reg_get_proc_address(creg, "ggml_backend_set_n_threads");
+            if (fn != nullptr) {
+                fn(st.cpu, st.n_threads);
+            }
+            // a threadpool of our own: without one every graph_compute starts and joins its threads (about 10 ms on the TB250)
+            using tp_new_t = ggml_threadpool_t (*)(const ggml_threadpool_params *);
+            using tp_set_t = void (*)(ggml_backend_t, ggml_threadpool_t);
+            using tp_def_t = ggml_threadpool_params (*)(int);
+            auto tp_new = (tp_new_t) ggml_backend_reg_get_proc_address(creg, "ggml_threadpool_new");
+            auto tp_set = (tp_set_t) ggml_backend_reg_get_proc_address(creg, "ggml_backend_cpu_set_threadpool");
+            if (st.use_kern) {
+                st.kern_ok = st.kern.init(creg, std::max(0, st.n_threads - 1), st.kern_spin_us);
+                if (!st.kern_ok) {
+                    MOE_LOG("the ggml-cpu kernels are not reachable: the cold experts run as a ggml graph\n");
+                }
+            }
+            if (tp_new != nullptr && tp_set != nullptr && st.n_threads > 1) {
+                ggml_threadpool_params tpp;
+                memset(&tpp, 0, sizeof(tpp));
+                tpp.n_threads = st.n_threads;
+                tpp.prio = GGML_SCHED_PRIO_NORMAL;
+                tpp.poll = st.poll;
+                tpp.strict_cpu = false;
+                tpp.paused = false;
+                ggml_threadpool_t tp = tp_new(&tpp);
+                if (tp != nullptr) {
+                    tp_set(st.cpu, tp);
+                }
+            }
+        }
+    }
+    sync_classes(st);
+}
+
+void init_devices(state & st, int nu) {
     if (st.devs_inited) {
         return;
     }
@@ -404,7 +463,7 @@ void init_devices(state & st) {
             }
             const long cap = (long) cr.n_layers * (long) st.n_expert_max;
             // the streaming ring lives on the first device only
-            const long ring = (st.devs.empty() && st.ring_main >= 2) ? ((int) c == mc ? st.ring_main : std::max(4, st.ring_main / 3)) & ~1L : 0;
+            const long ring = (st.devs.empty() && st.ring_main >= 2) ? (long) st.ring_main & ~1L : 0;
             if (want < 0) {
                 want = std::max<long>(0, (long) ((double) budget * 1048576.0 / (double) slot_bytes) - ring);
             }
@@ -417,6 +476,10 @@ void init_devices(state & st) {
             long n = want;
             while (true) {
                 s = p->moe_create(cr.sh, (int) (n + ring));
+                if (s != nullptr && ring > 0 && nu > 0 && !p->moe_reserve(s, 512, nu)) {
+                    p->moe_free(s);   // the compute buffer of the prefill graph did not fit next to the slots
+                    s = nullptr;
+                }
                 if (s != nullptr || n <= 0) {
                     break;
                 }
@@ -442,48 +505,7 @@ void init_devices(state & st) {
         dr.p = std::move(p);
         st.devs.push_back(std::move(dr));
     }
-    // the cpu backend for the cold experts
-    ggml_backend_dev_t cd = find_ggml_device("CPU");
-    if (cd != nullptr) {
-        st.cpu = ggml_backend_dev_init(cd, nullptr);
-        if (st.cpu != nullptr) {
-            ggml_backend_reg_t creg = ggml_backend_dev_backend_reg(cd);
-            using fn_t = void (*)(ggml_backend_t, int);
-            auto fn = (fn_t) ggml_backend_reg_get_proc_address(creg, "ggml_backend_set_n_threads");
-            if (fn != nullptr) {
-                fn(st.cpu, st.n_threads);
-            }
-            // a threadpool of our own: without one every graph_compute starts and joins its threads (about 10 ms on the TB250)
-            using tp_new_t = ggml_threadpool_t (*)(const ggml_threadpool_params *);
-            using tp_set_t = void (*)(ggml_backend_t, ggml_threadpool_t);
-            using tp_def_t = ggml_threadpool_params (*)(int);
-            auto tp_new = (tp_new_t) ggml_backend_reg_get_proc_address(creg, "ggml_threadpool_new");
-            auto tp_set = (tp_set_t) ggml_backend_reg_get_proc_address(creg, "ggml_backend_cpu_set_threadpool");
-            if (st.use_kern) {
-                st.kern_ok = st.kern.init(creg, std::max(0, st.n_threads - 1), st.kern_spin_us);
-                if (!st.kern_ok) {
-                    MOE_LOG("the ggml-cpu kernels are not reachable: the cold experts run as a ggml graph\n");
-                }
-            }
-            if (tp_new != nullptr && tp_set != nullptr && st.n_threads > 1) {
-                ggml_threadpool_params tpp;
-                memset(&tpp, 0, sizeof(tpp));
-                tpp.n_threads = st.n_threads;
-                tpp.prio = GGML_SCHED_PRIO_NORMAL;
-                tpp.poll = st.poll;
-                tpp.strict_cpu = false;
-                tpp.paused = false;
-                ggml_threadpool_t tp = tp_new(&tpp);
-                if (tp != nullptr) {
-                    tp_set(st.cpu, tp);
-                }
-            }
-        }
-    }
-    st.cold.resize(st.classes.size());
-    for (auto & v : st.cold) {
-        v.resize(16);
-    }
+    sync_classes(st);
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------------
@@ -845,6 +867,7 @@ bool find_block(ggml_cgraph * g, int i, block & b) {
         ggml_tensor * n = g->nodes[j];
         if (is_mmid(n) && n->src[1] == glu && n->src[2] == up->src[2]) {
             down = n;
+            b.jdown = j;
             break;
         }
     }
@@ -860,6 +883,55 @@ bool find_block(ggml_cgraph * g, int i, block & b) {
         return false;
     }
     b.up = up; b.gate = gate; b.glu = glu; b.down = down;
+    return true;
+}
+
+
+// the MUL and the ADD chain after the down projection at node index `jd` (see block::mul); false when the graph is shaped differently
+bool find_tail(ggml_cgraph * g, int jd, block & b) {
+    const int U = (int) b.down->ne[1];
+    if (U < 2) {
+        return false;
+    }
+    int jm = -1;
+    for (int j = jd + 1; j < g->n_nodes && j < jd + 24; ++j) {
+        ggml_tensor * n = g->nodes[j];
+        if (n->op == GGML_OP_MUL && n->src[0] == b.down) {
+            b.mul = n;
+            jm = j;
+            break;
+        }
+    }
+    if (jm < 0 || b.mul->src[1] == nullptr || b.mul->src[1]->type != GGML_TYPE_F32 || b.mul->src[1]->ne[0] != 1 || b.mul->src[1]->ne[1] != U) {
+        b.mul = nullptr;
+        return false;
+    }
+    auto is_view = [&](const ggml_tensor * t) { return t != nullptr && t->op == GGML_OP_VIEW && (t->view_src == b.mul || t->src[0] == b.mul); };
+    ggml_tensor * prev = nullptr;
+    b.adds.clear();
+    for (int j = jm + 1; j < g->n_nodes && (int) b.adds.size() < U - 1; ++j) {
+        ggml_tensor * n = g->nodes[j];
+        if (n->op != GGML_OP_ADD) {
+            continue;
+        }
+        const bool ok = prev == nullptr ? (is_view(n->src[0]) && is_view(n->src[1])) : (n->src[0] == prev && is_view(n->src[1]));
+        if (!ok) {
+            continue;
+        }
+        b.adds.push_back(n);
+        prev = n;
+    }
+    if ((int) b.adds.size() != U - 1) {
+        b.mul = nullptr;
+        b.adds.clear();
+        return false;
+    }
+    b.fin = prev;
+    const ggml_tensor * f = b.fin;
+    if (f->type != GGML_TYPE_F32 || f->ne[0] != b.down->ne[0] || f->ne[1] != b.down->ne[2] || f->nb[0] != sizeof(float) || f->nb[1] != (size_t) f->ne[0] * sizeof(float)) {
+        b.mul = nullptr; b.fin = nullptr; b.adds.clear();
+        return false;
+    }
     return true;
 }
 
@@ -1018,8 +1090,253 @@ bool run_decode(state & st, layer_rec & L, const block & b, const int32_t * ids,
     return true;
 }
 
+
+// ---- prefill with the weighted sum on the streaming device (moe_prefill) ----
+
+struct overlap_ctx {
+    std::function<bool()> fn;
+    bool ok = true;
+};
+void overlap_tramp(void * c) {
+    auto * o = (overlap_ctx *) c;
+    o->ok = o->fn();
+}
+
+// A prefill block when the MUL / ADD tail is known (block::fin): the device that streams (the first one) computes, for ONE graph, every pair that is on it or that it streams in,
+// and returns the weighted sums [n_embd, tokens]; the other devices and the cpu return pair outputs, which are weighted and added here in the order of k. `fin` gets the result.
+bool run_prefill_fused(state & st, layer_rec & L, block & b, const int32_t * ids, int nu, int N, int sdev) {
+    const auto t0 = clk::now();
+    const int K = (int) L.up->ne[0];
+    const ggml_tensor * xt = b.up->src[1];
+    const ggml_tensor * wt = b.mul->src[1];
+    float * fin = (float *) b.fin->data;
+    const size_t nd = st.devs.size();
+    dev_rec & sd = st.devs[(size_t) sdev];
+    dev_cls & dc = sd.cls[(size_t) L.cls];
+    const int zero = sd.p->moe_zero_slot(dc.s);
+    if (zero < 0) {
+        return false;
+    }
+    auto w_at = [&](int k, int t) -> float { return *(const float *) ((const char *) wt->data + (size_t) k * wt->nb[1] + (size_t) t * wt->nb[2]); };
+    const int NB = 512;
+    for (int t0b = 0; t0b < N; t0b += NB) {
+        const int nt = std::min(NB, N - t0b);
+        const float * xs;
+        if (xt->nb[2] == (size_t) K * sizeof(float)) {
+            xs = (const float *) xt->data + (size_t) t0b * (size_t) K;
+        } else {
+            st.xg.resize((size_t) K * (size_t) nt);
+            for (int t = 0; t < nt; ++t) {
+                memcpy(st.xg.data() + (size_t) t * (size_t) K, (const char *) xt->data + (size_t) (t0b + t) * xt->nb[2], (size_t) K * sizeof(float));
+            }
+            xs = st.xg.data();
+        }
+        // classify the pairs
+        std::vector<int32_t> ids_rx((size_t) nu * (size_t) nt, zero);
+        std::vector<float>   w_rx((size_t) nu * (size_t) nt, 0.0f);
+        struct work { std::vector<int32_t> slot, tok, k; };
+        std::vector<work> w(nd);
+        std::vector<int32_t> c_e, c_tok, c_k;
+        for (int t = 0; t < nt; ++t) {
+            for (int k = 0; k < nu; ++k) {
+                const int e = ids[(size_t) (t0b + t) * (size_t) nu + (size_t) k];
+                if (e < 0 || e >= L.n_expert) {
+                    return false;
+                }
+                const int16_t j = L.dev[(size_t) e];
+                if (j == (int16_t) sdev) {
+                    ids_rx[(size_t) k + (size_t) nu * (size_t) t] = L.slot[(size_t) e];
+                    w_rx[(size_t) k + (size_t) nu * (size_t) t] = w_at(k, t0b + t);
+                } else if (j >= 0) {
+                    w[(size_t) j].slot.push_back(L.slot[(size_t) e]);
+                    w[(size_t) j].tok.push_back(t);
+                    w[(size_t) j].k.push_back(k);
+                } else {
+                    c_e.push_back(e);
+                    c_tok.push_back(t);
+                    c_k.push_back(k);
+                }
+            }
+        }
+        // the unplaced experts: more than stream_tau pairs -> through the ring of the streaming device, the rest on the cpu
+        std::vector<int> cnt((size_t) L.n_expert, 0), sidx((size_t) L.n_expert, -1);
+        for (int32_t e : c_e) {
+            ++cnt[(size_t) e];
+        }
+        std::vector<int32_t> s_exp;
+        for (int e = 0; e < (int) L.n_expert; ++e) {
+            if (cnt[(size_t) e] > st.stream_tau) {
+                sidx[(size_t) e] = (int) s_exp.size();
+                s_exp.push_back(e);
+            }
+        }
+        std::vector<int32_t> u_e, u_tok, u_k;          // pairs for the cpu
+        std::vector<int32_t> s_pair_t, s_pair_k, s_pair_i;   // pairs of the streamed experts
+        for (size_t i = 0; i < c_e.size(); ++i) {
+            const int ix = sidx[(size_t) c_e[i]];
+            if (ix >= 0) {
+                s_pair_t.push_back(c_tok[i]);
+                s_pair_k.push_back(c_k[i]);
+                s_pair_i.push_back(ix);
+            } else {
+                u_e.push_back(c_e[i]);
+                u_tok.push_back(c_tok[i]);
+                u_k.push_back(c_k[i]);
+            }
+        }
+        // the host side: the other devices and the cpu (their rows are kept for the final sum)
+        std::deque<std::vector<float>> keep;
+        std::vector<const float *> hostp((size_t) nu * (size_t) nt, nullptr);
+        auto host_work = [&]() -> bool {
+            std::vector<size_t> pos(nd, 0);
+            size_t cold_pos = 0;
+            for (;;) {
+                std::vector<size_t> sub, cnt_(nd, 0);
+                std::vector<std::vector<float> *> outs(nd, nullptr);
+                for (size_t j = 0; j < nd; ++j) {
+                    if ((int) j == sdev) {
+                        continue;
+                    }
+                    const size_t left = w[j].slot.size() - pos[j];
+                    if (left == 0) {
+                        continue;
+                    }
+                    const size_t n = std::min<size_t>(left, 1024);
+                    keep.emplace_back((size_t) K * n);
+                    outs[j] = &keep.back();
+                    if (!st.devs[j].p->moe_submit(st.devs[j].cls[(size_t) L.cls].s, xs, nt, w[j].slot.data() + pos[j], w[j].tok.data() + pos[j], (int) n, outs[j]->data())) {
+                        return false;
+                    }
+                    cnt_[j] = n;
+                    sub.push_back(j);
+                }
+                size_t cold_n = 0;
+                const float * cold_rows = nullptr;
+                if (cold_pos < u_e.size()) {
+                    cold_n = std::min<size_t>(u_e.size() - cold_pos, 1024);
+                    keep.emplace_back((size_t) K * cold_n);
+                    const auto tc = clk::now();
+                    if (!cold_pairs(st, L, xs, nt, u_e.data() + cold_pos, u_tok.data() + cold_pos, (int64_t) cold_n, keep.back().data())) {
+                        return false;
+                    }
+                    if (st.profile) {
+                        st.t_pre_cold.add(ms_since(tc));
+                    }
+                    cold_rows = keep.back().data();
+                }
+                bool ok = true;
+                for (size_t j : sub) {
+                    ok = st.devs[j].p->wait() && ok;
+                }
+                if (!ok) {
+                    return false;
+                }
+                for (size_t j : sub) {
+                    for (size_t i = 0; i < cnt_[j]; ++i) {
+                        hostp[(size_t) w[j].k[pos[j] + i] + (size_t) nu * (size_t) w[j].tok[pos[j] + i]] = outs[j]->data() + i * (size_t) K;
+                    }
+                    pos[j] += cnt_[j];
+                }
+                for (size_t i = 0; i < cold_n; ++i) {
+                    hostp[(size_t) u_k[cold_pos + i] + (size_t) nu * (size_t) u_tok[cold_pos + i]] = cold_rows + i * (size_t) K;
+                }
+                cold_pos += cold_n;
+                if (sub.empty() && cold_n == 0) {
+                    break;
+                }
+            }
+            return true;
+        };
+        // rounds on the streaming device: the resident pairs with the first group of streamed experts, then the others
+        std::vector<float> acc((size_t) K * (size_t) nt, 0.0f), acc_r((size_t) K * (size_t) nt);
+        const int R = dc.n_ring;
+        const int n_rounds = std::max(1, (int) ((s_exp.size() + (size_t) R - 1) / (size_t) R));
+        bool host_done = false;
+        for (int r = 0; r < n_rounds; ++r) {
+            const int e0 = r * R, e1 = std::min((int) s_exp.size(), e0 + R);
+            std::vector<int32_t> ids_r;
+            std::vector<float> w_r;
+            if (r == 0) {
+                ids_r = ids_rx;
+                w_r = w_rx;
+            } else {
+                ids_r.assign((size_t) nu * (size_t) nt, zero);
+                w_r.assign((size_t) nu * (size_t) nt, 0.0f);
+            }
+            std::vector<moe_src> src((size_t) std::max(0, e1 - e0));
+            for (int i = e0; i < e1; ++i) {
+                src[(size_t) (i - e0)].gate = expert_ptr(L, 'g', s_exp[(size_t) i]);
+                src[(size_t) (i - e0)].up = expert_ptr(L, 'u', s_exp[(size_t) i]);
+                src[(size_t) (i - e0)].down = expert_ptr(L, 'd', s_exp[(size_t) i]);
+            }
+            for (size_t q = 0; q < s_pair_i.size(); ++q) {
+                const int i = s_pair_i[q];
+                if (i >= e0 && i < e1) {
+                    ids_r[(size_t) s_pair_k[q] + (size_t) nu * (size_t) s_pair_t[q]] = dc.n_slots + (i - e0);
+                    w_r[(size_t) s_pair_k[q] + (size_t) nu * (size_t) s_pair_t[q]] = w_at(s_pair_k[q], t0b + s_pair_t[q]);
+                }
+            }
+            overlap_ctx oc;
+            oc.fn = [&]() { host_done = true; return host_work(); };
+            const auto ts = clk::now();
+            if (!sd.p->moe_prefill(dc.s, dc.n_slots, src.data(), (int) src.size(), xs, nt, nu, ids_r.data(), w_r.data(), acc_r.data(), r == 0 ? overlap_tramp : nullptr, &oc)) {
+                MOE_LOG("prefill on %s failed\n", sd.name.c_str());
+                return false;
+            }
+            if (st.profile) {
+                st.t_pre_stream.add(ms_since(ts));
+                st.n_stream_experts += (double) (e1 - e0);
+            }
+            if (r == 0 && !oc.ok) {
+                return false;
+            }
+            for (size_t i = 0; i < acc.size(); ++i) {
+                acc[i] += acc_r[i];
+            }
+        }
+        if (!host_done && !host_work()) {
+            return false;
+        }
+        if (getenv("GGML_SGLX_MOE_DEBUG") != nullptr) {
+            for (int t = 0; t < nt; ++t) {
+                double sum = 0;
+                for (int i = 0; i < K; ++i) { sum += fabs(acc[(size_t) t * (size_t) K + (size_t) i]); }
+                if (sum == 0.0) {
+                    fprintf(stderr, "SGLX MoE debug: layer %d token %d has a zero sum; pairs:", L.il, t);
+                    for (int k = 0; k < nu; ++k) {
+                        const int e = ids[(size_t) (t0b + t) * (size_t) nu + (size_t) k];
+                        fprintf(stderr, " [e%d dev%d slot%d sidx%d rx_id %d w %.3g]", e, (int) L.dev[(size_t) e], L.slot[(size_t) e], sidx[(size_t) e], ids_rx[(size_t) k + (size_t) nu * (size_t) t], w_rx[(size_t) k + (size_t) nu * (size_t) t]);
+                    }
+                    fprintf(stderr, " (R=%d rounds=%d s_exp=%zu)\n", R, n_rounds, s_exp.size());
+                }
+            }
+        }
+        // the sum: the streaming device's part, then the host pairs in the order of k
+        for (int t = 0; t < nt; ++t) {
+            float * o = fin + (size_t) (t0b + t) * (size_t) K;
+            memcpy(o, acc.data() + (size_t) t * (size_t) K, (size_t) K * sizeof(float));
+            for (int k = 0; k < nu; ++k) {
+                const float * y = hostp[(size_t) k + (size_t) nu * (size_t) t];
+                if (y != nullptr) {
+                    const float wv = w_at(k, t0b + t);
+                    for (int i = 0; i < K; ++i) {
+                        const float v = wv * y[i];
+                        o[i] += v;
+                    }
+                }
+            }
+        }
+        st.n_pre_gpu += (double) (nu * nt) - (double) (u_e.size());
+        st.n_pre_cold += (double) (u_e.size());
+    }
+    if (st.profile) {
+        st.t_pre.add(ms_since(t0));
+    }
+    return true;
+}
+
 // N > 1 tokens: pairs (token, slot) are grouped by where the expert lives
-bool run_prefill(state & st, layer_rec & L, const block & b, const int32_t * ids, int nu, int N) {
+bool run_prefill(state & st, layer_rec & L, block & b, const int32_t * ids, int nu, int N) {
     const auto t0 = clk::now();
     const int K = (int) L.up->ne[0];
     const ggml_tensor * xt = b.up->src[1];
@@ -1033,6 +1350,58 @@ bool run_prefill(state & st, layer_rec & L, const block & b, const int32_t * ids
             sdev = (int) j;
             break;
         }
+    }
+    if (sdev >= 0 && b.fin != nullptr && st.fused_prefill) {
+        if (run_prefill_fused(st, L, b, ids, nu, N, sdev)) {
+            b.tail_done = true;
+            if (getenv("GGML_SGLX_MOE_DEBUG") != nullptr) {
+                // compare with the pair-output path (debug)
+                st.fused_prefill = false;
+                block b2 = b;
+                b2.fin = nullptr;
+                const bool ok2 = run_prefill(st, L, b2, ids, nu, N);
+                st.fused_prefill = true;
+                if (ok2) {
+                    const ggml_tensor * wt = b.mul->src[1];
+                    double worst = 0;
+                    int bad = 0;
+                    for (int t = 0; t < N; ++t) {
+                        std::vector<float> ref((size_t) K, 0.0f);
+                        for (int k = 0; k < nu; ++k) {
+                            const float wv = *(const float *) ((const char *) wt->data + (size_t) k * wt->nb[1] + (size_t) t * wt->nb[2]);
+                            const float * yk = (const float *) b.down->data + ((size_t) k + (size_t) nu * (size_t) t) * (size_t) K;
+                            for (int i = 0; i < K; ++i) { ref[(size_t) i] += wv * yk[i]; }
+                        }
+                        double mx = 0, den = 0;
+                        const float * f = (const float *) b.fin->data + (size_t) t * (size_t) K;
+                        for (int i = 0; i < K; ++i) { mx = std::max(mx, (double) fabsf(f[i] - ref[(size_t) i])); den = std::max(den, (double) fabsf(ref[(size_t) i])); }
+                        if (mx > 1e-2 * (den + 1e-6)) { ++bad; if (bad <= 3) {
+                            fprintf(stderr, "SGLX MoE debug: layer %d token %d: max diff %.4g (ref max %.4g): fused %.4g %.4g %.4g, ref %.4g %.4g %.4g\n", L.il, t, mx, den, f[0], f[1], f[2], ref[0], ref[1], ref[2]);
+                            {
+                                // the truth: the cpu
+                                std::vector<int32_t> ee, tt;
+                                for (int k = 0; k < nu; ++k) { ee.push_back(ids[(size_t) t * (size_t) nu + (size_t) k]); tt.push_back(0); }
+                                std::vector<float> cy((size_t) K * (size_t) nu), tsum((size_t) K, 0.0f);
+                                const float * xcol = (const float *) ((const char *) xt->data + (size_t) t * xt->nb[2]);
+                                cold_pairs(st, L, xcol, 1, ee.data(), tt.data(), nu, cy.data());
+                                for (int k = 0; k < nu; ++k) {
+                                    const float * yk = (const float *) b.down->data + ((size_t) k + (size_t) nu * (size_t) t) * (size_t) K;
+                                    const float wv = *(const float *) ((const char *) wt->data + (size_t) k * wt->nb[1] + (size_t) t * wt->nb[2]);
+                                    for (int i = 0; i < K; ++i) { tsum[(size_t) i] += wv * cy[(size_t) k * (size_t) K + (size_t) i]; }
+                                    fprintf(stderr, "    k=%d e=%d w=%.4g old y0=%.4g cpu y0=%.4g\n", k, ee[(size_t) k], wv, yk[0], cy[(size_t) k * (size_t) K]);
+                                }
+                                fprintf(stderr, "    cpu sum %.4g %.4g %.4g\n", tsum[0], tsum[1], tsum[2]);
+                            }
+                        } }
+                        worst = std::max(worst, mx / (den + 1e-6));
+                    }
+                    fprintf(stderr, "SGLX MoE debug: layer %d N=%d: %d tokens differ, worst relative %.3g\n", L.il, N, bad, worst);
+                }
+            }
+            return true;
+        }
+        MOE_LOG("fused prefill failed, falling back\n");
+        return false;
     }
     for (int t0b = 0; t0b < N; t0b += NB) {
         const int nt = std::min(NB, N - t0b);
@@ -1188,7 +1557,7 @@ bool run_prefill(state & st, layer_rec & L, const block & b, const int32_t * ids
     return true;
 }
 
-bool run_block(state & st, ggml_cgraph * g, int i, const block & b) {
+bool run_block(state & st, ggml_cgraph * g, int i, block & b) {
     (void) g; (void) i;
     const int li = layer_of_block(st, b);
     layer_rec & L = st.layers[(size_t) li];
@@ -1204,10 +1573,10 @@ bool run_block(state & st, ggml_cgraph * g, int i, const block & b) {
         st.pass_started = true;
         begin_pass(st, N);
         st.pass_n = N;
-        // placement decisions at the start of a pass
-        if (N > 1) {
-            st.replan_pending = true;
-        } else {
+        if (N >= 8) {
+            st.replan_pending = true;     // a prompt was processed: place the experts it used (at the end of the pass, or at the first decode)
+        }
+        if (N == 1) {
             const bool never = st.plans == 0;
             if ((st.replan_pending && (!st.freeze || never) && st.tokens_since_plan >= 1) || (never && st.tokens_seen >= st.plan_min_tokens)) {
                 plan(st);
@@ -1217,7 +1586,14 @@ bool run_block(state & st, ggml_cgraph * g, int i, const block & b) {
     }
     st.last_il = L.il;
     count(st, L, g_ids.data(), nu, N);
-    return N == 1 ? run_decode(st, L, b, g_ids.data(), nu) : run_prefill(st, L, b, g_ids.data(), nu, N);
+    const bool ok = N == 1 ? run_decode(st, L, b, g_ids.data(), nu) : run_prefill(st, L, b, g_ids.data(), nu, N);
+    // the last layer of a prefill pass: the statistics of the whole prompt are in; place the experts now, so that the next pass (the generation, or the next
+    // prompt of a benchmark) finds them in the slots. (Not for the first decode token of a pass whose prompt was a few tokens: handled above.)
+    if (ok && st.pass_n >= 8 && L.il >= st.max_il && st.replan_pending && (!st.freeze || st.plans == 0)) {
+        plan(st);
+        st.replan_pending = false;
+    }
+    return ok;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------------
@@ -1348,8 +1724,9 @@ bool handles(const ggml_tensor * node) {
 bool exec(ggml_cgraph * g, int i) {
     state & st = *S;
     ggml_tensor * node = g->nodes[i];
-    if (!st.devs_inited) {
-        init_devices(st);
+    ensure_cpu(st);
+    if (!st.devs_inited && node->op == GGML_OP_MUL_MAT_ID && node->src[2] != nullptr) {
+        init_devices(st, (int) node->src[2]->ne[0]);
     }
     auto it = st.done.find(node);
     if (it != st.done.end()) {
@@ -1360,11 +1737,21 @@ bool exec(ggml_cgraph * g, int i) {
         case GGML_OP_MUL_MAT_ID: {
             block b;
             if (find_block(g, i, b) && block_shapes_ok(b) && st.cpu != nullptr) {
+                // a prefill can also take the weighting and the sum that follow (see block::mul)
+                if (b.jdown >= 0 && b.down->ne[2] > 1) {
+                    find_tail(g, b.jdown, b);
+                }
                 // the weights must be known as one layer (3 tensors of the same shape)
                 if (run_block(st, g, i, b)) {
                     st.done.insert(b.gate == node ? b.up : b.gate);
                     st.done.insert(b.glu);
                     st.done.insert(b.down);
+                    if (b.tail_done) {
+                        st.done.insert(b.mul);
+                        for (ggml_tensor * a : b.adds) {
+                            st.done.insert(a);
+                        }
+                    }
                     return true;
                 }
                 MOE_LOG("block execution failed, falling back to ggml-cpu for node %s\n", node->name);
@@ -1387,6 +1774,18 @@ bool exec(ggml_cgraph * g, int i) {
     }
 }
 
+ggml_backend_buffer_t alloc_pinned(size_t size) {
+    if (S == nullptr || S->specs.empty() || getenv("GGML_SGLX_MOE_PINNED") != nullptr && atoi(getenv("GGML_SGLX_MOE_PINNED")) == 0) {
+        return nullptr;
+    }
+    ggml_backend_dev_t d = find_ggml_device(S->specs[0].name.c_str());
+    if (d == nullptr) {
+        return nullptr;
+    }
+    ggml_backend_buffer_type_t bt = ggml_backend_dev_host_buffer_type(d);
+    return bt != nullptr ? ggml_backend_buft_alloc_buffer(bt, size) : nullptr;
+}
+
 void note_input_copy_ms(double ms) {
     if (S != nullptr && S->profile && ms > 0.0) {
         S->t_copy.add(ms);
@@ -1406,6 +1805,12 @@ void print_profile() {
         for (const auto & d : st.devs) {
             fprintf(stderr, "SGLX MoE profile   %s: submit %.3f ms, wait %.3f ms (%llu calls)\n", d.name.c_str(), d.t_submit.mean(), d.t_wait.mean(),
                     (unsigned long long) d.t_submit.n);
+        }
+    }
+    for (const auto & d : st.devs) {
+        const std::string ds = d.p->stats();
+        if (!ds.empty()) {
+            fprintf(stderr, "SGLX MoE profile   %s %s\n", d.name.c_str(), ds.c_str());
         }
     }
     if (st.t_cold_compute.n != 0) {

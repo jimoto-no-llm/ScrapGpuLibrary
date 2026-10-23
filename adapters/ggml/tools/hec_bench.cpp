@@ -581,8 +581,116 @@ static int run_stream(int argc, char ** argv) {
     return 0;
 }
 
+
+// pairs  how fast does a Vulkan device compute the prefill MoE block (up, gate, SWIGLU, down) for P (token, expert) pairs on resident slots? V1: pairs as tokens
+//        (one id each, the pdev form), V2: llama's form (x [K,1,N], ids [8,N]). With and without the read-back of the pair outputs, and the weighted sum on the device.
+static int run_pairs(int argc, char ** argv) {
+    const std::string vk_lib = arg(argc, argv, "--vk-lib", "");
+    const std::string cpu_lib = arg(argc, argv, "--cpu-lib", "");
+    const std::string dname = arg(argc, argv, "--vk-dev", "Vulkan0");
+    const int N = atoi(arg(argc, argv, "--tokens", "128").c_str());
+    const int S = atoi(arg(argc, argv, "--slots", "100").c_str());
+    const int iters = atoi(arg(argc, argv, "--iters", "6").c_str());
+    const int K = 2048, F = 768, U = 8;
+    if (!cpu_lib.empty()) ggml_backend_load(cpu_lib.c_str());
+    if (!vk_lib.empty()) ggml_backend_load(vk_lib.c_str());
+    ggml_backend_dev_t dev = ggml_backend_dev_by_name(dname.c_str());
+    if (!dev) { fprintf(stderr, "no device\n"); return 1; }
+    ggml_backend_t be = ggml_backend_dev_init(dev, nullptr);
+    ggml_init_params ip = { ggml_tensor_overhead() * 8 + 1024, nullptr, true };
+    ggml_context * wc = ggml_init(ip);
+    ggml_tensor * Wg = ggml_new_tensor_3d(wc, GGML_TYPE_Q4_0, K, F, S);
+    ggml_tensor * Wu = ggml_new_tensor_3d(wc, GGML_TYPE_Q4_0, K, F, S);
+    ggml_tensor * Wd = ggml_new_tensor_3d(wc, GGML_TYPE_Q4_0, F, K, S);
+    ggml_backend_buffer_t wb = ggml_backend_alloc_ctx_tensors(wc, be);
+    if (!wb) { fprintf(stderr, "alloc failed\n"); return 1; }
+    {   // some data (the values do not matter for the speed, but denormal-free quantized blocks keep the kernels honest)
+        std::vector<uint8_t> z(Wg->nb[2] * S);
+        std::mt19937 rng(1);
+        for (auto & b : z) b = (uint8_t) rng();
+        for (size_t o = 0; o < z.size(); o += 18) { z[o] = 0x00; z[o + 1] = 0x2c; } // scale 0.0625
+        ggml_backend_tensor_set(Wg, z.data(), 0, ggml_nbytes(Wg));
+        ggml_backend_tensor_set(Wu, z.data(), 0, ggml_nbytes(Wu));
+        std::vector<uint8_t> z2(Wd->nb[2] * S);
+        for (auto & b : z2) b = (uint8_t) rng();
+        for (size_t o = 0; o < z2.size(); o += 18) { z2[o] = 0x00; z2[o + 1] = 0x2c; }
+        ggml_backend_tensor_set(Wd, z2.data(), 0, ggml_nbytes(Wd));
+    }
+    std::mt19937 rng(3);
+    auto run = [&](const char * name, int variant, bool readback, bool wsum) {
+        const int P = N * U;
+        ggml_init_params gp = { ggml_tensor_overhead() * 40 + ggml_graph_overhead_custom(64, false) + 4096, nullptr, true };
+        ggml_context * g = ggml_init(gp);
+        ggml_tensor *x, *ids, *tok = nullptr, *w = nullptr, *y;
+        ggml_tensor * x3;
+        if (variant == 1) {
+            x = ggml_new_tensor_2d(g, GGML_TYPE_F32, K, N);
+            tok = ggml_new_tensor_1d(g, GGML_TYPE_I32, P);
+            ids = ggml_new_tensor_2d(g, GGML_TYPE_I32, 1, P);
+            ggml_set_input(tok);
+            x3 = ggml_reshape_3d(g, ggml_get_rows(g, x, tok), K, 1, P);
+        } else {
+            x = ggml_new_tensor_3d(g, GGML_TYPE_F32, K, 1, N);
+            ids = ggml_new_tensor_2d(g, GGML_TYPE_I32, U, N);
+            x3 = x;
+        }
+        ggml_set_input(x); ggml_set_input(ids);
+        ggml_tensor * up = ggml_mul_mat_id(g, Wu, x3, ids);
+        ggml_tensor * gt = ggml_mul_mat_id(g, Wg, x3, ids);
+        ggml_tensor * h = ggml_swiglu_split(g, gt, up);
+        y = ggml_mul_mat_id(g, Wd, h, ids);                 // V1: [K,1,P]  V2: [K,U,N]
+        ggml_tensor * out = y;
+        if (wsum) {
+            w = ggml_new_tensor_3d(g, GGML_TYPE_F32, 1, U, N);
+            ggml_set_input(w);
+            ggml_tensor * yy = variant == 1 ? ggml_reshape_3d(g, y, K, U, N) : y;
+            yy = ggml_mul(g, yy, w);
+            ggml_tensor * acc = ggml_view_2d(g, yy, K, N, yy->nb[2], 0);
+            for (int k = 1; k < U; k++) acc = ggml_add(g, acc, ggml_view_2d(g, yy, K, N, yy->nb[2], (size_t) k * yy->nb[1]));
+            out = acc;
+        }
+        ggml_set_output(out);
+        ggml_cgraph * gf = ggml_new_graph_custom(g, 64, false);
+        ggml_build_forward_expand(gf, out);
+        ggml_gallocr_t ga = ggml_gallocr_new(ggml_backend_get_default_buffer_type(be));
+        if (!ggml_gallocr_alloc_graph(ga, gf)) { printf("%s: alloc failed\n", name); return; }
+        std::vector<float> xs((size_t) K * N, 0.1f);
+        std::vector<int32_t> idv(P), tokv(P);
+        std::vector<float> wv((size_t) U * N, 0.125f);
+        std::vector<float> res(ggml_nelements(out));
+        std::vector<double> ts;
+        for (int it = 0; it < iters + 2; it++) {
+            for (int i = 0; i < P; i++) { idv[i] = (int) (rng() % S); tokv[i] = i / U; }
+            double t0 = now_us();
+            ggml_backend_tensor_set(x, xs.data(), 0, xs.size() * 4);
+            ggml_backend_tensor_set(ids, idv.data(), 0, idv.size() * 4);
+            if (tok) ggml_backend_tensor_set(tok, tokv.data(), 0, tokv.size() * 4);
+            if (w) ggml_backend_tensor_set(w, wv.data(), 0, wv.size() * 4);
+            double t1 = now_us();
+            ggml_backend_graph_compute(be, gf);
+            double t2 = now_us();
+            if (readback) ggml_backend_tensor_get(out, res.data(), 0, res.size() * 4);
+            double t3 = now_us();
+            if (it >= 2) ts.push_back(t3 - t0);
+            if (it == 2) printf("   [%s] set %.1f ms, compute %.1f ms, get %.1f ms\n", name, (t1 - t0) / 1000, (t2 - t1) / 1000, (t3 - t2) / 1000);
+        }
+        stats st = summarize(ts);
+        printf("%-34s N=%d P=%d: total %.1f ms (median %.1f)\n", name, N, P, st.mean / 1000, st.med / 1000);
+        ggml_gallocr_free(ga);
+        ggml_free(g);
+    };
+    run("V1 pairs, no readback", 1, false, false);
+    run("V1 pairs, read back y", 1, true, false);
+    run("V2 llama form, no readback", 2, false, false);
+    run("V2 llama form, read back y", 2, true, false);
+    run("V1 pairs + weighted sum on device", 1, true, true);
+    run("V2 + weighted sum on device", 2, true, true);
+    return 0;
+}
+
 int main(int argc, char ** argv) {
     if (argc >= 2 && !strcmp(argv[1], "stream")) return run_stream(argc, argv);
+    if (argc >= 2 && !strcmp(argv[1], "pairs")) return run_pairs(argc, argv);
     if (argc < 2) { fprintf(stderr, "usage: hec_bench cpu1|conc --model GGUF --cpu-lib LIB [--threads N --iters N ...]\n"); return 2; }
     if (!strcmp(argv[1], "cpu1")) return run_cpu1(argc, argv);
     if (!strcmp(argv[1], "conc")) return run_conc(argc, argv);

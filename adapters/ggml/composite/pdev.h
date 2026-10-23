@@ -103,6 +103,21 @@ public:
     virtual bool moe_submit(moe_slots * s, const float * x, int64_t N_x, const int32_t * pair_slot, const int32_t * pair_tok, int n_pairs, float * out) {
         (void) s; (void) x; (void) N_x; (void) pair_slot; (void) pair_tok; (void) n_pairs; (void) out; return false;
     }
+    // Prefill with the routing weights and the sum over the experts of a token done on the device (only the [n_embd, N_x] sums come back; the pair outputs would be 8 times as
+    // much). `ids[k + n_used * t]` is the slot of the k-th expert of token t on this device, or moe_zero_slot() when the pair is not for this device; `w` is its routing weight
+    // (0 for the pairs that are not for this device). The experts `ex[0..n_ex)` are copied from host memory into the slots ring_first + i first (n_ex <= the ring; the
+    // staging of the next group overlaps the transfer of the current one, and `overlap` runs on the calling thread while the transfers are going on); `ids` may refer to
+    // those slots. acc[:, t] = sum_k w * expert_k(x[:, t]), added in the order of k. Blocking. N_x <= 1024.
+    virtual bool moe_prefill(moe_slots * s, int ring_first, const moe_src * ex, int n_ex, const float * x, int64_t N_x, int n_used, const int32_t * ids, const float * w, float * acc,
+                             void (*overlap)(void *), void * overlap_ctx) {
+        (void) s; (void) ring_first; (void) ex; (void) n_ex; (void) x; (void) N_x; (void) n_used; (void) ids; (void) w; (void) acc; (void) overlap; (void) overlap_ctx;
+        return false;
+    }
+    // a slot that holds an expert of zeros (its output is exactly 0 for any input): the filler of the ids of moe_prefill. -1: none.
+    virtual int moe_zero_slot(moe_slots * s) { (void) s; return -1; }
+    // allocates the compute buffer of moe_prefill for `max_tokens` tokens of `n_used` experts now (false: no memory), so that the free memory that sized the slots is not spent later
+    virtual bool moe_reserve(moe_slots * s, int max_tokens, int n_used) { (void) s; (void) max_tokens; (void) n_used; return true; }
+
     // Prefill streaming: the experts `ex[0..n_exp)` are copied from host memory into the slots [ring_first, ring_first + ring_n) a few at a time (the copy of
     // the next group overlaps the computation of the current one) and the pairs are computed there: pair i is the expert ex[pair_exp[i]] on the column
     // pair_tok[i] of x ([n_embd, N_x], N_x <= 1024); out is [n_embd, n_pairs] in pair order. Blocking. The slots of the ring are not used by anything else.

@@ -41,6 +41,7 @@
 #  include <malloc.h>
 #else
 #  include <dlfcn.h>
+#  include <sys/mman.h>
 #endif
 
 namespace sglx {
@@ -111,7 +112,8 @@ struct split_rec {
 struct buffer_ctx {
     char *                 base = nullptr;
     size_t                 size = 0;
-    bool                   external = false;   // wraps memory of someone else (the mmap of a model file): not freed
+    bool                   external = false;   // wraps memory of someone else (the mmap of a model file, pinned memory): the memory itself is not freed
+    ggml_backend_buffer_t  pinned = nullptr;   // MoE mode: the pinned host buffer (of the first MoE device) that provides the memory; freed with this buffer
     std::vector<split_rec> recs;
 };
 
@@ -463,7 +465,9 @@ void buffer_free(ggml_backend_buffer_t buffer) {
             free_rec(g_c, r);
         }
     }
-    if (!bc->external) {
+    if (bc->pinned != nullptr) {
+        ggml_backend_buffer_free(bc->pinned);
+    } else if (!bc->external) {
 #if defined(_WIN32)
         _aligned_free(bc->base);
 #else
@@ -540,6 +544,19 @@ constexpr size_t kAlignment = 64;
 
 ggml_backend_buffer_t buft_alloc_buffer(ggml_backend_buffer_type_t buft, size_t size) {
     const size_t alloc = std::max<size_t>(kAlignment, (size + kAlignment - 1) & ~(kAlignment - 1));
+    if (moe::enabled() && size > 0) {
+        // MoE mode: the activations that the scheduler copies in and out of this device (and the compute buffers) live in pinned memory of the first GPU, so that the copies can be
+        // asynchronous: one submission for the three inputs of a layer instead of three blocking reads
+        ggml_backend_buffer_t pb = moe::alloc_pinned(alloc);
+        if (pb != nullptr) {
+            auto * bc = new buffer_ctx();
+            bc->base = (char *) ggml_backend_buffer_get_base(pb);
+            bc->size = alloc;
+            bc->external = true;
+            bc->pinned = pb;
+            return ggml_backend_buffer_init(buft, buffer_i, bc, alloc);
+        }
+    }
     void * base = nullptr;
 #if defined(_WIN32)
     base = _aligned_malloc(alloc, 4096);
@@ -961,6 +978,7 @@ enum ggml_status backend_graph_compute(ggml_backend_t backend, ggml_cgraph * cgr
         const auto t_pc0 = clock_type::now();
         backend_ctx * bx = (backend_ctx *) backend->context;
         const bool had_pending = !bx->pending.empty();
+        std::vector<ggml_backend_t> to_sync;
         for (const auto & pc : bx->pending) {
             bool used = false;
             for (int i = 0; i < cgraph->n_nodes && !used; ++i) {
@@ -973,10 +991,24 @@ enum ggml_status backend_graph_compute(ggml_backend_t backend, ggml_cgraph * cgr
                 }
             }
             if (used) {
-                // what the scheduler would have done in place of the lazy copy: wait for the device that produced the tensor, then copy
-                ggml_backend_synchronize(pc.src_backend);
-                ggml_backend_tensor_copy(const_cast<ggml_tensor *>(pc.src), pc.dst);
+                // a device with asynchronous reads and a destination in pinned memory: queue the read, wait once for all of them
+                ggml_backend_buffer_t db = pc.dst->view_src != nullptr ? pc.dst->view_src->buffer : pc.dst->buffer;
+                const ggml_tensor * sv = pc.src->view_src != nullptr ? pc.src->view_src : pc.src;
+                if (moe::enabled() && pc.src_backend != nullptr && pc.src_backend->iface.get_tensor_async != nullptr && db != nullptr && buffer_owned(db) &&
+                    bctx_of(db)->pinned != nullptr && sv->buffer != nullptr && !ggml_backend_buffer_is_host(sv->buffer) && ggml_are_same_layout(pc.src, pc.dst)) {
+                    ggml_backend_tensor_get_async(pc.src_backend, pc.src, pc.dst->data, 0, ggml_nbytes(pc.src));
+                    if (std::find(to_sync.begin(), to_sync.end(), pc.src_backend) == to_sync.end()) {
+                        to_sync.push_back(pc.src_backend);
+                    }
+                } else {
+                    // what the scheduler would have done in place of the lazy copy: wait for the device that produced the tensor, then copy
+                    ggml_backend_synchronize(pc.src_backend);
+                    ggml_backend_tensor_copy(const_cast<ggml_tensor *>(pc.src), pc.dst);
+                }
             }
+        }
+        for (ggml_backend_t b : to_sync) {
+            ggml_backend_synchronize(b);
         }
         bx->pending.clear();
         if (c->profile && moe::enabled() && had_pending) {
@@ -1135,6 +1167,18 @@ ggml_backend_buffer_t dev_buffer_from_host_ptr(ggml_backend_dev_t dev, void * pt
     if (!moe::enabled() || ptr == nullptr) {
         return nullptr;
     }
+#if defined(__linux__)
+    // map the pages of the experts now (they are in the page cache or are read from disk once): the first access of a page costs a minor fault, which is as much
+    // as the mat-vec on the page (0.3 ms per expert) for the first token that selects the expert. GGML_SGLX_MOE_PREFAULT=0 leaves it to the first use.
+    if (getenv("GGML_SGLX_MOE_PREFAULT") == nullptr || atoi(getenv("GGML_SGLX_MOE_PREFAULT")) != 0) {
+        const auto t0 = clock_type::now();
+        const uintptr_t a0 = ((uintptr_t) ptr + 4095) & ~(uintptr_t) 4095;
+        const uintptr_t a1 = ((uintptr_t) ptr + size) & ~(uintptr_t) 4095;
+        if (a1 > a0 && madvise((void *) a0, a1 - a0, 22 /* MADV_POPULATE_READ */) == 0) {
+            SGLX_LOG("mapped %.1f GiB of experts in %.1f s\n", (double) (a1 - a0) / 1073741824.0, ms_since(t0) / 1000.0);
+        }
+    }
+#endif
     auto * bc = new buffer_ctx();
     bc->base = (char *) ptr;
     bc->size = size;
