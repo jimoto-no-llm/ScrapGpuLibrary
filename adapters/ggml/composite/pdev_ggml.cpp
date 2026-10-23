@@ -23,6 +23,7 @@
 #include <cstring>
 #include <list>
 #include <condition_variable>
+#include <functional>
 #include <map>
 #include <mutex>
 #include <thread>
@@ -87,6 +88,64 @@ struct ggml_piece : piece {
     }
 };
 
+
+// the expert slots of a ggml device (pdev::moe_*): three 3-D tensors [n_embd, n_ff, S] (gate, up) and [n_ff, n_embd, S] (down) in the device memory;
+// one expert is the slice `slot` of each. A computation is a small graph: MUL_MAT_ID(up), MUL_MAT_ID(gate), SWIGLU, MUL_MAT_ID(down).
+struct ggml_moe_slots : moe_slots {
+    moe_shape sh;
+    int       n_slots = 0;
+    ggml_context *        ctx  = nullptr;
+    ggml_backend_buffer_t buf  = nullptr;
+    ggml_tensor *         g    = nullptr;
+    ggml_tensor *         u    = nullptr;
+    ggml_tensor *         d    = nullptr;
+    ggml_gallocr_t        galloc_dec = nullptr;   // decode graphs (one token, 1..8 ids)
+    ggml_gallocr_t        galloc_pair = nullptr;  // pair graphs (P pairs, one id each)
+    int64_t               reserved_P = 0;
+    bool                  dec_reserved = false;
+
+    struct graph_entry {
+        int            mode = 0;      // 0: one token, `a` = number of ids; 1: pairs, `a` = N_x, `b` = P
+        int64_t        a = 0;
+        int64_t        b = 0;
+        ggml_context * ctx = nullptr;
+        ggml_cgraph *  gf = nullptr;
+        ggml_tensor *  x = nullptr;
+        ggml_tensor *  tok = nullptr;
+        ggml_tensor *  ids = nullptr;
+        ggml_tensor *  y = nullptr;
+    };
+    std::list<graph_entry> graphs;
+    ggml_piece::staging hin, hout;
+    float * out_host = nullptr;
+    size_t  out_bytes = 0;
+    int     out_pairs = 0;
+
+    ~ggml_moe_slots() override {
+        for (auto & g_ : graphs) {
+            ggml_free(g_.ctx);
+        }
+        if (galloc_dec != nullptr) {
+            ggml_gallocr_free(galloc_dec);
+        }
+        if (galloc_pair != nullptr) {
+            ggml_gallocr_free(galloc_pair);
+        }
+        if (hin.buf != nullptr) {
+            ggml_backend_buffer_free(hin.buf);
+        }
+        if (hout.buf != nullptr) {
+            ggml_backend_buffer_free(hout.buf);
+        }
+        if (buf != nullptr) {
+            ggml_backend_buffer_free(buf);
+        }
+        if (ctx != nullptr) {
+            ggml_free(ctx);
+        }
+    }
+};
+
 class pdev_ggml final : public pdev {
 public:
     explicit pdev_ggml(ggml_backend_dev_t dev) : dev_(dev) {
@@ -113,7 +172,7 @@ public:
                     cv_.wait(lk, [&] { return job_.pending; });
                     job_t j = job_;
                     lk.unlock();
-                    bool ok = submit_impl(j.p, j.x, j.N, j.out);
+                    bool ok = j.fn ? j.fn() : submit_impl(j.p, j.x, j.N, j.out);
                     ok = wait_impl() && ok;
                     lk.lock();
                     ok_ = ok;
@@ -266,6 +325,10 @@ public:
             memcpy(p->out_host, p->ho.ptr, p->out_bytes);
         }
         pending_.clear();
+        for (ggml_moe_slots * m : moe_pending_) {
+            memcpy(m->out_host, m->hout.ptr, m->out_bytes);
+        }
+        moe_pending_.clear();
         return true;
     }
 
@@ -277,7 +340,7 @@ public:
             return submit_impl(p, x, N, out);
         }
         std::unique_lock<std::mutex> lk(mu_);
-        job_ = { p, x, N, out, true };
+        job_ = { p, x, N, out, true, nullptr };
         ok_ = true;
         cv_.notify_all();
         return true;
@@ -292,6 +355,108 @@ public:
         return ok_;
     }
 
+
+    // ---- MoE expert slots ----
+
+    bool supports_moe(const moe_shape & sh) override {
+        if (be_ == nullptr) {
+            return false;
+        }
+        ggml_init_params ip = { ggml_tensor_overhead() * 64 + 4096, nullptr, true };
+        ggml_context * c = ggml_init(ip);
+        const int64_t S = 4;
+        ggml_tensor * g = ggml_new_tensor_3d(c, sh.t_gate, sh.n_embd, sh.n_ff, S);
+        ggml_tensor * u = ggml_new_tensor_3d(c, sh.t_up, sh.n_embd, sh.n_ff, S);
+        ggml_tensor * d = ggml_new_tensor_3d(c, sh.t_down, sh.n_ff, sh.n_embd, S);
+        bool ok = true;
+        for (int64_t n : { (int64_t) 1, (int64_t) 4 }) {
+            ggml_tensor * x   = ggml_new_tensor_3d(c, GGML_TYPE_F32, sh.n_embd, 1, 1);
+            ggml_tensor * ids = ggml_new_tensor_2d(c, GGML_TYPE_I32, n, 1);
+            ggml_tensor * a = ggml_mul_mat_id(c, u, x, ids);
+            ggml_tensor * b = ggml_mul_mat_id(c, g, x, ids);
+            ggml_tensor * h = ggml_swiglu_split(c, b, a);
+            ggml_tensor * y = ggml_mul_mat_id(c, d, h, ids);
+            ok = ok && ggml_backend_dev_supports_op(dev_, a) && ggml_backend_dev_supports_op(dev_, b) && ggml_backend_dev_supports_op(dev_, h) &&
+                 ggml_backend_dev_supports_op(dev_, y);
+        }
+        ggml_tensor * xs  = ggml_new_tensor_2d(c, GGML_TYPE_F32, sh.n_embd, 8);
+        ggml_tensor * tok = ggml_new_tensor_1d(c, GGML_TYPE_I32, 16);
+        ggml_tensor * xp  = ggml_get_rows(c, xs, tok);
+        ok = ok && ggml_backend_dev_supports_op(dev_, xp);
+        {
+            ggml_tensor * x3  = ggml_reshape_3d(c, xp, sh.n_embd, 1, 16);
+            ggml_tensor * ids = ggml_new_tensor_2d(c, GGML_TYPE_I32, 1, 16);
+            ggml_tensor * a = ggml_mul_mat_id(c, u, x3, ids);
+            ok = ok && ggml_backend_dev_supports_op(dev_, a);
+        }
+        ggml_free(c);
+        return ok;
+    }
+
+    bool memory(size_t * free_bytes, size_t * total_bytes) override {
+        ggml_backend_dev_memory(dev_, free_bytes, total_bytes);
+        return *total_bytes != 0;
+    }
+
+    moe_slots * moe_create(const moe_shape & sh, int n_slots) override {
+        if (be_ == nullptr || n_slots <= 0) {
+            return nullptr;
+        }
+        auto * m = new ggml_moe_slots();
+        m->sh = sh;
+        m->n_slots = n_slots;
+        ggml_init_params ip = { ggml_tensor_overhead() * 4 + 1024, nullptr, true };
+        m->ctx = ggml_init(ip);
+        m->g = ggml_new_tensor_3d(m->ctx, sh.t_gate, sh.n_embd, sh.n_ff, n_slots);
+        m->u = ggml_new_tensor_3d(m->ctx, sh.t_up, sh.n_embd, sh.n_ff, n_slots);
+        m->d = ggml_new_tensor_3d(m->ctx, sh.t_down, sh.n_ff, sh.n_embd, n_slots);
+        ggml_set_name(m->g, "sglx_moe_gate");
+        ggml_set_name(m->u, "sglx_moe_up");
+        ggml_set_name(m->d, "sglx_moe_down");
+        m->buf = ggml_backend_alloc_ctx_tensors(m->ctx, be_);
+        if (m->buf == nullptr) {
+            fprintf(stderr, "SGLX: %s: cannot allocate %d expert slots (%.1f MiB)\n", name_.c_str(), n_slots,
+                    (double) (ggml_nbytes(m->g) + ggml_nbytes(m->u) + ggml_nbytes(m->d)) / 1048576.0);
+            delete m;
+            return nullptr;
+        }
+        ggml_backend_buffer_set_usage(m->buf, GGML_BACKEND_BUFFER_USAGE_WEIGHTS);
+        m->galloc_dec  = ggml_gallocr_new(ggml_backend_get_default_buffer_type(be_));
+        m->galloc_pair = ggml_gallocr_new(ggml_backend_get_default_buffer_type(be_));
+        return m;
+    }
+
+    void moe_free(moe_slots * s) override {
+        if (be_ != nullptr) {
+            ggml_backend_synchronize(be_);
+        }
+        moe_pending_.erase(std::remove(moe_pending_.begin(), moe_pending_.end(), static_cast<ggml_moe_slots *>(s)), moe_pending_.end());
+        delete static_cast<ggml_moe_slots *>(s);
+    }
+
+    bool moe_upload(moe_slots * s, int slot, const void * gate, const void * up, const void * down) override {
+        auto * m = static_cast<ggml_moe_slots *>(s);
+        if (slot < 0 || slot >= m->n_slots) {
+            return false;
+        }
+        ggml_backend_tensor_set(m->g, gate, (size_t) slot * m->g->nb[2], m->g->nb[2]);
+        ggml_backend_tensor_set(m->u, up,   (size_t) slot * m->u->nb[2], m->u->nb[2]);
+        ggml_backend_tensor_set(m->d, down, (size_t) slot * m->d->nb[2], m->d->nb[2]);
+        return true;
+    }
+
+    bool moe_submit(moe_slots * s, const float * x, int64_t N_x, const int32_t * pair_slot, const int32_t * pair_tok, int n_pairs, float * out) override {
+        auto * m = static_cast<ggml_moe_slots *>(s);
+        if (!threaded_) {
+            return moe_submit_impl(m, x, N_x, pair_slot, pair_tok, n_pairs, out);
+        }
+        std::unique_lock<std::mutex> lk(mu_);
+        job_ = { nullptr, nullptr, 0, nullptr, true, [=] { return moe_submit_impl(m, x, N_x, pair_slot, pair_tok, n_pairs, out); } };
+        ok_ = true;
+        cv_.notify_all();
+        return true;
+    }
+
     std::string stats() override {
         if (tn_ == 0) {
             return std::string();
@@ -302,6 +467,143 @@ public:
     }
 
 private:
+    // the graph for `mode` (0: n_ids ids for one token, 1: P pairs of N_x tokens); nullptr if it cannot be made
+    ggml_moe_slots::graph_entry * moe_graph(ggml_moe_slots * m, int mode, int64_t a, int64_t b) {
+        for (auto it = m->graphs.begin(); it != m->graphs.end(); ++it) {
+            if (it->mode == mode && it->a == a && it->b == b) {
+                if (it != m->graphs.begin()) {
+                    m->graphs.splice(m->graphs.begin(), m->graphs, it);
+                }
+                return &m->graphs.front();
+            }
+        }
+        const moe_shape & sh = m->sh;
+        ggml_moe_slots::graph_entry e;
+        e.mode = mode; e.a = a; e.b = b;
+        ggml_init_params ip = { ggml_tensor_overhead() * 24 + ggml_graph_overhead_custom(24, false) + 1024, nullptr, true };
+        e.ctx = ggml_init(ip);
+        ggml_tensor * x3 = nullptr;
+        if (mode == 0) {
+            e.x   = ggml_new_tensor_3d(e.ctx, GGML_TYPE_F32, sh.n_embd, 1, 1);
+            e.ids = ggml_new_tensor_2d(e.ctx, GGML_TYPE_I32, a, 1);
+            x3 = e.x;
+        } else {
+            e.x   = ggml_new_tensor_2d(e.ctx, GGML_TYPE_F32, sh.n_embd, a);
+            e.tok = ggml_new_tensor_1d(e.ctx, GGML_TYPE_I32, b);
+            e.ids = ggml_new_tensor_2d(e.ctx, GGML_TYPE_I32, 1, b);
+            ggml_set_input(e.tok);
+            x3 = ggml_reshape_3d(e.ctx, ggml_get_rows(e.ctx, e.x, e.tok), sh.n_embd, 1, b);
+        }
+        ggml_set_input(e.x);
+        ggml_set_input(e.ids);
+        ggml_tensor * up = ggml_mul_mat_id(e.ctx, m->u, x3, e.ids);
+        ggml_tensor * gt = ggml_mul_mat_id(e.ctx, m->g, x3, e.ids);
+        ggml_tensor * h  = ggml_swiglu_split(e.ctx, gt, up);
+        e.y = ggml_mul_mat_id(e.ctx, m->d, h, e.ids);
+        ggml_set_output(e.y);
+        e.gf = ggml_new_graph_custom(e.ctx, 24, false);
+        ggml_build_forward_expand(e.gf, e.y);
+        ggml_gallocr_t ga = mode == 0 ? m->galloc_dec : m->galloc_pair;
+        if ((mode == 0 && !m->dec_reserved) || (mode == 1 && b > m->reserved_P)) {
+            // the compute buffer of the largest graph of this kind; smaller graphs fit in it (see graph_for)
+            if (!ggml_gallocr_reserve(ga, e.gf)) {
+                fprintf(stderr, "SGLX: %s: cannot reserve the MoE compute buffer (mode %d, %lld/%lld)\n", name_.c_str(), mode, (long long) a, (long long) b);
+                ggml_free(e.ctx);
+                return nullptr;
+            }
+            for (auto it = m->graphs.begin(); it != m->graphs.end();) {
+                if (it->mode == mode) {
+                    ggml_free(it->ctx);
+                    it = m->graphs.erase(it);
+                } else {
+                    ++it;
+                }
+            }
+            if (mode == 1) {
+                m->reserved_P = b;
+            } else {
+                m->dec_reserved = true;
+            }
+        }
+        m->graphs.push_front(e);
+        int n_dec = 0, n_pair = 0;
+        for (auto it = m->graphs.begin(); it != m->graphs.end();) {
+            int & cnt = it->mode == 0 ? n_dec : n_pair;
+            if (++cnt > (it->mode == 0 ? 9 : 4)) {
+                ggml_free(it->ctx);
+                it = m->graphs.erase(it);
+            } else {
+                ++it;
+            }
+        }
+        return &m->graphs.front();
+    }
+
+    bool moe_submit_impl(ggml_moe_slots * m, const float * x, int64_t N_x, const int32_t * pair_slot, const int32_t * pair_tok, int n_pairs, float * out) {
+        const int64_t K = m->sh.n_embd;
+        const bool one = N_x == 1;
+        int64_t P = n_pairs;
+        if (!one) {
+            P = P <= 64 ? 64 : (P <= 256 ? 256 : 1024);
+            if (n_pairs > 1024 || N_x > 1024) {
+                fprintf(stderr, "SGLX: %s: moe_submit: at most 1024 pairs and 1024 columns per call\n", name_.c_str());
+                return false;
+            }
+            // the largest graph first, so that the compute buffer is reserved once
+            if (m->reserved_P == 0 && moe_graph(m, 1, 1024, 1024) == nullptr) {
+                return false;
+            }
+        } else if (n_pairs < 1 || n_pairs > 8) {
+            fprintf(stderr, "SGLX: %s: moe_submit: 1..8 ids for one token\n", name_.c_str());
+            return false;
+        } else if (!m->dec_reserved && moe_graph(m, 0, 8, 0) == nullptr) {
+            return false;
+        }
+        ggml_moe_slots::graph_entry * g = one ? moe_graph(m, 0, n_pairs, 0) : moe_graph(m, 1, 1024, P); // the x tensor of a pair graph has 1024 columns
+        if (g == nullptr) {
+            return false;
+        }
+        const size_t xb = (size_t) K * (size_t) N_x * sizeof(float);
+        const size_t ib = (size_t) (one ? n_pairs : P) * sizeof(int32_t);
+        const size_t ob = (size_t) K * (size_t) (one ? n_pairs : P) * sizeof(float);
+        auto up16 = [](size_t v) { return (v + 15) & ~(size_t) 15; };
+        const size_t off_tok = up16(xb), off_ids = off_tok + up16(one ? 0 : ib), total = off_ids + up16(ib);
+        char * in = (char *) stage(m->hin, total);
+        float * os = stage(m->hout, ob);
+        memcpy(in, x, xb);
+        int32_t * tokv = (int32_t *) (in + off_tok);
+        int32_t * idsv = (int32_t *) (in + off_ids);
+        for (int64_t i = 0; i < (one ? n_pairs : P); ++i) {
+            const bool real = i < n_pairs;
+            idsv[i] = real ? pair_slot[i] : 0;
+            if (!one) {
+                tokv[i] = real ? pair_tok[i] : 0;
+            }
+        }
+        ggml_gallocr_t ga = one ? m->galloc_dec : m->galloc_pair;
+        if (!ggml_gallocr_alloc_graph(ga, g->gf)) {
+            fprintf(stderr, "SGLX: %s: cannot allocate the MoE compute buffer\n", name_.c_str());
+            return false;
+        }
+        ggml_backend_tensor_set_async(be_, g->x, in, 0, xb);
+        if (!one) {
+            ggml_backend_tensor_set_async(be_, g->tok, tokv, 0, ib);
+        }
+        ggml_backend_tensor_set_async(be_, g->ids, idsv, 0, ib);
+        const ggml_status st = ggml_backend_graph_compute_async(be_, g->gf);
+        if (st != GGML_STATUS_SUCCESS) {
+            fprintf(stderr, "SGLX: %s: MoE graph_compute failed (%d)\n", name_.c_str(), (int) st);
+            return false;
+        }
+        const size_t obytes = (size_t) K * (size_t) n_pairs * sizeof(float);
+        ggml_backend_tensor_get_async(be_, g->y, os, 0, obytes);
+        m->out_host = out;
+        m->out_bytes = obytes;
+        m->out_pairs = n_pairs;
+        moe_pending_.push_back(m);
+        return true;
+    }
+
     ggml_piece::graph_entry * graph_for(ggml_piece * p, int64_t N) {
         for (auto it = p->graphs.begin(); it != p->graphs.end(); ++it) {
             if (it->N == N) {
@@ -351,13 +653,14 @@ private:
     ggml_backend_t     be_  = nullptr;
     ggml_backend_buffer_type_t host_buft_ = nullptr;
     bool                       threaded_ = false;
-    struct job_t { piece * p = nullptr; const float * x = nullptr; int64_t N = 0; float * out = nullptr; bool pending = false; };
+    struct job_t { piece * p = nullptr; const float * x = nullptr; int64_t N = 0; float * out = nullptr; bool pending = false; std::function<bool()> fn; };
     job_t                      job_;
     bool                       ok_ = true;
     std::mutex                 mu_;
     std::condition_variable    cv_;
     std::thread                th_;
     std::vector<ggml_piece *> pending_;
+    std::vector<ggml_moe_slots *> moe_pending_;
     std::string        name_;
     std::string        desc_;
     double             weight_ = 1.0;

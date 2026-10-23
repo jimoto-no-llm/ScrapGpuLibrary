@@ -77,11 +77,13 @@ endif()
 # the SGLX composite device (GGML_SGLX_SPLIT): composite/
 set(SGLX_SOURCES
     composite/composite_device.cpp
+    composite/moe_block.cpp
     composite/pdev_ggml.cpp
     composite/pdev_cl11.cpp
     composite/pdev_cuda.cpp
     composite/pdev_scrapgpu.cpp
     composite/composite.h
+    composite/moe_block.h
     composite/pdev.h)
 
 if (CL11_IN_TREE)

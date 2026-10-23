@@ -15,6 +15,7 @@
 // projection) is answered from the host shadow with the dequantizing functions of ggml.
 
 #include "composite.h"
+#include "moe_block.h"
 #include "sgl_trace.h"
 
 #include "ggml-backend-impl.h"
@@ -110,6 +111,7 @@ struct split_rec {
 struct buffer_ctx {
     char *                 base = nullptr;
     size_t                 size = 0;
+    bool                   external = false;   // wraps memory of someone else (the mmap of a model file): not freed
     std::vector<split_rec> recs;
 };
 
@@ -167,7 +169,7 @@ bool buffer_owned(ggml_backend_buffer_t buffer);
 // ---- initialization of the physical devices ----
 
 // The registry functions (ggml_backend_dev_by_name) are in libggml, which loads this plugin and cannot be linked back: ask the process.
-ggml_backend_dev_t find_ggml_device(const char * name) {
+ggml_backend_dev_t find_ggml_device_impl(const char * name) {
 #if defined(_WIN32)
     (void) name;
     return nullptr;
@@ -186,6 +188,10 @@ bool ensure_init(composite * c) {
     c->inited = true;
     c->ok = false;
 
+    if (c->spec.empty()) {
+        c->ok = true; // MoE only (GGML_SGLX_MOE): no physical device for the rows of a weight
+        return true;
+    }
     size_t n_ratio = 0;
     for (const auto & s : c->spec) {
         n_ratio += s.second >= 0.0 ? 1 : 0;
@@ -219,7 +225,7 @@ bool ensure_init(composite * c) {
                 return false;
             }
         } else {
-            ggml_backend_dev_t d = find_ggml_device(s.first.c_str());
+            ggml_backend_dev_t d = find_ggml_device_impl(s.first.c_str());
             if (d == nullptr) {
                 SGLX_LOG("GGML_SGLX_SPLIT: no ggml device %s (is its backend loaded?)\n", s.first.c_str());
                 return false;
@@ -315,6 +321,7 @@ void print_profile(composite * c) {
 void print_profile_atexit() {
     if (g_c != nullptr) {
         print_profile(g_c);
+        moe::print_profile();
     }
 }
 
@@ -456,11 +463,13 @@ void buffer_free(ggml_backend_buffer_t buffer) {
             free_rec(g_c, r);
         }
     }
+    if (!bc->external) {
 #if defined(_WIN32)
-    _aligned_free(bc->base);
+        _aligned_free(bc->base);
 #else
-    free(bc->base);
+        free(bc->base);
 #endif
+    }
     delete bc;
 }
 
@@ -501,10 +510,18 @@ void buffer_clear(ggml_backend_buffer_t buffer, uint8_t value) {
     }
 }
 
+// a tensor placed in the buffer: the expert tensors of a MoE model are registered for moe_block.cpp
+enum ggml_status buffer_init_tensor(ggml_backend_buffer_t, ggml_tensor * tensor) {
+    if (moe::enabled()) {
+        moe::note_tensor(tensor);
+    }
+    return GGML_STATUS_SUCCESS;
+}
+
 const ggml_backend_buffer_i buffer_i = {
     /* .free_buffer   = */ buffer_free,
     /* .get_base      = */ buffer_get_base,
-    /* .init_tensor   = */ nullptr,
+    /* .init_tensor   = */ buffer_init_tensor,
     /* .memset_tensor = */ buffer_memset_tensor,
     /* .set_tensor    = */ buffer_set_tensor,
     /* .get_tensor    = */ buffer_get_tensor,
@@ -572,8 +589,8 @@ const ggml_backend_buffer_type_i buft_i = {
 bool mul_mat_shape_ok(composite * c, const ggml_tensor * op) {
     const ggml_tensor * w = op->src[0];
     const ggml_tensor * x = op->src[1];
-    if (w == nullptr || x == nullptr) {
-        return false;
+    if (w == nullptr || x == nullptr || c->spec.empty()) {
+        return false; // no GGML_SGLX_SPLIT: SGLX0 only runs MoE ops
     }
     if (w->buffer != nullptr || w->view_src != nullptr) {
         ggml_backend_buffer_t wb = w->view_src != nullptr ? w->view_src->buffer : w->buffer;
@@ -599,10 +616,10 @@ bool mul_mat_shape_ok(composite * c, const ggml_tensor * op) {
     return mul_mat_type_ok(c, w->type);
 }
 
-bool get_rows_shape_ok(const ggml_tensor * op) {
+bool get_rows_shape_ok(const composite * c, const ggml_tensor * op) {
     const ggml_tensor * w = op->src[0];
     const ggml_tensor * ids = op->src[1];
-    if (w == nullptr || ids == nullptr || ids->type != GGML_TYPE_I32) {
+    if (w == nullptr || ids == nullptr || ids->type != GGML_TYPE_I32 || c->spec.empty()) {
         return false;
     }
     ggml_backend_buffer_t wb = w->view_src != nullptr ? w->view_src->buffer : w->buffer;
@@ -1010,6 +1027,13 @@ enum ggml_status backend_graph_compute(ggml_backend_t backend, ggml_cgraph * cgr
                 c->t_mm_end = clock_type::now();
                 break;
             default:
+                if (moe::handles(node)) {
+                    if (!moe::exec(cgraph, i)) {
+                        SGLX_LOG("MoE op %s (%s) failed\n", ggml_op_desc(node), node->name);
+                        return GGML_STATUS_FAILED;
+                    }
+                    break;
+                }
                 SGLX_LOG("op %s is not supported\n", ggml_op_desc(node));
                 return GGML_STATUS_FAILED;
         }
@@ -1079,9 +1103,9 @@ void dev_get_props(ggml_backend_dev_t dev, ggml_backend_dev_props * props) {
     props->caps = {
         /* .async                = */ true,  // graph_compute is synchronous, so "async" is trivially true (needed for pipeline parallelism)
         /* .host_buffer          = */ false,
-        /* .buffer_from_host_ptr = */ false,
+        /* .buffer_from_host_ptr = */ moe::enabled(),   // MoE mode: the experts stay in the mmap of the model file
         /* .events               = */ true,
-        /* .mmap_support         = */ false,
+        /* .mmap_support         = */ moe::enabled(),
     };
 }
 
@@ -1100,6 +1124,17 @@ ggml_backend_t dev_init_backend(ggml_backend_dev_t dev, const char *) {
 
 ggml_backend_buffer_type_t dev_get_buffer_type(ggml_backend_dev_t dev) {
     return &dev_c(dev)->buft;
+}
+
+ggml_backend_buffer_t dev_buffer_from_host_ptr(ggml_backend_dev_t dev, void * ptr, size_t size, size_t) {
+    if (!moe::enabled() || ptr == nullptr) {
+        return nullptr;
+    }
+    auto * bc = new buffer_ctx();
+    bc->base = (char *) ptr;
+    bc->size = size;
+    bc->external = true;
+    return ggml_backend_buffer_init(&dev_c(dev)->buft, buffer_i, bc, size);
 }
 
 ggml_backend_event_t dev_event_new(ggml_backend_dev_t dev) {
@@ -1124,7 +1159,12 @@ bool dev_supports_op(ggml_backend_dev_t dev, const ggml_tensor * op) {
         case GGML_OP_MUL_MAT:
             return mul_mat_shape_ok(c, op);
         case GGML_OP_GET_ROWS:
-            return !c->hostbuf && get_rows_shape_ok(op);
+            return !c->hostbuf && get_rows_shape_ok(c, op);
+        case GGML_OP_MUL_MAT_ID:
+        case GGML_OP_GLU:
+        case GGML_OP_MUL:
+        case GGML_OP_ADD:
+            return moe::enabled() && moe::supports_op(op);
         default:
             return false;
     }
@@ -1143,7 +1183,7 @@ const ggml_backend_device_i dev_i = {
     /* .init_backend         = */ dev_init_backend,
     /* .get_buffer_type      = */ dev_get_buffer_type,
     /* .get_host_buffer_type = */ nullptr,
-    /* .buffer_from_host_ptr = */ nullptr,
+    /* .buffer_from_host_ptr = */ dev_buffer_from_host_ptr,
     /* .supports_op          = */ dev_supports_op,
     /* .supports_buft        = */ dev_supports_buft,
     /* .offload_op           = */ nullptr,
@@ -1154,12 +1194,20 @@ const ggml_backend_device_i dev_i = {
 
 } // namespace
 
+ggml_backend_dev_t find_ggml_device(const char * name) {
+    return find_ggml_device_impl(name);
+}
+
 // ---- registration ----
 
 void attach(ggml_backend_reg_t reg, const std::vector<std::pair<std::string, cl11_device *>> & cl11) {
     const char * env = getenv("GGML_SGLX_SPLIT");
-    if (env == nullptr || *env == '\0' || g_c != nullptr) {
+    const bool moe_only = (env == nullptr || *env == '\0') && moe::enabled();
+    if (((env == nullptr || *env == '\0') && !moe_only) || g_c != nullptr) {
         return;
+    }
+    if (moe_only) {
+        env = "";
     }
     auto * c = new composite();
     c->reg = reg;
@@ -1184,7 +1232,7 @@ void attach(ggml_backend_reg_t reg, const std::vector<std::pair<std::string, cl1
         }
         c->spec.emplace_back(item, ratio);
     }
-    if (c->spec.empty()) {
+    if (c->spec.empty() && !moe_only) {
         delete c;
         return;
     }
@@ -1205,10 +1253,13 @@ void attach(ggml_backend_reg_t reg, const std::vector<std::pair<std::string, cl1
     if (getenv("GGML_SGLX_PROFILE_EVERY") != nullptr) {
         c->profile_every = atoi(getenv("GGML_SGLX_PROFILE_EVERY"));
     }
-    c->desc = "SGLX composite (" + s + ")";
+    c->desc = "SGLX composite (" + (s.empty() ? std::string("MoE") : s) + ")";
     c->buft = ggml_backend_buffer_type{ /* .iface = */ buft_i, /* .device = */ &c->dev, /* .context = */ c };
     c->dev = ggml_backend_device{ /* .iface = */ dev_i, /* .reg = */ reg, /* .context = */ c };
     g_c = c;
+    if (moe::enabled()) {
+        moe::init(&c->buft, moe::hooks{ buffer_owned });
+    }
     atexit(print_profile_atexit);
     SGLX_TRACE_DUMP_ATEXIT();
 }

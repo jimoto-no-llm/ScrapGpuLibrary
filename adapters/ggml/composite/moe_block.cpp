@@ -1,0 +1,1245 @@
+// SGLX0 MoE block execution and the hot / medium / cold expert placement (see moe_block.h and docs/plans/HOT_EXPERT_CACHE.md).
+//
+// What llama.cpp hands to SGLX0 for one MoE layer (build_moe_ffn): up = MUL_MAT_ID(up_exps, x, ids), gate = MUL_MAT_ID(gate_exps, x, ids),
+// act = SWIGLU(gate, up), y = MUL_MAT_ID(down_exps, act, ids) [n_embd, n_used, N], then y *= weights and the sum of the n_used slices (MUL, VIEW, ADD).
+// The expert tensors are the mmap of the model file (SGLX0 buffer from host pointer), so the CPU reads them in place. This module
+//   * runs the four nodes up / gate / SWIGLU / down as one job ("block") at the first of them. For every (token, slot) pair the expert is either
+//     in a slot array of a GPU (hot / medium: the pdev computes up, gate, SWIGLU and down in one graph, a few KB in and out) or only in the mmap
+//     (cold: ggml-cpu, 2 threads). The result of every pair goes unweighted to y; MUL and ADD then run on the host in the order of ggml's graph, so the
+//     sum is the same whatever device computed a pair.
+//   * counts how often every (layer, expert) is selected (prefill and decode), and places the most frequent experts into the slots of the GPUs in the
+//     order of the devices in GGML_SGLX_MOE (static placement from the statistics of the prompt; GGML_SGLX_MOE_FREEZE=1 keeps the first placement).
+//   * runs any other MoE node (a MUL_MAT_ID that is not part of a recognised block, ...) with ggml-cpu on the mmap'd weights: slow but correct.
+
+#include "moe_block.h"
+#include "pdev.h"
+
+#include "ggml-alloc.h"
+#include "ggml-backend-impl.h"
+#include "ggml-impl.h"
+
+#include <algorithm>
+#include <chrono>
+#include <cmath>
+#include <cstdint>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <list>
+#include <map>
+#include <memory>
+#include <string>
+#include <unordered_set>
+#include <vector>
+
+namespace sglx {
+namespace moe {
+namespace {
+
+using clk = std::chrono::steady_clock;
+
+double ms_since(clk::time_point t0) {
+    return std::chrono::duration<double, std::milli>(clk::now() - t0).count();
+}
+
+struct acc {
+    double   sum = 0.0;
+    double   mx  = 0.0;
+    uint64_t n   = 0;
+    void add(double v) { sum += v; mx = std::max(mx, v); ++n; }
+    double mean() const { return n != 0 ? sum / (double) n : 0.0; }
+};
+
+#define MOE_LOG(...) fprintf(stderr, "SGLX MoE: " __VA_ARGS__)
+
+struct cls_rec {
+    moe_shape sh;
+    size_t    b_gate = 0, b_up = 0, b_down = 0; // bytes of one expert's matrices
+    int       n_layers = 0;
+};
+
+struct layer_rec {
+    int           il = -1;
+    ggml_tensor * up = nullptr;
+    ggml_tensor * gate = nullptr;
+    ggml_tensor * down = nullptr;
+    int           cls = -1;
+    int64_t       n_expert = 0;
+    std::vector<int16_t> dev;    // per expert: index into devs, -1 = cold (mmap only)
+    std::vector<int32_t> slot;   // per expert: slot in the array of (dev, cls)
+    std::vector<double>  freq;   // weighted selection counts
+    bool complete() const { return up != nullptr && gate != nullptr && down != nullptr; }
+};
+
+struct dev_cls {
+    moe_slots *          s = nullptr;
+    int                  n_slots = 0;
+    std::vector<int32_t> owner;  // slot -> layer_index * n_expert_max + expert, -1 = free
+};
+
+struct dev_rec {
+    std::unique_ptr<pdev> p;
+    std::string           name;
+    long                  want_main = -1;   // slots for the main class: -1 = as many as fit
+    long                  want_other = 0;   // slots for each other class
+    std::vector<dev_cls>  cls;
+    std::vector<float>    out;              // result staging [n_embd, 16]
+    std::vector<int32_t>  ps, pt;           // pair arrays handed to moe_submit (must outlive the call)
+    acc                   t_submit, t_wait;
+};
+
+// a ggml-cpu graph for the cold experts of one class (weights are dummies whose data is set before every run)
+struct cpu_graph {
+    int            n = 0;
+    ggml_context * ctx = nullptr;
+    ggml_cgraph *  gf = nullptr;
+    ggml_tensor *  wu = nullptr, * wg = nullptr, * wd = nullptr;
+    ggml_tensor *  x = nullptr, * ids = nullptr, * tok = nullptr, * y = nullptr;
+    ggml_gallocr_t ga = nullptr;
+    ~cpu_graph() {
+        if (ga != nullptr) {
+            ggml_gallocr_free(ga);
+        }
+        if (ctx != nullptr) {
+            ggml_free(ctx);
+        }
+    }
+};
+
+struct block {
+    ggml_tensor * up = nullptr, * gate = nullptr, * glu = nullptr, * down = nullptr;
+};
+
+struct state {
+    bool                      ready = false;
+    ggml_backend_buffer_type_t buft = nullptr;
+    hooks                     h{};
+    // configuration
+    struct spec_t { std::string name; long main = -1; long other = 0; };
+    std::vector<spec_t>       specs;
+    int                       n_threads = 2;
+    double                    halflife = 4096.0;   // tokens
+    bool                      freeze = false;
+    bool                      profile = false;
+    long                      reserve_mib = 256;   // device memory left free when the slot count is automatic
+    int                       plan_min_tokens = 16;
+    int                       order = 0;            // 0: submit the GPUs, then the CPU, then wait; 1: CPU first
+    int                       max_gpus_per_layer = 0; // 0 = no limit (not used yet)
+
+    // model
+    std::vector<cls_rec>      classes;
+    std::vector<layer_rec>    layers;
+    std::map<const ggml_tensor *, int> layer_of;    // an expert tensor -> index into layers
+    std::map<int, int>        layer_by_il;
+    int64_t                   n_expert_max = 0;
+
+    // devices
+    bool                      devs_inited = false;
+    std::vector<dev_rec>      devs;
+
+    // cpu
+    ggml_backend_t            cpu = nullptr;
+    std::vector<std::vector<std::unique_ptr<cpu_graph>>> cold; // [class][n-1]
+
+    // statistics and placement
+    double                    scale = 1.0;           // weight of the next selection (grows by 2^(1/halflife) per token)
+    int64_t                   tokens_seen = 0;
+    int64_t                   tokens_since_plan = 0;
+    int                       plans = 0;
+    bool                      replan_pending = false;
+    int                       last_il = -1000;
+    bool                      pass_started = false;
+    int                       pass_n = 0;            // tokens of the current pass
+    int                       passes = 0;
+
+    std::unordered_set<const ggml_tensor *> done;
+
+    // profile
+    acc                       t_dec, t_dec_cold, t_dec_gpu_sub, t_dec_gpu_wait, t_dec_host;
+    acc                       t_pre, t_pre_cold;
+    double                    n_pairs_gpu = 0, n_pairs_cold = 0;
+    uint64_t                  dec_blocks = 0;
+    double                    gpu_used_sum = 0;
+    double                    plan_ms = 0;
+    std::vector<float>        xg;                    // gathered columns
+};
+
+state * S = nullptr;
+
+// ---------------------------------------------------------------------------------------------------------------------------------------
+// configuration
+
+bool parse_env(state & st) {
+    const char * env = getenv("GGML_SGLX_MOE");
+    if (env == nullptr || *env == '\0' || strcmp(env, "0") == 0) {
+        return false;
+    }
+    std::string s(env);
+    size_t pos = 0;
+    while (pos <= s.size()) {
+        size_t end = s.find(',', pos);
+        if (end == std::string::npos) {
+            end = s.size();
+        }
+        std::string item = s.substr(pos, end - pos);
+        pos = end + 1;
+        if (item.empty() || item == "1") {
+            continue;
+        }
+        state::spec_t sp;
+        size_t c1 = item.find(':');
+        sp.name = item.substr(0, c1);
+        if (c1 != std::string::npos) {
+            std::string rest = item.substr(c1 + 1);
+            size_t c2 = rest.find(':');
+            std::string a = rest.substr(0, c2);
+            sp.main = a == "auto" ? -1 : atol(a.c_str());
+            if (c2 != std::string::npos) {
+                sp.other = atol(rest.c_str() + c2 + 1);
+            }
+        }
+        st.specs.push_back(sp);
+    }
+    auto envi = [](const char * n, long dflt) { const char * v = getenv(n); return v != nullptr && *v != '\0' ? atol(v) : dflt; };
+    st.n_threads = (int) envi("GGML_SGLX_MOE_THREADS", 2);
+    st.halflife = (double) envi("GGML_SGLX_MOE_HALFLIFE", 4096);
+    st.freeze = envi("GGML_SGLX_MOE_FREEZE", 0) != 0;
+    st.profile = envi("GGML_SGLX_PROFILE", 0) != 0;
+    st.reserve_mib = envi("GGML_SGLX_MOE_RESERVE_MIB", 256);
+    st.plan_min_tokens = (int) envi("GGML_SGLX_MOE_PLAN_TOKENS", 16);
+    st.order = (int) envi("GGML_SGLX_MOE_ORDER", 0);
+    return true;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------------
+// the model: layers and classes
+
+int class_of(state & st, const moe_shape & sh, const ggml_tensor * g, const ggml_tensor * u, const ggml_tensor * d) {
+    for (size_t i = 0; i < st.classes.size(); ++i) {
+        if (st.classes[i].sh == sh) {
+            return (int) i;
+        }
+    }
+    cls_rec c;
+    c.sh = sh;
+    c.b_gate = g->nb[2];
+    c.b_up = u->nb[2];
+    c.b_down = d->nb[2];
+    st.classes.push_back(c);
+    return (int) st.classes.size() - 1;
+}
+
+// "blk.12.ffn_up_exps.weight" -> (12, 'u'); returns false for other names
+bool parse_name(const char * name, int & il, char & kind) {
+    if (strncmp(name, "blk.", 4) != 0) {
+        return false;
+    }
+    char * e = nullptr;
+    il = (int) strtol(name + 4, &e, 10);
+    if (e == name + 4 || *e != '.') {
+        return false;
+    }
+    const char * r = e + 1;
+    if (strncmp(r, "ffn_up_exps", 11) == 0) { kind = 'u'; return true; }
+    if (strncmp(r, "ffn_gate_exps", 13) == 0) { kind = 'g'; return true; }
+    if (strncmp(r, "ffn_down_exps", 13) == 0) { kind = 'd'; return true; }
+    return false;
+}
+
+void sync_classes(state & st);
+
+// finish a layer record when its three tensors are known
+void complete_layer(state & st, int idx) {
+    layer_rec & L = st.layers[idx];
+    if (!L.complete() || L.cls >= 0) {
+        return;
+    }
+    if (L.up->ne[0] != L.gate->ne[0] || L.up->ne[1] != L.gate->ne[1] || L.up->ne[2] != L.gate->ne[2] || L.down->ne[0] != L.up->ne[1] ||
+        L.down->ne[1] != L.up->ne[0] || L.down->ne[2] != L.up->ne[2]) {
+        MOE_LOG("layer %d: the three expert tensors do not fit together, not cached\n", L.il);
+        L.cls = -2;
+        return;
+    }
+    moe_shape sh;
+    sh.t_gate = L.gate->type;
+    sh.t_up = L.up->type;
+    sh.t_down = L.down->type;
+    sh.n_embd = L.up->ne[0];
+    sh.n_ff = L.up->ne[1];
+    L.cls = class_of(st, sh, L.gate, L.up, L.down);
+    st.classes[L.cls].n_layers++;
+    sync_classes(st);
+    L.n_expert = L.up->ne[2];
+    L.dev.assign((size_t) L.n_expert, -1);
+    L.slot.assign((size_t) L.n_expert, -1);
+    L.freq.assign((size_t) L.n_expert, 0.0);
+    st.n_expert_max = std::max(st.n_expert_max, L.n_expert);
+}
+
+void sync_classes(state & st) {
+    for (auto & d : st.devs) {
+        if (d.cls.size() < st.classes.size()) {
+            d.cls.resize(st.classes.size());
+        }
+    }
+    if (st.cold.size() < st.classes.size()) {
+        st.cold.resize(st.classes.size());
+        for (auto & v : st.cold) {
+            if (v.size() < 16) {
+                v.resize(16);
+            }
+        }
+    }
+}
+
+int layer_index_for_tensor(state & st, ggml_tensor * t, char kind, int il_hint) {
+    auto it = st.layer_of.find(t);
+    if (it != st.layer_of.end()) {
+        return it->second;
+    }
+    int idx = -1;
+    if (il_hint >= 0) {
+        auto jt = st.layer_by_il.find(il_hint);
+        if (jt != st.layer_by_il.end()) {
+            idx = jt->second;
+        }
+    }
+    if (idx < 0) {
+        idx = (int) st.layers.size();
+        st.layers.emplace_back();
+        st.layers[idx].il = il_hint >= 0 ? il_hint : 100000 + idx;
+        if (il_hint >= 0) {
+            st.layer_by_il[il_hint] = idx;
+        }
+    }
+    layer_rec & L = st.layers[idx];
+    if (kind == 'u') { L.up = t; }
+    else if (kind == 'g') { L.gate = t; }
+    else { L.down = t; }
+    st.layer_of[t] = idx;
+    complete_layer(st, idx);
+    return idx;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------------
+// devices and slots
+
+int main_class(const state & st) {
+    int best = -1;
+    for (size_t i = 0; i < st.classes.size(); ++i) {
+        if (best < 0 || st.classes[i].n_layers > st.classes[best].n_layers) {
+            best = (int) i;
+        }
+    }
+    return best;
+}
+
+void init_devices(state & st) {
+    if (st.devs_inited) {
+        return;
+    }
+    st.devs_inited = true;
+    const int mc = main_class(st);
+    for (const auto & sp : st.specs) {
+        ggml_backend_dev_t d = find_ggml_device(sp.name.c_str());
+        if (d == nullptr) {
+            MOE_LOG("no ggml device %s (is its backend loaded?), skipped\n", sp.name.c_str());
+            continue;
+        }
+        std::unique_ptr<pdev> p = make_pdev_ggml(d);
+        if (!p) {
+            MOE_LOG("cannot use %s, skipped\n", sp.name.c_str());
+            continue;
+        }
+        dev_rec dr;
+        dr.name = sp.name;
+        dr.want_main = sp.main;
+        dr.want_other = sp.other;
+        dr.cls.resize(st.classes.size());
+        size_t freeb = 0, totalb = 0;
+        const bool have_mem = p->memory(&freeb, &totalb);
+        long budget = have_mem ? (long) (freeb >> 20) - st.reserve_mib : 0; // MiB left for slots
+        std::string line;
+        for (size_t c = 0; c < st.classes.size(); ++c) {
+            const cls_rec & cr = st.classes[c];
+            if (cr.n_layers == 0) {
+                continue;
+            }
+            const size_t slot_bytes = cr.b_gate + cr.b_up + cr.b_down;
+            long want = (int) c == mc ? dr.want_main : dr.want_other;
+            if (!p->supports_moe(cr.sh)) {
+                MOE_LOG("%s cannot compute the MoE block of class %zu (%s/%s/%s)\n", dr.name.c_str(), c, ggml_type_name(cr.sh.t_gate),
+                        ggml_type_name(cr.sh.t_up), ggml_type_name(cr.sh.t_down));
+                continue;
+            }
+            const long cap = (long) cr.n_layers * (long) st.n_expert_max;
+            if (want < 0) {
+                want = std::max<long>(0, (long) ((double) budget * 1048576.0 / (double) slot_bytes));
+            }
+            want = std::min(want, cap);
+            if (want <= 0) {
+                continue;
+            }
+            // allocate; on failure try fewer slots
+            moe_slots * s = nullptr;
+            long n = want;
+            while (n > 0) {
+                s = p->moe_create(cr.sh, (int) n);
+                if (s != nullptr) {
+                    break;
+                }
+                n = n * 9 / 10;
+                if (n < 8) {
+                    break;
+                }
+            }
+            if (s == nullptr) {
+                MOE_LOG("%s: no room for slots of class %zu\n", dr.name.c_str(), c);
+                continue;
+            }
+            dr.cls[c].s = s;
+            dr.cls[c].n_slots = (int) n;
+            dr.cls[c].owner.assign((size_t) n, -1);
+            budget -= (long) ((double) n * (double) slot_bytes / 1048576.0);
+            char buf[120];
+            snprintf(buf, sizeof(buf), " class %zu: %ld slots (%.0f MiB)", c, n, (double) n * (double) slot_bytes / 1048576.0);
+            line += buf;
+        }
+        MOE_LOG("device %s (%s):%s\n", dr.name.c_str(), p->description().c_str(), line.empty() ? " no slots" : line.c_str());
+        dr.p = std::move(p);
+        st.devs.push_back(std::move(dr));
+    }
+    // the cpu backend for the cold experts
+    ggml_backend_dev_t cd = find_ggml_device("CPU");
+    if (cd != nullptr) {
+        st.cpu = ggml_backend_dev_init(cd, nullptr);
+        if (st.cpu != nullptr) {
+            using fn_t = void (*)(ggml_backend_t, int);
+            auto fn = (fn_t) ggml_backend_reg_get_proc_address(ggml_backend_dev_backend_reg(cd), "ggml_backend_set_n_threads");
+            if (fn != nullptr) {
+                fn(st.cpu, st.n_threads);
+            }
+        }
+    }
+    st.cold.resize(st.classes.size());
+    for (auto & v : st.cold) {
+        v.resize(16);
+    }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------------
+// placement
+
+const char * expert_ptr(const layer_rec & L, char kind, int e) {
+    const ggml_tensor * t = kind == 'u' ? L.up : (kind == 'g' ? L.gate : L.down);
+    return (const char *) t->data + (size_t) e * t->nb[2];
+}
+
+// Static placement: the experts of all layers by decreasing frequency, each into the first device (in the order of GGML_SGLX_MOE) that still has a
+// free slot of the layer's class. Slots keep their expert when it stays on the same device; the others are (re)uploaded.
+void plan(state & st) {
+    const auto t0 = clk::now();
+    if (st.devs.empty()) {
+        return;
+    }
+    sync_classes(st);
+    struct cand { double f; int layer; int e; };
+    std::vector<cand> cands;
+    for (size_t l = 0; l < st.layers.size(); ++l) {
+        const layer_rec & L = st.layers[l];
+        if (L.cls < 0) {
+            continue;
+        }
+        for (int e = 0; e < (int) L.n_expert; ++e) {
+            if (L.freq[(size_t) e] > 0.0) {
+                cands.push_back({ L.freq[(size_t) e], (int) l, e });
+            }
+        }
+    }
+    std::stable_sort(cands.begin(), cands.end(), [](const cand & a, const cand & b) { return a.f > b.f; });
+    const size_t nd = st.devs.size();
+    const size_t nc = st.classes.size();
+    std::vector<std::vector<int>> room(nd, std::vector<int>(nc, 0));
+    for (size_t j = 0; j < nd; ++j) {
+        for (size_t c = 0; c < nc; ++c) {
+            room[j][c] = st.devs[j].cls[c].n_slots;
+        }
+    }
+    // wanted[l][e] = device
+    std::vector<std::vector<int16_t>> want(st.layers.size());
+    for (size_t l = 0; l < st.layers.size(); ++l) {
+        want[l].assign((size_t) st.layers[l].n_expert, -1);
+    }
+    for (const cand & c : cands) {
+        const int cl = st.layers[(size_t) c.layer].cls;
+        for (size_t j = 0; j < nd; ++j) {
+            if (room[j][(size_t) cl] > 0) {
+                room[j][(size_t) cl]--;
+                want[(size_t) c.layer][(size_t) c.e] = (int16_t) j;
+                break;
+            }
+        }
+    }
+    // free the slots whose expert moves away, then fill
+    size_t n_keep = 0, n_up = 0, n_free = 0;
+    for (size_t j = 0; j < nd; ++j) {
+        for (size_t c = 0; c < nc; ++c) {
+            dev_cls & dc = st.devs[j].cls[c];
+            for (int s = 0; s < dc.n_slots; ++s) {
+                const int32_t o = dc.owner[(size_t) s];
+                if (o < 0) {
+                    continue;
+                }
+                const int l = (int) (o / (int32_t) st.n_expert_max), e = (int) (o % (int32_t) st.n_expert_max);
+                if (want[(size_t) l][(size_t) e] != (int16_t) j) {
+                    dc.owner[(size_t) s] = -1;
+                    st.layers[(size_t) l].dev[(size_t) e] = -1;
+                    st.layers[(size_t) l].slot[(size_t) e] = -1;
+                    ++n_free;
+                } else {
+                    ++n_keep;
+                }
+            }
+        }
+    }
+    std::vector<std::vector<int>> next_free(nd, std::vector<int>(nc, 0));
+    for (const cand & c : cands) {
+        layer_rec & L = st.layers[(size_t) c.layer];
+        const int16_t j = want[(size_t) c.layer][(size_t) c.e];
+        if (j < 0 || L.dev[(size_t) c.e] == j) {
+            continue;
+        }
+        dev_cls & dc = st.devs[(size_t) j].cls[(size_t) L.cls];
+        int & nf = next_free[(size_t) j][(size_t) L.cls];
+        while (nf < dc.n_slots && dc.owner[(size_t) nf] >= 0) {
+            ++nf;
+        }
+        if (nf >= dc.n_slots) {
+            continue; // cannot happen: the room was counted
+        }
+        if (!st.devs[(size_t) j].p->moe_upload(dc.s, nf, expert_ptr(L, 'g', c.e), expert_ptr(L, 'u', c.e), expert_ptr(L, 'd', c.e))) {
+            MOE_LOG("upload to %s failed\n", st.devs[(size_t) j].name.c_str());
+            continue;
+        }
+        dc.owner[(size_t) nf] = (int32_t) (c.layer * (int32_t) st.n_expert_max + c.e);
+        L.dev[(size_t) c.e] = j;
+        L.slot[(size_t) c.e] = nf;
+        ++n_up;
+    }
+    ++st.plans;
+    st.tokens_since_plan = 0;
+    st.plan_ms += ms_since(t0);
+    if (st.profile || getenv("GGML_SGLX_MOE_VERBOSE") != nullptr) {
+        // hit mass of the placement
+        double tot = 0, hit = 0;
+        for (const cand & c : cands) {
+            tot += c.f;
+            hit += st.layers[(size_t) c.layer].dev[(size_t) c.e] >= 0 ? c.f : 0.0;
+        }
+        MOE_LOG("placement %d: kept %zu, uploaded %zu, freed %zu in %.0f ms; the placed experts cover %.1f%% of the selections seen\n", st.plans, n_keep, n_up,
+                n_free, ms_since(t0), tot > 0 ? 100.0 * hit / tot : 0.0);
+    }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------------
+// statistics
+
+void count(state & st, layer_rec & L, const int32_t * ids, int nu, int N) {
+    for (int t = 0; t < N; ++t) {
+        for (int k = 0; k < nu; ++k) {
+            const int32_t e = ids[(size_t) t * (size_t) nu + (size_t) k];
+            if (e >= 0 && e < L.n_expert) {
+                L.freq[(size_t) e] += st.scale;
+            }
+        }
+    }
+}
+
+// a new pass over the layers begins (the layer number did not increase): decay, and the placement decisions
+void begin_pass(state & st, int N) {
+    ++st.passes;
+    st.tokens_seen += N;
+    st.tokens_since_plan += N;
+    st.scale *= std::pow(2.0, (double) N / st.halflife);
+    if (st.scale > 1e100) {
+        for (auto & L : st.layers) {
+            for (auto & f : L.freq) {
+                f /= st.scale;
+            }
+        }
+        st.scale = 1.0;
+    }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------------
+// cpu execution
+
+cpu_graph * cold_graph(state & st, int cls, int n) {
+    auto & slot = st.cold[(size_t) cls][(size_t) n - 1];
+    if (slot) {
+        return slot.get();
+    }
+    const moe_shape & sh = st.classes[(size_t) cls].sh;
+    auto g = std::make_unique<cpu_graph>();
+    g->n = n;
+    ggml_init_params ip = { ggml_tensor_overhead() * 24 + ggml_graph_overhead_custom(24, false) + 1024, nullptr, true };
+    g->ctx = ggml_init(ip);
+    static char dummy[64];
+    g->wu = ggml_new_tensor_3d(g->ctx, sh.t_up, sh.n_embd, sh.n_ff, 128);
+    g->wg = ggml_new_tensor_3d(g->ctx, sh.t_gate, sh.n_embd, sh.n_ff, 128);
+    g->wd = ggml_new_tensor_3d(g->ctx, sh.t_down, sh.n_ff, sh.n_embd, 128);
+    g->wu->data = g->wg->data = g->wd->data = dummy; // not allocated by the graph allocator, set before every run
+    g->x   = ggml_new_tensor_3d(g->ctx, GGML_TYPE_F32, sh.n_embd, 1, 1);
+    g->ids = ggml_new_tensor_2d(g->ctx, GGML_TYPE_I32, n, 1);
+    ggml_set_input(g->x);
+    ggml_set_input(g->ids);
+    ggml_tensor * up = ggml_mul_mat_id(g->ctx, g->wu, g->x, g->ids);
+    ggml_tensor * gt = ggml_mul_mat_id(g->ctx, g->wg, g->x, g->ids);
+    ggml_tensor * h = ggml_swiglu_split(g->ctx, gt, up);
+    g->y = ggml_mul_mat_id(g->ctx, g->wd, h, g->ids);
+    ggml_set_output(g->y);
+    g->gf = ggml_new_graph_custom(g->ctx, 24, false);
+    ggml_build_forward_expand(g->gf, g->y);
+    g->ga = ggml_gallocr_new(ggml_backend_get_default_buffer_type(st.cpu));
+    if (!ggml_gallocr_reserve(g->ga, g->gf)) {
+        MOE_LOG("cannot reserve the cpu compute buffer\n");
+        return nullptr;
+    }
+    slot = std::move(g);
+    return slot.get();
+}
+
+// the n cold experts `eids` for one token column x: out[:, i] (unweighted)
+bool cold_decode(state & st, const layer_rec & L, const float * x, const int32_t * eids, int n, float * out) {
+    cpu_graph * g = cold_graph(st, L.cls, n);
+    if (g == nullptr) {
+        return false;
+    }
+    g->wu->data = L.up->data;
+    g->wg->data = L.gate->data;
+    g->wd->data = L.down->data;
+    if (!ggml_gallocr_alloc_graph(g->ga, g->gf)) {
+        return false;
+    }
+    ggml_backend_tensor_set(g->x, x, 0, (size_t) L.up->ne[0] * sizeof(float));
+    ggml_backend_tensor_set(g->ids, eids, 0, (size_t) n * sizeof(int32_t));
+    if (ggml_backend_graph_compute(st.cpu, g->gf) != GGML_STATUS_SUCCESS) {
+        return false;
+    }
+    ggml_backend_tensor_get(g->y, out, 0, (size_t) L.up->ne[0] * (size_t) n * sizeof(float));
+    return true;
+}
+
+// P (token, expert) pairs on the cpu: x is [n_embd, N_x]; out [n_embd, P]
+bool cold_pairs(state & st, const layer_rec & L, const float * x, int64_t N_x, const int32_t * eids, const int32_t * toks, int64_t P, float * out) {
+    const moe_shape & sh = st.classes[(size_t) L.cls].sh;
+    ggml_init_params ip = { ggml_tensor_overhead() * 24 + ggml_graph_overhead_custom(24, false) + 1024, nullptr, true };
+    ggml_context * ctx = ggml_init(ip);
+    static char dummy[64];
+    ggml_tensor * wu = ggml_new_tensor_3d(ctx, sh.t_up, sh.n_embd, sh.n_ff, L.n_expert);
+    ggml_tensor * wg = ggml_new_tensor_3d(ctx, sh.t_gate, sh.n_embd, sh.n_ff, L.n_expert);
+    ggml_tensor * wd = ggml_new_tensor_3d(ctx, sh.t_down, sh.n_ff, sh.n_embd, L.n_expert);
+    wu->data = L.up->data;
+    wg->data = L.gate->data;
+    wd->data = L.down->data;
+    (void) dummy;
+    ggml_tensor * xt  = ggml_new_tensor_2d(ctx, GGML_TYPE_F32, sh.n_embd, N_x);
+    ggml_tensor * tok = ggml_new_tensor_1d(ctx, GGML_TYPE_I32, P);
+    ggml_tensor * ids = ggml_new_tensor_2d(ctx, GGML_TYPE_I32, 1, P);
+    ggml_set_input(xt);
+    ggml_set_input(tok);
+    ggml_set_input(ids);
+    ggml_tensor * x3 = ggml_reshape_3d(ctx, ggml_get_rows(ctx, xt, tok), sh.n_embd, 1, P);
+    ggml_tensor * up = ggml_mul_mat_id(ctx, wu, x3, ids);
+    ggml_tensor * gt = ggml_mul_mat_id(ctx, wg, x3, ids);
+    ggml_tensor * h = ggml_swiglu_split(ctx, gt, up);
+    ggml_tensor * y = ggml_mul_mat_id(ctx, wd, h, ids);
+    ggml_set_output(y);
+    ggml_cgraph * gf = ggml_new_graph_custom(ctx, 24, false);
+    ggml_build_forward_expand(gf, y);
+    ggml_gallocr_t ga = ggml_gallocr_new(ggml_backend_get_default_buffer_type(st.cpu));
+    bool ok = ggml_gallocr_alloc_graph(ga, gf);
+    if (ok) {
+        ggml_backend_tensor_set(xt, x, 0, (size_t) sh.n_embd * (size_t) N_x * sizeof(float));
+        ggml_backend_tensor_set(tok, toks, 0, (size_t) P * sizeof(int32_t));
+        ggml_backend_tensor_set(ids, eids, 0, (size_t) P * sizeof(int32_t));
+        ok = ggml_backend_graph_compute(st.cpu, gf) == GGML_STATUS_SUCCESS;
+        if (ok) {
+            ggml_backend_tensor_get(y, out, 0, (size_t) sh.n_embd * (size_t) P * sizeof(float));
+        }
+    }
+    ggml_gallocr_free(ga);
+    ggml_free(ctx);
+    return ok;
+}
+
+// any node with ggml-cpu (the tensors are in host memory)
+bool exec_cpu_node(state & st, ggml_cgraph * g, int i) {
+    if (st.cpu == nullptr) {
+        return false;
+    }
+    ggml_cgraph v = *g;
+    v.size = 0;
+    v.n_nodes = 1;
+    v.n_leafs = 0;
+    v.nodes = g->nodes + i;
+    v.grads = nullptr;
+    v.grad_accs = nullptr;
+    v.leafs = nullptr;
+    return ggml_backend_graph_compute(st.cpu, &v) == GGML_STATUS_SUCCESS;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------------
+// the block
+
+bool is_mmid(const ggml_tensor * t) {
+    return t != nullptr && t->op == GGML_OP_MUL_MAT_ID;
+}
+
+bool weight_ours(const ggml_tensor * w) {
+    if (w == nullptr) {
+        return false;
+    }
+    ggml_backend_buffer_t b = w->view_src != nullptr ? w->view_src->buffer : w->buffer;
+    // no buffer yet: test-backend-ops asks before it allocates the tensors (the weights of a model always have one)
+    return S != nullptr && (b == nullptr || S->h.owned(b));
+}
+
+bool mmid_ours(const ggml_tensor * t) {
+    return is_mmid(t) && weight_ours(t->src[0]);
+}
+
+// find the block that starts at the MUL_MAT_ID node i: its SWIGLU and the down projection (all in this graph)
+bool find_block(ggml_cgraph * g, int i, block & b) {
+    ggml_tensor * a = g->nodes[i];
+    ggml_tensor * glu = nullptr;
+    int jglu = -1;
+    for (int j = i + 1; j < g->n_nodes && j < i + 16; ++j) {
+        ggml_tensor * n = g->nodes[j];
+        if (n->op == GGML_OP_GLU && ggml_get_glu_op(n) == GGML_GLU_OP_SWIGLU && (n->src[0] == a || n->src[1] == a)) {
+            glu = n;
+            jglu = j;
+            break;
+        }
+    }
+    if (glu == nullptr) {
+        return false;
+    }
+    ggml_tensor * gate = glu->src[0];
+    ggml_tensor * up = glu->src[1];
+    if (!mmid_ours(gate) || !mmid_ours(up) || gate->src[1] != up->src[1] || gate->src[2] != up->src[2]) {
+        return false;
+    }
+    ggml_tensor * down = nullptr;
+    for (int j = jglu + 1; j < g->n_nodes && j < jglu + 16; ++j) {
+        ggml_tensor * n = g->nodes[j];
+        if (is_mmid(n) && n->src[1] == glu && n->src[2] == up->src[2]) {
+            down = n;
+            break;
+        }
+    }
+    if (down == nullptr || !weight_ours(down->src[0])) {
+        return false;
+    }
+    // the partner must be a later node of this graph (it has not run yet)
+    bool partner_later = false;
+    for (int j = i + 1; j < jglu; ++j) {
+        partner_later = partner_later || g->nodes[j] == (a == up ? gate : up);
+    }
+    if (!partner_later) {
+        return false;
+    }
+    b.up = up; b.gate = gate; b.glu = glu; b.down = down;
+    return true;
+}
+
+bool block_shapes_ok(const block & b) {
+    const ggml_tensor * x = b.up->src[1];
+    const ggml_tensor * ids = b.up->src[2];
+    const ggml_tensor * y = b.down;
+    const ggml_tensor * wu = b.up->src[0], * wg = b.gate->src[0], * wd = b.down->src[0];
+    if (x->type != GGML_TYPE_F32 || x->ne[1] != 1 || x->ne[3] != 1 || x->nb[0] != sizeof(float)) {
+        return false;
+    }
+    if (ids->type != GGML_TYPE_I32 || ids->nb[0] != sizeof(int32_t) || ids->ne[2] != 1 || ids->ne[1] != x->ne[2]) {
+        return false;
+    }
+    if (y->type != GGML_TYPE_F32 || y->ne[0] != wd->ne[1] || y->ne[1] != ids->ne[0] || y->ne[2] != ids->ne[1] || y->nb[0] != sizeof(float) ||
+        y->nb[1] != (size_t) y->ne[0] * sizeof(float) || y->nb[2] != y->nb[1] * (size_t) y->ne[1]) {
+        return false;
+    }
+    if (wu->ne[0] != x->ne[0] || wg->ne[0] != x->ne[0] || wd->ne[0] != wu->ne[1] || wd->ne[1] != x->ne[0] || wu->ne[3] != 1) {
+        return false;
+    }
+    return true;
+}
+
+// the layer record of a block (registered at load by name, or now)
+int layer_of_block(state & st, const block & b) {
+    ggml_tensor * wu = b.up->src[0], * wg = b.gate->src[0], * wd = b.down->src[0];
+    auto it = st.layer_of.find(wu);
+    if (it != st.layer_of.end() && st.layers[(size_t) it->second].down == wd && st.layers[(size_t) it->second].gate == wg) {
+        return it->second;
+    }
+    // not registered by name (a test, or the tensors were not seen at load): one record per weight triple
+    for (size_t l = 0; l < st.layers.size(); ++l) {
+        if (st.layers[l].up == wu && st.layers[l].gate == wg && st.layers[l].down == wd) {
+            return (int) l;
+        }
+    }
+    const int idx = (int) st.layers.size();
+    st.layers.emplace_back();
+    layer_rec & L = st.layers.back();
+    L.il = 100000 + idx;
+    L.up = wu; L.gate = wg; L.down = wd;
+    st.layer_of[wu] = idx;
+    complete_layer(st, idx);
+    return idx;
+}
+
+void read_ids(const ggml_tensor * ids, int nu, int N, std::vector<int32_t> & out) {
+    out.resize((size_t) nu * (size_t) N);
+    for (int t = 0; t < N; ++t) {
+        memcpy(out.data() + (size_t) t * (size_t) nu, (const char *) ids->data + (size_t) t * ids->nb[1], (size_t) nu * sizeof(int32_t));
+    }
+}
+
+std::vector<int32_t> g_ids;
+std::vector<float>   g_cold_out;
+
+// one token (N == 1): the experts of the slots go to the GPUs and the cpu at the same time
+bool run_decode(state & st, layer_rec & L, const block & b, const int32_t * ids, int nu) {
+    const auto t0 = clk::now();
+    const int K = (int) L.up->ne[0];
+    const float * x = (const float *) b.up->src[1]->data;
+    float * y = (float *) b.down->data;
+    const size_t nd = st.devs.size();
+    std::vector<int> n_dev(nd, 0);
+    int cold_k[16], cold_e[16], n_cold = 0;
+    // per device: the slots of its experts of this layer
+    for (size_t j = 0; j < nd; ++j) {
+        st.devs[j].ps.clear();
+    }
+    std::vector<std::vector<int>> kslot(nd);
+    for (int k = 0; k < nu; ++k) {
+        const int e = ids[k];
+        if (e < 0 || e >= L.n_expert) {
+            return false;
+        }
+        const int16_t j = L.dev[(size_t) e];
+        if (j >= 0) {
+            st.devs[(size_t) j].ps.push_back(L.slot[(size_t) e]);
+            kslot[(size_t) j].push_back(k);
+        } else if (n_cold < 16) {
+            cold_k[n_cold] = k;
+            cold_e[n_cold] = e;
+            ++n_cold;
+        } else {
+            return false;
+        }
+    }
+    int used = 0;
+    // GPUs first (they work while the cpu does the cold experts), the slowest first is not needed: one host thread submits all
+    bool ok = true;
+    const auto ts = clk::now();
+    std::vector<size_t> submitted;
+    for (size_t j = 0; j < nd; ++j) {
+        dev_rec & dr = st.devs[j];
+        const int n = (int) dr.ps.size();
+        if (n == 0) {
+            continue;
+        }
+        if (n > 8) {
+            return false; // more than 8 ids for one token on one device: not supported by the pdev graphs
+        }
+        dr.pt.assign((size_t) n, 0);
+        if (dr.out.size() < (size_t) K * 8) {
+            dr.out.resize((size_t) K * 8);
+        }
+        const auto t1 = clk::now();
+        ok = dr.p->moe_submit(dr.cls[(size_t) L.cls].s, x, 1, dr.ps.data(), dr.pt.data(), n, dr.out.data()) && ok;
+        dr.t_submit.add(ms_since(t1));
+        submitted.push_back(j);
+        ++used;
+    }
+    const double t_sub = ms_since(ts);
+    // the cold experts on the cpu
+    const auto tc = clk::now();
+    if (n_cold > 0) {
+        if (g_cold_out.size() < (size_t) K * 16) {
+            g_cold_out.resize((size_t) K * 16);
+        }
+        if (!cold_decode(st, L, x, cold_e, n_cold, g_cold_out.data())) {
+            MOE_LOG("cold experts of layer %d failed\n", L.il);
+            ok = false;
+        }
+    }
+    const double t_cold = ms_since(tc);
+    const auto tw = clk::now();
+    for (size_t j : submitted) {
+        const auto t1 = clk::now();
+        ok = st.devs[j].p->wait() && ok;
+        st.devs[j].t_wait.add(ms_since(t1));
+    }
+    const double t_wait = ms_since(tw);
+    if (!ok) {
+        return false;
+    }
+    // scatter, unweighted, to y[:, k]
+    for (size_t j : submitted) {
+        const std::vector<int> & ks = kslot[j];
+        for (size_t i = 0; i < ks.size(); ++i) {
+            memcpy(y + (size_t) ks[i] * (size_t) K, st.devs[j].out.data() + i * (size_t) K, (size_t) K * sizeof(float));
+        }
+    }
+    for (int i = 0; i < n_cold; ++i) {
+        memcpy(y + (size_t) cold_k[i] * (size_t) K, g_cold_out.data() + (size_t) i * (size_t) K, (size_t) K * sizeof(float));
+    }
+    if (st.profile) {
+        st.t_dec.add(ms_since(t0));
+        st.t_dec_cold.add(t_cold);
+        st.t_dec_gpu_sub.add(t_sub);
+        st.t_dec_gpu_wait.add(t_wait);
+        st.n_pairs_cold += n_cold;
+        st.n_pairs_gpu += nu - n_cold;
+        st.gpu_used_sum += used;
+        ++st.dec_blocks;
+    }
+    return true;
+}
+
+// N > 1 tokens: pairs (token, slot) are grouped by where the expert lives
+bool run_prefill(state & st, layer_rec & L, const block & b, const int32_t * ids, int nu, int N) {
+    const auto t0 = clk::now();
+    const int K = (int) L.up->ne[0];
+    const ggml_tensor * xt = b.up->src[1];
+    float * y = (float *) b.down->data;
+    const size_t nd = st.devs.size();
+    const int NB = 1024; // tokens per block (the pdev graphs take at most 1024 columns and 1024 pairs)
+    for (int t0b = 0; t0b < N; t0b += NB) {
+        const int nt = std::min(NB, N - t0b);
+        // x columns of the block, contiguous
+        const float * xs;
+        if (xt->nb[2] == (size_t) K * sizeof(float)) {
+            xs = (const float *) xt->data + (size_t) t0b * (size_t) K;
+        } else {
+            st.xg.resize((size_t) K * (size_t) nt);
+            for (int t = 0; t < nt; ++t) {
+                memcpy(st.xg.data() + (size_t) t * (size_t) K, (const char *) xt->data + (size_t) (t0b + t) * xt->nb[2], (size_t) K * sizeof(float));
+            }
+            xs = st.xg.data();
+        }
+        struct work { std::vector<int32_t> slot, tok, k; };
+        std::vector<work> w(nd);
+        std::vector<int32_t> c_e, c_tok, c_k;
+        for (int t = 0; t < nt; ++t) {
+            for (int k = 0; k < nu; ++k) {
+                const int e = ids[(size_t) (t0b + t) * (size_t) nu + (size_t) k];
+                if (e < 0 || e >= L.n_expert) {
+                    return false;
+                }
+                const int16_t j = L.dev[(size_t) e];
+                if (j >= 0) {
+                    w[(size_t) j].slot.push_back(L.slot[(size_t) e]);
+                    w[(size_t) j].tok.push_back(t);
+                    w[(size_t) j].k.push_back(k);
+                } else {
+                    c_e.push_back(e);
+                    c_tok.push_back(t);
+                    c_k.push_back(k);
+                }
+            }
+        }
+        auto put = [&](int t, int k, const float * src) {
+            memcpy(y + (size_t) k * (size_t) K + (size_t) (t0b + t) * (size_t) nu * (size_t) K, src, (size_t) K * sizeof(float));
+        };
+        // rounds of at most 1024 pairs per device
+        std::vector<size_t> pos(nd, 0);
+        std::vector<std::vector<float>> outs(nd);
+        bool first = true;
+        size_t cold_pos = 0;
+        for (;;) {
+            std::vector<size_t> sub;
+            std::vector<size_t> cnt(nd, 0);
+            for (size_t j = 0; j < nd; ++j) {
+                const size_t left = w[j].slot.size() - pos[j];
+                if (left == 0) {
+                    continue;
+                }
+                const size_t n = std::min<size_t>(left, 1024);
+                outs[j].resize((size_t) K * n);
+                if (!st.devs[j].p->moe_submit(st.devs[j].cls[(size_t) L.cls].s, xs, nt, w[j].slot.data() + pos[j], w[j].tok.data() + pos[j], (int) n, outs[j].data())) {
+                    return false;
+                }
+                cnt[j] = n;
+                sub.push_back(j);
+            }
+            // the cpu: the cold pairs, in the same rounds
+            size_t cold_n = 0;
+            std::vector<float> cout_;
+            if (cold_pos < c_e.size()) {
+                cold_n = std::min<size_t>(c_e.size() - cold_pos, 1024);
+                cout_.resize((size_t) K * cold_n);
+                const auto tc = clk::now();
+                if (!cold_pairs(st, L, xs, nt, c_e.data() + cold_pos, c_tok.data() + cold_pos, (int64_t) cold_n, cout_.data())) {
+                    return false;
+                }
+                if (st.profile) {
+                    st.t_pre_cold.add(ms_since(tc));
+                }
+            }
+            bool ok = true;
+            for (size_t j : sub) {
+                ok = st.devs[j].p->wait() && ok;
+            }
+            if (!ok) {
+                return false;
+            }
+            for (size_t j : sub) {
+                for (size_t i = 0; i < cnt[j]; ++i) {
+                    put(w[j].tok[pos[j] + i], w[j].k[pos[j] + i], outs[j].data() + i * (size_t) K);
+                }
+                pos[j] += cnt[j];
+                st.n_pairs_gpu += (double) cnt[j];
+            }
+            for (size_t i = 0; i < cold_n; ++i) {
+                put(c_tok[cold_pos + i], c_k[cold_pos + i], cout_.data() + i * (size_t) K);
+            }
+            cold_pos += cold_n;
+            st.n_pairs_cold += (double) cold_n;
+            first = false;
+            if (sub.empty() && cold_n == 0) {
+                break;
+            }
+        }
+        (void) first;
+    }
+    if (st.profile) {
+        st.t_pre.add(ms_since(t0));
+    }
+    return true;
+}
+
+bool run_block(state & st, ggml_cgraph * g, int i, const block & b) {
+    (void) g; (void) i;
+    const int li = layer_of_block(st, b);
+    layer_rec & L = st.layers[(size_t) li];
+    if (L.cls < 0) {
+        return false;
+    }
+    const ggml_tensor * ids_t = b.up->src[2];
+    const int nu = (int) ids_t->ne[0];
+    const int N = (int) ids_t->ne[1];
+    read_ids(ids_t, nu, N, g_ids);
+    // a new pass over the layers?
+    if (L.il <= st.last_il || !st.pass_started) {
+        st.pass_started = true;
+        begin_pass(st, N);
+        st.pass_n = N;
+        // placement decisions at the start of a pass
+        if (N > 1) {
+            st.replan_pending = true;
+        } else {
+            const bool never = st.plans == 0;
+            if ((st.replan_pending && (!st.freeze || never) && st.tokens_since_plan >= 1) || (never && st.tokens_seen >= st.plan_min_tokens)) {
+                plan(st);
+                st.replan_pending = false;
+            }
+        }
+    }
+    st.last_il = L.il;
+    count(st, L, g_ids.data(), nu, N);
+    return N == 1 ? run_decode(st, L, b, g_ids.data(), nu) : run_prefill(st, L, b, g_ids.data(), nu, N);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------------
+// the elementwise ops of the block, on the host
+
+bool host_binop(ggml_tensor * dst, bool mul) {
+    const ggml_tensor * a = dst->src[0];
+    const ggml_tensor * b = dst->src[1];
+    if (a->type != GGML_TYPE_F32 || b->type != GGML_TYPE_F32 || dst->type != GGML_TYPE_F32 || a->nb[0] != 4 || b->nb[0] != 4 || dst->nb[0] != 4) {
+        return false;
+    }
+    for (int i3 = 0; i3 < dst->ne[3]; ++i3) {
+        for (int i2 = 0; i2 < dst->ne[2]; ++i2) {
+            for (int i1 = 0; i1 < dst->ne[1]; ++i1) {
+                const float * pa = (const float *) ((const char *) a->data + i3 * a->nb[3] + i2 * a->nb[2] + i1 * a->nb[1]);
+                const float * pb = (const float *) ((const char *) b->data + (i3 % b->ne[3]) * b->nb[3] + (i2 % b->ne[2]) * b->nb[2] + (i1 % b->ne[1]) * b->nb[1]);
+                float * pd = (float *) ((char *) dst->data + i3 * dst->nb[3] + i2 * dst->nb[2] + i1 * dst->nb[1]);
+                if (b->ne[0] == dst->ne[0]) {
+                    if (mul) { for (int64_t i0 = 0; i0 < dst->ne[0]; ++i0) { pd[i0] = pa[i0] * pb[i0]; } }
+                    else     { for (int64_t i0 = 0; i0 < dst->ne[0]; ++i0) { pd[i0] = pa[i0] + pb[i0]; } }
+                } else {
+                    for (int64_t i0 = 0; i0 < dst->ne[0]; ++i0) {
+                        const float v = pb[i0 % b->ne[0]];
+                        pd[i0] = mul ? pa[i0] * v : pa[i0] + v;
+                    }
+                }
+            }
+        }
+    }
+    return true;
+}
+
+bool is_weighted(const ggml_tensor * t) {
+    return t != nullptr && t->op == GGML_OP_MUL && mmid_ours(t->src[0]);
+}
+
+bool is_part(const ggml_tensor * t) {
+    if (t == nullptr) {
+        return false;
+    }
+    if (t->op == GGML_OP_VIEW) {
+        return is_weighted(t->view_src != nullptr ? t->view_src : t->src[0]);
+    }
+    if (t->op == GGML_OP_ADD) {
+        return is_part(t->src[0]) && is_part(t->src[1]);
+    }
+    return false;
+}
+
+} // namespace
+
+// ---------------------------------------------------------------------------------------------------------------------------------------
+// the interface
+
+bool enabled() {
+    static int e = -1;
+    if (e < 0) {
+        state tmp;
+        e = parse_env(tmp) ? 1 : 0;
+    }
+    return e == 1;
+}
+
+void init(ggml_backend_buffer_type_t buft, const hooks & h) {
+    if (S != nullptr || !enabled()) {
+        return;
+    }
+    S = new state();
+    parse_env(*S);
+    S->buft = buft;
+    S->h = h;
+    S->ready = true;
+}
+
+void note_tensor(ggml_tensor * t) {
+    if (S == nullptr || t == nullptr || t->ne[2] <= 1 || t->view_src != nullptr) {
+        return;
+    }
+    int il = -1;
+    char kind = 0;
+    if (!parse_name(t->name, il, kind)) {
+        return;
+    }
+    layer_index_for_tensor(*S, t, kind, il);
+}
+
+bool supports_op(const ggml_tensor * op) {
+    if (S == nullptr) {
+        return false;
+    }
+    switch (op->op) {
+        case GGML_OP_MUL_MAT_ID: {
+            const ggml_tensor * w = op->src[0];
+            const ggml_tensor * x = op->src[1];
+            const ggml_tensor * ids = op->src[2];
+            return weight_ours(w) && x != nullptr && ids != nullptr && x->type == GGML_TYPE_F32 && ids->type == GGML_TYPE_I32 && op->type == GGML_TYPE_F32 &&
+                   w->ne[3] == 1 && w->nb[0] == ggml_type_size(w->type) && w->ne[0] % ggml_blck_size(w->type) == 0;
+        }
+        case GGML_OP_GLU:
+            return ggml_get_glu_op(op) == GGML_GLU_OP_SWIGLU && mmid_ours(op->src[0]) && mmid_ours(op->src[1]) && op->src[0]->src[1] == op->src[1]->src[1];
+        case GGML_OP_MUL:
+            return op->type == GGML_TYPE_F32 && op->src[0]->type == GGML_TYPE_F32 && op->src[1]->type == GGML_TYPE_F32 && mmid_ours(op->src[0]) &&
+                   ggml_can_repeat(op->src[1], op->src[0]);
+        case GGML_OP_ADD:
+            return op->type == GGML_TYPE_F32 && is_part(op->src[0]) && is_part(op->src[1]);
+        default:
+            return false;
+    }
+}
+
+bool handles(const ggml_tensor * node) {
+    if (S == nullptr) {
+        return false;
+    }
+    switch (node->op) {
+        case GGML_OP_MUL_MAT_ID:
+        case GGML_OP_GLU:
+            return true;
+        case GGML_OP_MUL:
+            return mmid_ours(node->src[0]);
+        case GGML_OP_ADD:
+            return is_part(node->src[0]) && is_part(node->src[1]);
+        default:
+            return false;
+    }
+}
+
+bool exec(ggml_cgraph * g, int i) {
+    state & st = *S;
+    ggml_tensor * node = g->nodes[i];
+    if (!st.devs_inited) {
+        init_devices(st);
+    }
+    auto it = st.done.find(node);
+    if (it != st.done.end()) {
+        st.done.erase(it);
+        return true;
+    }
+    switch (node->op) {
+        case GGML_OP_MUL_MAT_ID: {
+            block b;
+            if (find_block(g, i, b) && block_shapes_ok(b) && st.cpu != nullptr) {
+                // the weights must be known as one layer (3 tensors of the same shape)
+                if (run_block(st, g, i, b)) {
+                    st.done.insert(b.gate == node ? b.up : b.gate);
+                    st.done.insert(b.glu);
+                    st.done.insert(b.down);
+                    return true;
+                }
+                MOE_LOG("block execution failed, falling back to ggml-cpu for node %s\n", node->name);
+                // fall through to the generic path for this node only
+            }
+            return exec_cpu_node(st, g, i);
+        }
+        case GGML_OP_MUL:
+            if (host_binop(node, true)) {
+                return true;
+            }
+            return exec_cpu_node(st, g, i);
+        case GGML_OP_ADD:
+            if (host_binop(node, false)) {
+                return true;
+            }
+            return exec_cpu_node(st, g, i);
+        default:
+            return exec_cpu_node(st, g, i);
+    }
+}
+
+void print_profile() {
+    if (S == nullptr || !S->profile) {
+        return;
+    }
+    state & st = *S;
+    if (st.dec_blocks != 0) {
+        fprintf(stderr, "SGLX MoE profile decode: %llu blocks, mean %.3f ms (max %.3f): gpu submit %.3f, cold cpu %.3f, gpu wait %.3f; cold %.2f / gpu %.2f experts per block, "
+                        "%.2f gpus used\n",
+                (unsigned long long) st.dec_blocks, st.t_dec.mean(), st.t_dec.mx, st.t_dec_gpu_sub.mean(), st.t_dec_cold.mean(), st.t_dec_gpu_wait.mean(),
+                st.n_pairs_cold / (double) st.dec_blocks, st.n_pairs_gpu / (double) st.dec_blocks, st.gpu_used_sum / (double) st.dec_blocks);
+        for (const auto & d : st.devs) {
+            fprintf(stderr, "SGLX MoE profile   %s: submit %.3f ms, wait %.3f ms (%llu calls)\n", d.name.c_str(), d.t_submit.mean(), d.t_wait.mean(),
+                    (unsigned long long) d.t_submit.n);
+        }
+    }
+    if (st.t_pre.n != 0) {
+        fprintf(stderr, "SGLX MoE profile prefill: %llu blocks, mean %.1f ms (max %.1f), cold cpu rounds %.1f ms\n", (unsigned long long) st.t_pre.n, st.t_pre.mean(),
+                st.t_pre.mx, st.t_pre_cold.mean());
+    }
+    fprintf(stderr, "SGLX MoE profile: %d placements, %.0f ms in total, %lld tokens\n", st.plans, st.plan_ms, (long long) st.tokens_seen);
+}
+
+} // namespace moe
+} // namespace sglx

@@ -24,6 +24,24 @@
 
 namespace sglx {
 
+// ---- MoE expert slots (docs/plans/HOT_EXPERT_CACHE.md, composite/moe_block.cpp) ----
+// The shape of one expert: gate / up are [n_embd, n_ff] (n_ff rows of n_embd), down is [n_ff, n_embd]; gate and up have the same type.
+struct moe_shape {
+    ggml_type t_gate = GGML_TYPE_Q4_0;
+    ggml_type t_up   = GGML_TYPE_Q4_0;
+    ggml_type t_down = GGML_TYPE_Q4_0;
+    int64_t   n_embd = 0;
+    int64_t   n_ff   = 0;
+    bool operator==(const moe_shape & o) const {
+        return t_gate == o.t_gate && t_up == o.t_up && t_down == o.t_down && n_embd == o.n_embd && n_ff == o.n_ff;
+    }
+};
+
+// an array of expert slots on one device (the three matrices of S experts), opaque for the composite
+struct moe_slots {
+    virtual ~moe_slots() = default;
+};
+
 // the rows of one weight that live on one pdev (plus the activation scratch it needs), opaque for the composite
 struct piece {
     virtual ~piece() = default;
@@ -59,6 +77,25 @@ public:
     virtual bool threaded() const { return false; }
     // GGML_SGLX_PROFILE: where submit() spent its time (empty when the pdev keeps no timers)
     virtual std::string stats() { return std::string(); }
+
+    // ---- MoE expert slots ----
+    // can the device compute MUL_MAT_ID of the three matrices of `sh` (and SWIGLU between them)?
+    virtual bool supports_moe(const moe_shape & sh) { (void) sh; return false; }
+    // free / total device memory in bytes (false: unknown)
+    virtual bool memory(size_t * free_bytes, size_t * total_bytes) { (void) free_bytes; (void) total_bytes; return false; }
+    // room for n_slots experts of `sh` (nullptr when the allocation fails)
+    virtual moe_slots * moe_create(const moe_shape & sh, int n_slots) { (void) sh; (void) n_slots; return nullptr; }
+    virtual void moe_free(moe_slots * s) { (void) s; }
+    // slot <- the three matrices of one expert in the natural ggml layout (bytes of one expert each: gate, up, down). Blocking.
+    virtual bool moe_upload(moe_slots * s, int slot, const void * gate, const void * up, const void * down) {
+        (void) s; (void) slot; (void) gate; (void) up; (void) down; return false;
+    }
+    // out[:, i] = down_{pair_slot[i]} ( silu(gate_{pair_slot[i]} x[:, pair_tok[i]]) * (up_{pair_slot[i]} x[:, pair_tok[i]]) ), i < n_pairs. x is
+    // [n_embd, N_x] (columns contiguous), out is [n_embd, n_pairs]; no routing weight is applied. Starts the work and returns (x, pair_*
+    // and out must stay valid until wait() returned).
+    virtual bool moe_submit(moe_slots * s, const float * x, int64_t N_x, const int32_t * pair_slot, const int32_t * pair_tok, int n_pairs, float * out) {
+        (void) s; (void) x; (void) N_x; (void) pair_slot; (void) pair_tok; (void) n_pairs; (void) out; return false;
+    }
 };
 
 // the effective mat-vec GB/s used for the default split, from a device description (substring table, see composite_device.cpp)
