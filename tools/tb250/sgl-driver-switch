@@ -106,7 +106,18 @@ userspace() { # userspace <run file>
     ldconfig
     basename "$1" > "$USMARK"
     log "libcuda.so.1 -> $(readlink -f /usr/lib/x86_64-linux-gnu/libcuda.so.1)"
-    nvidia-modprobe -u -c=0 || true
+    # The installer unloads a loaded nvidia module even with --no-kernel-module (TB250, 2026-10-23), so the
+    # userspace goes in while no module is loaded, and nvidia-modprobe (which would autoload "nvidia") runs
+    # only after load_nv.
+    unload_all
+}
+
+expect_bound() { # expect_bound <driver> <pci>...: fail unless every card is bound to <driver>
+    local want=$1 d got; shift
+    for d in "$@"; do
+        got=$(basename "$(readlink -f /sys/bus/pci/devices/$d/driver 2>/dev/null)" 2>/dev/null || true)
+        [ "$got" = "$want" ] || { echo "$d is bound to '${got:-none}', wanted $want" >&2; return 1; }
+    done
 }
 
 load_nv() { # load_nv <390|470>
@@ -189,21 +200,25 @@ case "${1:-}" in
         done
         exit 0 ;;
     nv390)
-        busy_check; unload_all
+        busy_check; unload_all; userspace "$RUN390"
         override nvidia "${ALL[@]}"
-        load_nv 390; userspace "$RUN390" ;;
+        load_nv 390; nvidia-modprobe -u -c=0 || true
+        expect_bound nvidia "${ALL[@]}" ;;
     nv470)
-        busy_check; unload_all
+        busy_check; unload_all; userspace "$RUN470"
         override nvidia "${KEPLER[@]}"; override none "$GT430"
-        load_nv 470; userspace "$RUN470" ;;
+        load_nv 470; nvidia-modprobe -u -c=0 || true
+        expect_bound nvidia "${KEPLER[@]}" ;;
     nouveau)
         busy_check; unload_all
         override nouveau "${ALL[@]}"
-        load_nouveau ;;
+        load_nouveau
+        expect_bound nouveau "${ALL[@]}" ;;
     nv470-nouveau430)
-        busy_check; unload_all
+        busy_check; unload_all; userspace "$RUN470"
         override nvidia "${KEPLER[@]}"; override nouveau "$GT430"
-        load_nouveau; load_nv 470; userspace "$RUN470" ;;
+        load_nouveau; load_nv 470; nvidia-modprobe -u -c=0 || true
+        expect_bound nvidia "${KEPLER[@]}"; expect_bound nouveau "$GT430" ;;
     *) echo "usage: $0 <status|nv390|nv470|nouveau|nv470-nouveau430|perf|pstate> [--reinstall-userspace]" >&2; exit 2 ;;
 esac
 echo "$1" > "$STATE"
