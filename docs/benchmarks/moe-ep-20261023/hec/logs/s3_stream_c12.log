@@ -1,0 +1,17 @@
+# date: 2026-10-23_14:03:28  host: tb250  tag: s3_stream_c12
+# temps at start:  amd46 amd38 GT 430=41 GT 730=32 GT 710=34    (max 41 C)
+# env: VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json 
+# perf: 0000:03:00.0 perf=manual 0000:06:00.0 perf=manual 
+# cmd: /home/eightman/moe-ep/hec/bin/hec_bench stream --model /home/eightman/moe-ep/models/Qwen3-30B-A3B-Q4_0.gguf --cpu-lib /home/eightman/moe-ep/src/llama-build/bin/libggml-cpu.so --vk-lib /home/eightman/moe-ep/src/llama-build/bin/libggml-vulkan.so --vk-dev Vulkan0 --chunk 12 --iters 12 --modes ABCD
+load_backend: loaded CPU backend from /home/eightman/moe-ep/src/llama-build/bin/libggml-cpu.so
+ggml_vulkan: Found 2 Vulkan devices:
+ggml_vulkan: 0 = AMD Radeon RX 6400 (RADV NAVI24) (radv) | uma: 0 | fp16: 1 | bf16: 0 | fp4: 0 | warp size: 32 | shared memory: 65536 | int dot: 1 | matrix cores: none
+ggml_vulkan: 1 = AMD Radeon Pro WX 2100 (RADV POLARIS12) (radv) | uma: 0 | fp16: 0 | bf16: 0 | fp4: 0 | warp size: 64 | shared memory: 65536 | int dot: 0 | matrix cores: none
+load_backend: loaded Vulkan backend from /home/eightman/moe-ep/src/llama-build/bin/libggml-vulkan.so
+layer 0 blk.0.ffn_gate_exps.weight: type=q4_0 ne=[2048,768,128] expert=884736 B
+layer 0 blk.0.ffn_up_exps.weight: type=q4_0 ne=[2048,768,128] expert=884736 B
+layer 0 blk.0.ffn_down_exps.weight: type=q4_1 ne=[768,2048,128] expert=983040 B
+layer 6 blk.6.ffn_down_exps.weight: type=q4_0 ne=[768,2048,128] expert=884736 B
+ggml_vulkan: Failed ggml_vk_create_buffer (No suitable memory type found: ErrorOutOfDeviceMemory)
+# rc=0  seconds=2
+# temps at end:  amd46 amd39 GT 430=41 GT 730=32 GT 710=33    (max 41 C)

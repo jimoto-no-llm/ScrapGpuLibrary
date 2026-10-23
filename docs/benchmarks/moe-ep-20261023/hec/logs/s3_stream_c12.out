@@ -1,0 +1,7 @@
+chunk 12 experts (2.65 MB each), 12 chunks per mode
+A per-expert sync set           318.0 ms for 144 experts: 2.21 ms/expert, 1.20 GB/s
+B staged, sync per chunk        275.8 ms for 144 experts: 1.92 ms/expert, 1.39 GB/s
+   of which memcpy 52.4 ms (7.30 GB/s)
+C two-thread pipeline           232.9 ms for 144 experts: 1.62 ms/expert, 1.64 GB/s
+D import 0 failed
+D import + device copy           18.8 ms for 0 experts: inf ms/expert, 0.00 GB/s

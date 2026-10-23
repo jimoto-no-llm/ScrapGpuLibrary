@@ -6,7 +6,7 @@ import json, os, re, sys, glob, statistics as st
 def lines(path):
     out = []
     try:
-        for l in open(path):
+        for l in open(path, errors='replace'):
             l = l.strip()
             if l.startswith('{'):
                 try:
@@ -19,7 +19,7 @@ def lines(path):
 
 def perf(path):
     try:
-        for l in open(path):
+        for l in open(path, errors='replace'):
             if l.startswith('# perf:'):
                 return 'pin' if 'manual' in l else 'auto'
     except OSError:
@@ -36,7 +36,7 @@ def main():
         if not js:
             continue
         if mode == 'bench' and any('avg_ts' in j for j in js):
-            rows[tag] = (perf(p[:-4] + '.log'), {j['test']: (j['avg_ts'], j['stddev_ts']) for j in js if 'avg_ts' in j})
+            rows[tag] = (perf(p[:-4] + '.log'), {j['test']: (j['avg_ts'], j['stddev_ts']) for j in js if 'avg_ts' in j and 'test' in j})
         if mode == 'text' and any(j.get('test', '').startswith('text:') for j in js):
             rows[tag] = (perf(p[:-4] + '.log'), {j['test']: j for j in js if j.get('test', '').startswith('text:')})
     if mode == 'bench':

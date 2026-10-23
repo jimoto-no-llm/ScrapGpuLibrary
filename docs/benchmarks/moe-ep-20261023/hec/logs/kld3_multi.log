@@ -1,0 +1,42 @@
+# date: 2026-10-23_22:14:56  host: tb250  tag: kld3_multi
+# temps at start:  amd48 amd33 GT 430=42 GT 730=32 GT 710=32    (max 42 C)
+# env: GGML_SGLX_MOE=Vulkan0:auto:400,CL11_0:300,Vulkan1:700:100,CL11_1:700 GGML_CL11_PLATFORMS=NVIDIA GGML_SGLX_MOE_THREADS=2 GGML_SGLX_PROFILE=1 GGML_CL11_DEVICES=GT 730,GT 710 GGML_BACKEND_PATH=/home/eightman/moe-ep/hec/plug/libggml-cl11.so GGML_SGLX_MOE_VERBOSE=1 VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json GGML_SGLX_MOE_SPIN_US=0 GGML_CL11_AUTO_RPC=0 
+# perf: 0000:03:00.0 perf=manual 0000:06:00.0 perf=manual 
+# cmd: /home/eightman/moe-ep/src/llama-build/bin/llama-perplexity -m /home/eightman/moe-ep/models/Qwen3-30B-A3B-Q4_0.gguf -f /home/eightman/moe-ep/kl/text.txt -c 512 --chunks 6 -b 512 -ub 512 -t 2 -fa off -sm layer -dev Vulkan0,SGLX0 -ts 1/0 -ngl 99 -ot blk\.[0-9]+\.ffn_(up|gate|down)_exps\.weight=SGLX0 --poll 0 --kl-divergence-base /home/eightman/moe-ep/kl/base30_6.kld --kl-divergence
+0.01.571.454 W common_fit_params: failed to fit params to free device memory: n_gpu_layers already set by user to 99, abort
+0.01.784.932 W load: control-looking token: 128247 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+SGLX: mapped 15.8 GiB of experts in 0.5 s
+0.04.109.488 I cmn          init: llama threadpool init, n_threads = 2
+SGLX MoE: device Vulkan0 (AMD Radeon RX 6400 (RADV NAVI24)): class 0: 400 slots + 96 ring (1302 MiB) class 1: 415 slots + 96 ring (1293 MiB)
+SGLX MoE: CL11_0 cannot compute the MoE block of class 0 (q4_0/q4_0/q4_1)
+ggml_backend_cl11_buft_alloc_buffer: allocating 259.88 MiB on CL11_0, more than CL_DEVICE_MAX_MEM_ALLOC_SIZE (245.33 MiB); set GGML_CL11_STRICT_ALLOC=1 to refuse such allocations
+SGLX MoE: device CL11_0 (GeForce GT 730): class 1: 300 slots + 0 ring (759 MiB)
+SGLX MoE: device Vulkan1 (AMD Radeon Pro WX 2100 (RADV POLARIS12)): class 0: 100 slots + 0 ring (262 MiB) class 1: 700 slots + 0 ring (1772 MiB)
+SGLX MoE: CL11_1 cannot compute the MoE block of class 0 (q4_0/q4_0/q4_1)
+SGLX MoE: device CL11_1 (GeForce GT 710): class 1: 700 slots + 0 ring (1772 MiB)
+0.05.056.843 I 
+0.05.056.904 I system_info: n_threads = 2 (n_threads_batch = 2) / 2 | CPU : SSE3 = 1 | SSSE3 = 1 | LLAMAFILE = 1 | OPENMP = 1 | REPACK = 1 | 
+0.05.069.498 I kl_divergence: computing over 6 chunks, n_ctx=512, batch_size=512, n_seq=1
+SGLX MoE: placement 1: kept 0, uploaded 2807, freed 0 in 7014 ms; the placed experts cover 95.4% of the selections seen
+0.28.492.055 I kl_divergence: 23.42 seconds per pass - ETA cl11_ensure_program: CL11_1: multi mat-vec (Q / K / V, FFN gate / up in one launch) enabled
+cl11_ensure_program: CL11_1: mat-mat variant: tile 64 x 64, 8 x 4 values per work-item, BK 16, unroll 16, prefetch 0, 128 work-items
+cl11_ensure_program: CL11_1: GeForce GT 710, OpenCL 1.2 CUDA, kernels built (work-group sizes: element-wise 128, row 128, mat-vec 128, mat-mat 16x16)
+cl11_ensure_program: CL11_0: multi mat-vec (Q / K / V, FFN gate / up in one launch) enabled
+cl11_ensure_program: CL11_0: mat-mat variant: tile 64 x 64, 8 x 4 values per work-item, BK 16, unroll 16, prefetch 0, 128 work-items
+cl11_ensure_program: CL11_0: GeForce GT 730, OpenCL 1.2 CUDA, kernels built (work-group sizes: element-wise 128, row 128, mat-vec 128, mat-mat 16x16)
+SGLX MoE: placement 2: kept 1879, uploaded 928, freed 736 in 3216 ms; the placed experts cover 94.1% of the selections seen
+SGLX MoE: placement 3: kept 2085, uploaded 722, freed 530 in 2444 ms; the placed experts cover 94.4% of the selections seen
+SGLX MoE: placement 4: kept 2298, uploaded 509, freed 317 in 1716 ms; the placed experts cover 94.2% of the selections seen
+SGLX MoE: placement 5: kept 2287, uploaded 520, freed 328 in 1681 ms; the placed experts cover 94.0% of the selections seen
+SGLX MoE: placement 6: kept 2328, uploaded 479, freed 287 in 1458 ms; the placed experts cover 94.2% of the selections seen
+SGLX MoE profile decode: 1 blocks, mean 5.850 ms (max 5.850): gpu submit 0.000, cold cpu 5.813, gpu wait 0.000; cold 8.00 / gpu 0.00 experts per block, 0.00 gpus used
+SGLX MoE profile   Vulkan0: submit 0.000 ms, wait 0.000 ms (0 calls)
+SGLX MoE profile   CL11_0: submit 0.000 ms, wait 0.000 ms (0 calls)
+SGLX MoE profile   Vulkan1: submit 0.000 ms, wait 0.000 ms (0 calls)
+SGLX MoE profile   CL11_1: submit 0.000 ms, wait 0.000 ms (0 calls)
+SGLX MoE profile cold decode: alloc 0.000, set 0.000, graph_compute 5.787 ms (1 calls)
+SGLX MoE profile prefill: 335 blocks, mean 198.1 ms (max 4308.3), cold cpu rounds 59.2 ms, streaming 193.7 ms (29.1 experts per block); pairs: gpu 3457, cold 30 per block
+SGLX MoE profile: lazy input copies 8.780 ms per graph_compute that had them (336 calls, max 14.762)
+SGLX MoE profile: 6 placements, 17529 ms in total, 3074 tokens
+# rc=0  seconds=105
+# temps at end:  amd48 amd42 GT 430=40 GT 730=35 GT 710=36    (max 40 C)

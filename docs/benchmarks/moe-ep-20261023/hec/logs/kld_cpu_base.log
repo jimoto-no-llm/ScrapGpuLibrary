@@ -1,0 +1,16 @@
+# date: 2026-10-23_16:12:02  host: tb250  tag: kld_cpu_base
+# temps at start:  amd48 amd36 GT 430=42 GT 730=33 GT 710=33    (max 42 C)
+# env: VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json 
+# perf: 0000:03:00.0 perf=manual 0000:06:00.0 perf=manual 
+# cmd: /home/eightman/moe-ep/src/llama-build/bin/llama-perplexity -m /home/eightman/moe-ep/models/Qwen3-30B-A3B-Q4_0.gguf -f /home/eightman/moe-ep/kl/text.txt -c 512 --chunks 2 -b 512 -ub 512 -t 2 -fa off -sm layer -dev none -ngl 0 --kl-divergence-base /home/eightman/moe-ep/kl/base30.kld
+0.00.652.233 W load: control-looking token: 128247 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+0.01.826.733 I cmn          init: llama threadpool init, n_threads = 2
+0.02.375.936 I 
+0.02.376.024 I system_info: n_threads = 2 (n_threads_batch = 2) / 2 | CPU : SSE3 = 1 | SSSE3 = 1 | LLAMAFILE = 1 | OPENMP = 1 | REPACK = 1 | 
+0.02.378.245 I perplexity: saving all logits to /home/eightman/moe-ep/kl/base30.kld
+0.02.378.255 I perplexity: tokenizing the input ..
+0.02.575.452 I perplexity: tokenization took 197.191 ms
+0.02.575.519 I perplexity: calculating perplexity over 2 chunks, n_ctx=512, batch_size=512, n_seq=1
+2.44.816.270 I perplexity: 162.22 seconds per pass - ETA 5.26.986.905 I Final estimate: PPL = 10.4473 +/- 1.41212
+# rc=0  seconds=329
+# temps at end:  amd37 amd35 GT 430=43 GT 730=32 GT 710=33    (max 43 C)

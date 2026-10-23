@@ -1,0 +1,28 @@
+# date: 2026-10-23_21:45:45  host: tb250  tag: kld3_lfm_moe_rx
+# temps at start:  amd47 amd35 GT 430=43 GT 730=32 GT 710=32    (max 43 C)
+# env: GGML_SGLX_MOE=Vulkan0:auto GGML_CL11_PLATFORMS=NVIDIA GGML_SGLX_MOE_THREADS=2 GGML_SGLX_PROFILE=1 GGML_CL11_DEVICES=GT 730,GT 710 GGML_BACKEND_PATH=/home/eightman/moe-ep/hec/plug/libggml-cl11.so GGML_SGLX_MOE_VERBOSE=1 VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json GGML_SGLX_MOE_SPIN_US=0 GGML_CL11_AUTO_RPC=0 
+# perf: 0000:03:00.0 perf=manual 0000:06:00.0 perf=manual 
+# cmd: /home/eightman/moe-ep/src/llama-build/bin/llama-perplexity -m /home/eightman/moe-ep/models/LFM2.5-8B-A1B-Q4_0.gguf -f /home/eightman/moe-ep/kl/text.txt -c 512 --chunks 4 -b 512 -ub 320 -t 2 -fa off -sm layer -dev Vulkan0,SGLX0 -ts 1/0 -ngl 99 -ot blk\.[0-9]+\.ffn_(up|gate|down)_exps\.weight=SGLX0 --poll 0 --kl-divergence-base /home/eightman/moe-ep/kl/base.kld --kl-divergence
+SGLX: mapped 4.2 GiB of experts in 0.1 s
+0.03.416.084 W llama_kv_cache: the V embeddings have different sizes across layers and FA is not enabled - padding V cache to 512
+0.03.437.414 I cmn          init: llama threadpool init, n_threads = 2
+SGLX MoE: device Vulkan0 (AMD Radeon RX 6400 (RADV NAVI24)): class 0: 430 slots + 96 ring (3107 MiB)
+0.03.699.560 I 
+0.03.699.641 I system_info: n_threads = 2 (n_threads_batch = 2) / 2 | CPU : SSE3 = 1 | SSSE3 = 1 | LLAMAFILE = 1 | OPENMP = 1 | REPACK = 1 | 
+0.03.710.466 I kl_divergence: computing over 4 chunks, n_ctx=512, batch_size=512, n_seq=1
+SGLX MoE: placement 1: kept 0, uploaded 526, freed 0 in 2547 ms; the placed experts cover 98.7% of the selections seen
+SGLX MoE: placement 2: kept 430, uploaded 96, freed 0 in 414 ms; the placed experts cover 98.5% of the selections seen
+0.11.394.679 I kl_divergence: 7.68 seconds per pass - ETA SGLX MoE: placement 3: kept 428, uploaded 98, freed 2 in 424 ms; the placed experts cover 97.9% of the selections seen
+SGLX MoE: placement 4: kept 428, uploaded 98, freed 2 in 431 ms; the placed experts cover 97.9% of the selections seen
+SGLX MoE: placement 5: kept 429, uploaded 97, freed 1 in 419 ms; the placed experts cover 98.0% of the selections seen
+SGLX MoE: placement 6: kept 429, uploaded 97, freed 1 in 419 ms; the placed experts cover 98.0% of the selections seen
+SGLX MoE: placement 7: kept 428, uploaded 98, freed 2 in 423 ms; the placed experts cover 97.9% of the selections seen
+SGLX MoE: placement 8: kept 430, uploaded 96, freed 0 in 415 ms; the placed experts cover 97.9% of the selections seen
+SGLX MoE profile decode: 1 blocks, mean 4.150 ms (max 4.150): gpu submit 0.000, cold cpu 4.127, gpu wait 0.000; cold 4.00 / gpu 0.00 experts per block, 0.00 gpus used
+SGLX MoE profile   Vulkan0: submit 0.000 ms, wait 0.000 ms (0 calls)
+SGLX MoE profile cold decode: alloc 0.000, set 0.000, graph_compute 4.101 ms (1 calls)
+SGLX MoE profile prefill: 197 blocks, mean 59.9 ms (max 219.7), cold cpu rounds 21.1 ms, streaming 59.3 ms (7.3 experts per block); pairs: gpu 889, cold 6 per block
+SGLX MoE profile: lazy input copies 3.429 ms per graph_compute that had them (198 calls, max 19.254)
+SGLX MoE profile: 8 placements, 5491 ms in total, 2050 tokens
+# rc=0  seconds=25
+# temps at end:  amd48 amd35 GT 430=43 GT 730=32 GT 710=32    (max 43 C)

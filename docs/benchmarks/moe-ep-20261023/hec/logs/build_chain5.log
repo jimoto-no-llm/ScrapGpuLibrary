@@ -1,0 +1,7 @@
+# date: 2026-10-23_15:59:02  host: tb250  tag: build_chain5
+# temps at start:  amd51 amd41 GT 430=43 GT 730=33 GT 710=34    (max 43 C)
+# env: VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json 
+# perf: 0000:03:00.0 perf=manual 0000:06:00.0 perf=manual 
+# cmd: ./buildplug.sh
+# rc=0  seconds=31
+# temps at end:  amd46 amd41 GT 430=43 GT 730=33 GT 710=34    (max 43 C)

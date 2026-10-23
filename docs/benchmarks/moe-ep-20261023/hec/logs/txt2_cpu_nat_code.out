@@ -1,0 +1,1 @@
+{"test":"text:nat_code.txt","n_prompt":145,"pp_s":31.816,"pp_ts":4.5574,"n_gen":64,"tg_ts":3.1018,"tg_total_ts":3.0974,"gen":"    counts = Counter()\n    for record in records:\n        counts[record.get(key, \"<missing>\")] += 1\n    for value, count in sorted(counts.items(), key=lambda x: -x[1]):\n        print(f\"{count}\\t{value}\")\n\n\ndef main():\n    parser = argparse"}
