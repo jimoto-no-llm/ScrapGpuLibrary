@@ -1,0 +1,12 @@
+# spin vk=Vulkan0 m_gpu=4 busy_threads=0 iters=200
+# D_us  wall_us (set..get)  residual_wait_us (sync)  submit_us
+0  320  193  60
+50  281  107  60
+100  281  57  60
+200  333  7  59
+300  443  7  61
+400  545  7  62
+600  760  7  62
+800  1011  7  62
+1200  1480  7  68
+2000  2381  44  80

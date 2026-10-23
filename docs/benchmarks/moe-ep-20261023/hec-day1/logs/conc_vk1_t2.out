@@ -1,0 +1,11 @@
+# conc cpu_lib=/home/eightman/moe-ep/src/llama-build/bin/libggml-cpu.so threads=2 poll=50 iters=200 vk=Vulkan1 (AMD Radeon Pro WX 2100 (RADV POLARIS12)) slots=24
+# columns: m_gpu n_cpu | gpu_alone cpu_alone (mean us) | same-thread: wall cpu_part gpu_wait | worker-thread: wall cpu_part | wall/max(alone)  wall/sum(alone)  cpu slowdown(same)  cpu slowdown(worker)
+8 0 | 1058 0 | 0 0 0 (submit 0) | 0 0 | 0.000 0.000 0.000 0.000
+0 8 | 0 2230 | 0 0 0 (submit 0) | 0 0 | 0.000 0.000 0.000 0.000
+6 2 | 845 575 | 975 607 272 (submit 96) | 1293 1015 | 1.154 0.687 1.056 1.766
+4 4 | 635 1130 | 1590 1274 231 (submit 85) | 1884 1508 | 1.407 0.901 1.127 1.334
+2 6 | 380 1677 | 1953 1707 165 (submit 81) | 2396 2190 | 1.165 0.949 1.018 1.306
+5 3 | 720 857 | 1199 878 230 (submit 92) | 1880 1354 | 1.399 0.761 1.024 1.580
+3 5 | 500 1408 | 1686 1429 177 (submit 80) | 2103 1790 | 1.197 0.883 1.015 1.271
+1 7 | 296 1955 | 2227 1981 145 (submit 101) | 2467 2326 | 1.139 0.989 1.013 1.190
+7 1 | 939 301 | 990 324 571 (submit 96) | 1436 454 | 1.054 0.799 1.077 1.511

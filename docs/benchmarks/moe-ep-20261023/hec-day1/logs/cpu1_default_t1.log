@@ -1,0 +1,11 @@
+# date: 2026-10-23_12:22:10  host: tb250  tag: cpu1_default_t1
+# temps at start:  amd35 amd35 GT 430=45 GT 730=33 GT 710=34    (max 45 C)
+# env: 
+# perf: 0000:03:00.0 perf=auto 0000:06:00.0 perf=auto 
+# cmd: bin/hec_bench cpu1 --model /home/eightman/moe-ep/models/Qwen3-30B-A3B-Q4_0.gguf --cpu-lib /home/eightman/moe-ep/src/llama-build/bin/libggml-cpu.so --threads 1 --iters 200
+layer 0 blk.0.ffn_gate_exps.weight: type=q4_0 ne=[2048,768,128] expert=884736 B
+layer 0 blk.0.ffn_up_exps.weight: type=q4_0 ne=[2048,768,128] expert=884736 B
+layer 0 blk.0.ffn_down_exps.weight: type=q4_1 ne=[768,2048,128] expert=983040 B
+layer 6 blk.6.ffn_down_exps.weight: type=q4_0 ne=[768,2048,128] expert=884736 B
+# rc=0  seconds=5
+# temps at end:  amd35 amd35 GT 430=44 GT 730=33 GT 710=34    (max 45 C)

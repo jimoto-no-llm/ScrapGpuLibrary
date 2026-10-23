@@ -1,0 +1,11 @@
+# date: 2026-10-23_12:07:30  host: tb250  tag: spin_mem0
+# temps at start:  amd36 amd35 GT 430=44 GT 730=33 GT 710=34    (max 44 C)
+# env: VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json 
+# perf: 0000:03:00.0 perf=auto 0000:06:00.0 perf=auto 
+# cmd: bin/hec_bench spin --model /home/eightman/moe-ep/models/Qwen3-30B-A3B-Q4_0.gguf --vk-lib /home/eightman/moe-ep/src/llama-build/bin/libggml-vulkan.so --vk-dev Vulkan0 --iters 200 --busy 0 --mem
+layer 0 blk.0.ffn_gate_exps.weight: type=q4_0 ne=[2048,768,128] expert=884736 B
+layer 0 blk.0.ffn_up_exps.weight: type=q4_0 ne=[2048,768,128] expert=884736 B
+layer 0 blk.0.ffn_down_exps.weight: type=q4_1 ne=[768,2048,128] expert=983040 B
+layer 6 blk.6.ffn_down_exps.weight: type=q4_0 ne=[768,2048,128] expert=884736 B
+# rc=0  seconds=2
+# temps at end:  amd38 amd35 GT 430=44 GT 730=33 GT 710=34    (max 44 C)

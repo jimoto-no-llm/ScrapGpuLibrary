@@ -1,0 +1,16 @@
+ifei0541/ChatGLM3-6B-eagle3](https://huggingface.co/yifei0541/ChatGLM3-6B-eagle3)
+- [AngelSlim/Qwen3-4B_eagle3](https://huggingface.co/AngelSlim/Qwen3-4B_eagle3)
+
+### Auto-Draft (`draft-auto`)
+
+`draft-auto` is a hybrid approach that selects the best draft model in the backend. Currently, it supports:
+- `draft` and `draft-eagle3` models (if available in the same model directory)
+- `llama-fp16` (LLaMA-style model with 16-bit weights, which can be used as a draft model without preprocessing)
+
+When using `draft-auto`, the model directory must contain the target model and at least one of the draft model types.
+
+For example, when using the `llama3-8b` model, the `llama3-8b` model directory must contain the `llama3-8b` model and optionally a `llama3-8b-draft.gguf` model.
+
+To use it, run the server with this option:
+
+```bash

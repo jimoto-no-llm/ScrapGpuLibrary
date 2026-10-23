@@ -1,0 +1,7 @@
+# date: 2026-10-23_11:26:10  host: tb250  tag: build_sse2
+# temps at start:  amd52 amd52 GT 430=42 GT 730=36 GT 710=36    (max 42 C)
+# env: 
+# perf: 0000:03:00.0 perf=manual 0000:06:00.0 perf=manual 
+# cmd: bash build_sse2.sh
+# rc=0  seconds=40
+# temps at end:  amd44 amd50 GT 430=43 GT 730=34 GT 710=35    (max 43 C)

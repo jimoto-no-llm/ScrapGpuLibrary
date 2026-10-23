@@ -1,0 +1,7 @@
+# date: 2026-10-23_11:53:01  host: tb250  tag: build_omp0
+# temps at start:  amd50 amd44 GT 430=45 GT 730=35 GT 710=34    (max 45 C)
+# env: 
+# perf: 0000:03:00.0 perf=manual 0000:06:00.0 perf=manual 
+# cmd: bash build_variant.sh omp0 -DGGML_OPENMP=OFF
+# rc=0  seconds=40
+# temps at end:  amd43 amd42 GT 430=44 GT 730=33 GT 710=34    (max 45 C)

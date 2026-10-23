@@ -1,0 +1,11 @@
+# conc cpu_lib=/home/eightman/moe-ep/src/llama-build/bin/libggml-cpu.so threads=2 poll=50 iters=200 vk=Vulkan0 (AMD Radeon RX 6400 (RADV NAVI24)) slots=24
+# columns: m_gpu n_cpu | gpu_alone cpu_alone (mean us) | same-thread: wall cpu_part gpu_wait | worker-thread: wall cpu_part | wall/max(alone)  wall/sum(alone)  cpu slowdown(same)  cpu slowdown(worker)
+8 0 | 366 0 | 0 0 0 (submit 0) | 0 0 | 0.000 0.000 0.000 0.000
+0 8 | 0 2240 | 0 0 0 (submit 0) | 0 0 | 0.000 0.000 0.000 0.000
+6 2 | 301 585 | 947 604 230 (submit 112) | 1201 915 | 1.619 1.069 1.033 1.564
+4 4 | 248 1232 | 1493 1155 235 (submit 103) | 1642 1380 | 1.212 1.009 0.938 1.121
+2 6 | 230 1687 | 2073 1705 230 (submit 138) | 2153 1919 | 1.229 1.081 1.011 1.138
+5 3 | 284 856 | 1230 885 249 (submit 96) | 1363 1113 | 1.437 1.080 1.034 1.300
+3 5 | 236 1409 | 1767 1432 248 (submit 87) | 2610 2319 | 1.254 1.074 1.016 1.646
+1 7 | 175 2306 | 2540 2149 250 (submit 141) | 2453 2216 | 1.102 1.024 0.932 0.961
+7 1 | 336 309 | 526 334 113 (submit 79) | 826 477 | 1.562 0.814 1.080 1.543
