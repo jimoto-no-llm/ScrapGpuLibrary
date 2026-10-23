@@ -54,12 +54,12 @@ status() {
     [ -f "$STATE" ] && echo "state: $(cat "$STATE")" || echo "state: unknown (boot default)"
     cat /proc/driver/nvidia/version 2>/dev/null | head -1 || true
     for d in "${ALL[@]}"; do
-        echo "$d nodes: $(ls /sys/bus/pci/devices/$d/drm 2>/dev/null | tr '\n' ' ')"
+        echo "$d nodes: $(ls /sys/bus/pci/devices/$d/drm 2>/dev/null | tr '\n' ' ' || true)"
     done
     [ -r /sys/module/nouveau/parameters/modeset ] && echo "nouveau modeset=$(cat /sys/module/nouveau/parameters/modeset)"
     local lc kv
     lc=$(readlink -f /usr/lib/x86_64-linux-gnu/libcuda.so.1 2>/dev/null | sed 's/.*libcuda\.so\.//')
-    kv=$(awk '/NVRM version/ {for (i=1;i<=NF;i++) if ($i ~ /^[0-9]+\.[0-9]+/) {print $i; exit}}' /proc/driver/nvidia/version 2>/dev/null)
+    kv=$(cat /sys/module/nvidia/version 2>/dev/null || true)
     echo "userspace libcuda=${lc:-none} marker=$(cat "$USMARK" 2>/dev/null || echo none) kernel module=${kv:-not loaded}"
     if [ -n "$kv" ] && [ -n "$lc" ] && [ "$kv" != "$lc" ]; then echo "WARNING: userspace $lc does not match the kernel module $kv"; fi
 }
@@ -67,7 +67,7 @@ status() {
 busy_check() { # refuse while a process holds an NVIDIA device node or a DRM node of a GT card (fuser is not installed)
     local users n d args=(-lname '/dev/nvidia*')
     for d in "${ALL[@]}"; do   # nouveau / nvidia_drm nodes of the three cards only; the AMD nodes stay free for other benches
-        for n in $(ls /sys/bus/pci/devices/$d/drm 2>/dev/null); do args+=(-o -lname "/dev/dri/$n"); done
+        for n in $(ls /sys/bus/pci/devices/$d/drm 2>/dev/null || true); do args+=(-o -lname "/dev/dri/$n"); done
     done
     users=$(find /proc/[0-9]*/fd "${args[@]}" 2>/dev/null | cut -d/ -f3 | sort -u | tr '\n' ' ')
     if [ -n "$users" ]; then
@@ -77,7 +77,13 @@ busy_check() { # refuse while a process holds an NVIDIA device node or a DRM nod
 
 unload_all() {
     for m in nvidia_drm nvidia_modeset nvidia_uvm nvidia_peermem nvidia nouveau; do
-        if lsmod | grep -q "^$m "; then log "rmmod $m"; modprobe -r "$m"; fi
+        # /sys/module, not `lsmod | grep -q`: with pipefail, grep -q closing the pipe early made the test fail
+        # and left the module loaded.
+        if [ -d /sys/module/$m ]; then log "rmmod $m"; modprobe -r "$m"; fi
+    done
+    udevadm settle 2>/dev/null || true   # an autoload (modalias / nvidia-modprobe) racing the unload shows up here
+    for m in nvidia nouveau; do
+        [ ! -d /sys/module/$m ] || { echo "$m is still loaded after unload (version $(cat /sys/module/$m/version 2>/dev/null))" >&2; return 1; }
     done
     for d in "${ALL[@]}"; do echo > /sys/bus/pci/devices/$d/driver_override; done
 }
@@ -109,6 +115,10 @@ load_nv() { # load_nv <390|470>
         modprobe nvidia-tesla-470; modprobe nvidia-tesla-470-uvm
         modprobe nvidia-tesla-470-modeset; modprobe nvidia-tesla-470-drm || true
     fi
+    local want got; [ "$1" = 390 ] && want=390.157 || want=470.
+    got=$(cat /sys/module/nvidia/version 2>/dev/null || echo none)
+    case "$got" in "$want"*) log "nvidia kernel module $got" ;;
+        *) echo "loaded nvidia kernel module is $got, wanted $want" >&2; return 1 ;; esac
 }
 
 load_nouveau() {
