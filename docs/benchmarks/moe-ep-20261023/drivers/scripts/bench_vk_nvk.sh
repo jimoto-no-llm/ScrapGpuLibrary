@@ -3,7 +3,7 @@
 # 25.0.7 (installed) only with NVK_I_WANT_A_BROKEN_VULKAN_DRIVER=1 (set here), 25.2.1+ without it. Fermi (GT 430) is not an NVK target.
 # Success ladder: vulkaninfo lists the card -> llama-bench pp/tg runs -> test-backend-ops MUL_MAT passes. Stop at the first failure and keep the log.
 . "$(dirname "$0")/env_drv.sh"
-need_state nouveau nv470-nouveau430
+need_state nouveau nouveau-kepler nv470-nouveau430
 for C in "$@"; do
   clean_env; I=$(card_idx $C) || continue
   export VK_ICD_FILENAMES=$ICD_NVK NVK_I_WANT_A_BROKEN_VULKAN_DRIVER=1 GGML_VK_VISIBLE_DEVICES=$I

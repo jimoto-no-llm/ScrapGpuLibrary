@@ -67,3 +67,70 @@ state=`nv390`、`/sys/module/nvidia/version`=390.157、userspace 390.157、GT 43
 ## GT 430 after the nouveau attempts (2026-10-23, user's journal)
 
 After the GT 430 was handed to nouveau (stage C, twice) and the machine went back to 390, every open of the GT 430 logs `NVRM: RmInitAdapter failed! (0x12:0x45:1920)` / `rm_init_adapter failed for device bearing minor number 0` with an `nv_close_device` → `rm_disable_adapter` → `os_flush_work_queue` trace (`logs/05_gt430_journal/`). Only a reboot cleared it. The nouveau probe messages for the GT 430 were not in the captured tail. Decision (user, Q39 = a): the GT 430 is left unbound in the remaining stages; 470 and nouveau / NVK / rusticl are tried on the Kepler cards only (`nouveau-kepler` state in the switch script).
+
+## 再開 4: 方針変更後（GT 430 はどのドライバにも束縛しない）の実測（2026-10-23〜24）
+
+方針（利用者 Q39 = a）: GT 430 は `none`。`nv470-nouveau430` と `nouveau`（3 枚）は使わない。新状態 `nouveau-kepler`（GT 730 / GT 710 を nouveau）。順序は nv390 往復 → 段階 B → nv390 → 段階 A（Kepler）→ nv390 → pstate（GT 710 のみ）。
+各切替は rc 0、`expect_bound` も通り、GT 430 に割り込み障害は出ていない。
+
+### 段階 B: `nv470`（Kepler 2 枚 = 470.256.02、GT 430 = none）— 動いた
+
+認識（`logs/05_stage_b_vs_390/drivers/logs/b_nv470/`）: `nvidia-smi` に GT 730 / GT 710、OpenCL（`libnvidia-opencl`）プラットフォーム "NVIDIA CUDA" に 2 枚、Vulkan（470 の ICD）に **2 枚とも出る（apiVersion 1.2.175、driverName NVIDIA）**。390 では Vulkan ICD が落ちる（HARDWARE.md）のと違い、470 の `vulkaninfo --summary` は rc 0。ggml-vulkan の動作は未測定（この段階では測っていない）。
+
+**自前 CUDA（470、`bench_cuda470.sh`）**
+- `scrapgpu_cuda_kernel_tests`: GT 730 / GT 710 とも **161 passed, 0 failed**。`scrapgpu_ops_tests`（CUDA）: 8 op runs、75 skipped（CUDA 未実装の op。390 側と同じ構成のため差は無い）。
+- 帯域（mm_bench、`cuda`）: 下表。390 の値は同日の `bench_cuda390.sh`（GT 730 の mv / mid32、`logs/05_stage_b_vs_390/sglx/logs/drv_cuda390_*`）。
+
+| 項目 | GT 730 / 470 | GT 730 / 390 | GT 710 / 470 |
+| --- | --- | --- | --- |
+| mv q4_0 | 32.99 GB/s | 33.01 GB/s | 10.78 GB/s |
+| mv q6_K | 26.26 GB/s | 26.38 GB/s | 8.97 GB/s |
+| MUL_MAT_ID 32 tok (q4_0) | 19.19 GB/s | 18.91 GB/s | 7.55 GB/s |
+
+  → 470 と 390 は同等（差は 1.5 % 以内）。
+- SGLX C（CUDA、LFM、`-p512 -n128 -pg 512,128`、perf は auto、5 回）: 470 は pp512 635.8 ± 8.2 / tg128 31.2 ± 0.4 / pg 129.4 ± 0.7、390 は 643.7 ± 5.1 / 30.6 ± 0.4 / 127.9 ± 1.4。**差は標準偏差内**。（10/22 の C = tg 62 とは perf pin の有無などで条件が異なる。同日の 390 と比較すること。）
+
+**CL11（470 の OpenCL 1.2、`bench_cl11_cards.sh NVIDIA gt730 gt710`、LFM2.5-1.2B Q4_0）**
+
+| カード | 項目 | 470 | 390（GT 730 のみ同日） |
+| --- | --- | --- | --- |
+| GT 730 | q6_K mv / q4_0 mv | 28.64 / 28.34 GB/s | 28.19 / 28.05 GB/s |
+| GT 730 | MUL_MAT_ID 32 tok | 4.67 GB/s | 4.82 GB/s |
+| GT 730 | pp128 / tg64 | 118.32 ± 0.27 / 32.54 ± 0.01 | 121.35 ± 0.37 / 31.98 ± 0.01 |
+| GT 710 | q6_K mv / q4_0 mv | 10.25 / 10.55 GB/s | （390 未測定） |
+| GT 710 | pp128 / tg64 | 59.85 ± 0.22 / 13.32 | （390 未測定） |
+
+  → GT 730 は 470 と 390 で同等（pp128 −2.5 %、tg64 +1.7 %）。
+
+**勝ち構成との比較（perf pin、`bench_cl11_470.sh` / `q_n_drv.sh`）**
+- 構成 H（LFM、2 回交互）: tg128 470 = 51.3 ± 4.6 / 49.3 ± 4.7、390（同日）= 55.5 ± 6.7 / 49.6 ± 3.8。pg512,128 470 = 186.9 / 188.9、390 = 190.0 / 187.9。C1 は 470 = 45.2 / 45.2、390 = 45.1 / 45.4。**470 と 390 の差は標準偏差内**。ただし**今日の H 自体が記録の tg 69 / pg 240 より遅い**（C1 も記録 51.8 に対し 45）。原因: perf pin が安定していない（下の注）。記録の勝ち値との直接比較はしない。
+- 構成 N（30B、`hec/cfg_n.sh`、pp512 / tg128 / pg512,128、3 回）: 470 = tg128 13.66 / 13.37、390 = 9.93 / 9.93（1 回目の 390）、**390 を再測定したところ 13.25 / 13.61**（`drv390b_N_*`）。→ **470 ≈ 390 ≈ 13.4**（記録の 14.63 より少し低い）。最初の 390 の 9.9 は perf pin が RX 6400 / WX 2100 を別のクロックに固定した結果の外れ値（pin の表示は毎回違った）。
+- 注（perf pin）: `sgl-driver-switch perf pin` は表示される sclk が実行ごとに違う（RX 6400 が `0Mhz *` 2 行、`500Mhz`、WX 2100 が 734 / 1098 / 1219 MHz）。AMD 側の pin の再現性が低いので、**絶対値は記録と比べず、同一セッションで交互に測った差だけを見る**。H / N の「勝ち」の判断（標準偏差超え）は 470 でも 390 でも出ていない。
+- 結論（B）: 470 は 390 と同等で、速くならない。想定どおり Kepler 側の速度は全体にほとんど効かない。ggml-cuda（段階 D）には進んでいない。
+
+### 段階 A（Kepler 版）: `nouveau-kepler` — 認識はするが、計算が動かない
+
+認識（`logs/06_stage_a_nouveau_kepler/drivers/logs/a_nouveau_kepler/`）:
+- rusticl（`RUSTICL_ENABLE=nouveau`）: **2 枚とも出る**（デバイス名 `NV106`、OpenCL 3.0 / OpenCL C 1.2、Max clock 512 MHz、Max compute units 2）。Clover（`libMesaOpenCL`）は AMD の 2 枚だけで nouveau のカードは出ない。
+- NVK（`NVK_I_WANT_A_BROKEN_VULKAN_DRIVER=1` あり）: 2 枚とも出る（`GeForce GT 730 (NVK GK208B)`、`NVK GK208B`、apiVersion **1.0.305**）。環境変数なしでは出ない（`vk-nvk-plain` rc 1）。ggml-vulkan の列挙順は GT 710（2176 MB）が index 0、GT 730（1152 MB）が index 1（`bench_vk_nvk.sh gt730` のログ名 `drv_nvk_gt730_*` は index 0 = **GT 710** を測っている）。
+- nvidia の Vulkan ICD（`VK_ICD_FILENAMES=/etc/vulkan/icd.d/nvidia_icd.json`）は `stack smashing detected` で rc 134（390 のユーザ空間のまま nouveau 状態にしたため）。
+
+**rusticl + CL11 プラグイン: 動かない**（`drv_nouveau-kepler_rusticl_gt730*`）
+- mm_bench（mv q4_0 / q6_K / mid32）と llama-bench が全部、カーネルのビルド時に `ERROR: unknown nir_op f2f16` / `nvc0_program_translate:659 - shader translation failed: -2` を出して rc 136 で落ちる。
+- **最小再現**（`repro/`）: `__kernel void k(__global const float*a,__global float*o){size_t i=get_global_id(0); vstore_half(a[i],i,(__global half*)o);}`（`half2.cl`）を `clbuild`（`clBuildProgram`）で GT 730 / GT 710 のどちらでも落とせる。`fma` のカーネル（`fl.cl`）と `vload_half`（`half3.cl`）は通る（rc 0）。→ **float→half の変換（NIR の `f2f16`）を nvc0 のコード生成が持たない**（Mesa 25.0.7、GK208B）。
+- 一次情報: `unknown nir_op f2f16` と nvc0 / rusticl の組合せで WebSearch を 1 回かけたが、該当する issue は見つからなかった（Mesa の GitLab を直接検索していないので、既存 issue の有無は未確認）。
+- 速度の比較は成立しない（動かない）。
+
+**NVK + ggml-vulkan: 一部のみ動く**（`nvk_per_op.txt`）
+- `test-backend-ops` の MUL_MAT（type_a=q4_0, type_b=f32）は **94/94 passed**（fp16: 0 の f32 経路）。SCALE / CONT / RMS_NORM / SOFT_MAX / SSM_CONV / ARGSORT / SUM_ROWS も通る。
+- **f16 を含むパイプラインは作成に失敗する**: ADD（`add_f16_f16_f16_norepeat`）、MUL、CPY（`contig_cpy_f32_f16`）、ROPE（`rope_norm_f16`）、CLAMP（`clamp_f16`）、GET_ROWS（`get_rows_iq2_xxs_f32`）、MUL_MAT_ID（`mul_mat_vec_id_q4_k_f32`）はいずれも `vk::Device::createComputePipeline: ErrorUnknown` で abort。したがって `llama-bench`（LFM2.5-1.2B）は起動直後に同じ例外で落ちる。原因が OpenCL 側と同じ f2f16 かは未確認（f16 を含む点は共通。推定）。
+- 性能（動く op のみ）: `test-backend-ops perf` の MUL_MAT q4_0（m=4096, n=1, k=14336、重み約 33 MB）が GT 710 で 47.1 ms（約 0.70 GB/s 相当）、GT 730 で 25.2 ms（約 1.3 GB/s）。390 の CL11 mv は GT 730 で約 28 GB/s なので、**再クロック前の NVK は 2 桁近く遅い**（pstate は 405 MHz / 810 MHz のまま）。
+
+### 上流への報告候補（投稿していない）
+
+1. Mesa nouveau（nvc0 codegen、rusticl）: float→half (`nir_op_f2f16`、`vstore_half`) で `unknown nir_op f2f16` → シェーダ変換失敗 → プロセス abort（GK208B / GF1xx 共通の可能性）。最小再現は `repro/half2.cl` + `repro/clbuild.c`。落ちずに `CL_BUILD_PROGRAM_FAILURE` を返すだけでも改善。報告先は Mesa GitLab（rusticl / nouveau）。既存 issue の有無は未確認。
+2. Mesa NVK（Kepler、25.0.7）: f16 を含む compute パイプラインが `ErrorUnknown`。ggml-vulkan の `test-backend-ops` が最小再現（op 名は `nvk_per_op.txt`）。25.2.1 以降で再現するかは未確認（25.0.7 では Kepler は未適合として扱われる）。
+3. 切替スクリプト／環境側: 前回までの `nvidia-installer` によるモジュール解除、GT 430 の nouveau 束縛と 390 への戻り（`RmInitAdapter failed (0x12:0x45:1920)`）は README の別節に記録済み。
+
+### GT 710 の pstate（再クロック）
+次項に追記（実行前にここまでコミットする）。

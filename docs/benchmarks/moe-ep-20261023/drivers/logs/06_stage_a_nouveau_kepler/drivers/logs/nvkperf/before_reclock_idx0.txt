@@ -1,0 +1,3 @@
+# before_reclock idx=0
+  Device description: NVK GK208B
+  MUL_MAT(type_a=q4_0,type_b=f32,m=4096,n=1,k=14336,bs=[1,1],nr=[1,1],per=[0,1,2,3],k_v=0,o=1,src_overlap=0,m_v=0,pad=0):                852 runs - 47144.15 us/run - 117.44 MFLOP/run - [1;34m  2.49 G

@@ -1,0 +1,4 @@
+device=GeForce GT 730 backend=cuda driver=CUDA driver tuning=sm_35
+mid q4_0 experts=32 rows=1792 k=2048 used=4 tokens=32  weights read per op 252.00 MiB
+  throughput: best 13.975 ms  median 13.979 ms  = 18.91 / 18.90 GB/s
+  latency   : best 13.978 ms  median 13.982 ms  = 18.90 / 18.90 GB/s

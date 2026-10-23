@@ -1,0 +1,6 @@
+# date: 2026-10-24_00:07:20  host: tb250  tag: drv_cuda390_ops_GT710
+# temps at start:  amd36 amd35 GT 430=44 GT 730=34 GT 710=33    (max 44 C)
+# env: 
+# cmd: env SCRAPGPU_TEST_BACKEND=cuda SCRAPGPU_CUDA_DEVICES=GT 710 /home/eightman/moe-ep/cuda/bB/scrapgpu_ops_tests
+# rc=0  seconds=2
+# temps at end:  amd36 amd35 GT 430=43 GT 730=34 GT 710=33    (max 44 C)

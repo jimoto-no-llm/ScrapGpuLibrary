@@ -1,0 +1,511 @@
+# env OCL_ICD_VENDORS=/dev/null OCL_ICD_FILENAMES=libRusticlOpenCL.so.1 RUSTICL_ENABLE=nouveau clinfo
+Number of platforms                               2
+  Platform Name                                   rusticl
+  Platform Vendor                                 Mesa/X.org
+  Platform Version                                OpenCL 3.0 
+  Platform Profile                                FULL_PROFILE
+  Platform Extensions                             cl_khr_icd cl_khr_byte_addressable_store cl_khr_create_command_queue cl_khr_expect_assume cl_khr_extended_versioning cl_khr_global_int32_base_atomics cl_khr_global_int32_extended_atomics cl_khr_il_program cl_khr_local_int32_base_atomics cl_khr_local_int32_extended_atomics cl_khr_integer_dot_product cl_khr_spirv_no_integer_wrap_decoration cl_khr_suggested_local_work_size cles_khr_int64 cl_khr_3d_image_writes cl_khr_depth_images cl_khr_pci_bus_info cl_khr_device_uuid
+  Platform Extensions with Version                cl_khr_icd                                                       0x400000 (1.0.0)
+                                                  cl_khr_byte_addressable_store                                    0x400000 (1.0.0)
+                                                  cl_khr_create_command_queue                                      0x400000 (1.0.0)
+                                                  cl_khr_expect_assume                                             0x400000 (1.0.0)
+                                                  cl_khr_extended_versioning                                       0x400000 (1.0.0)
+                                                  cl_khr_global_int32_base_atomics                                 0x400000 (1.0.0)
+                                                  cl_khr_global_int32_extended_atomics                             0x400000 (1.0.0)
+                                                  cl_khr_il_program                                                0x400000 (1.0.0)
+                                                  cl_khr_local_int32_base_atomics                                  0x400000 (1.0.0)
+                                                  cl_khr_local_int32_extended_atomics                              0x400000 (1.0.0)
+                                                  cl_khr_integer_dot_product                                       0x800000 (2.0.0)
+                                                  cl_khr_spirv_no_integer_wrap_decoration                          0x400000 (1.0.0)
+                                                  cl_khr_suggested_local_work_size                                 0x400000 (1.0.0)
+                                                  cles_khr_int64                                                   0x400000 (1.0.0)
+                                                  cl_khr_3d_image_writes                                           0x400000 (1.0.0)
+                                                  cl_khr_depth_images                                              0x400000 (1.0.0)
+                                                  cl_khr_pci_bus_info                                              0x400000 (1.0.0)
+                                                  cl_khr_device_uuid                                               0x400000 (1.0.0)
+  Platform Numeric Version                        0xc00000 (3.0.0)
+  Platform Extensions function suffix             MESA
+  Platform Host timer resolution                  1ns
+
+  Platform Name                                   Clover
+  Platform Vendor                                 Mesa
+  Platform Version                                OpenCL 1.1 Mesa 25.0.7-2+deb13u1
+  Platform Profile                                FULL_PROFILE
+  Platform Extensions                             cl_khr_icd
+  Platform Extensions function suffix             MESA
+
+  Platform Name                                   rusticl
+Number of devices                                 2
+  Device Name                                     NV106
+  Device Vendor                                   NVIDIA
+  Device Vendor ID                                0x10de
+  Device Version                                  OpenCL 3.0 
+  Device UUID                                     0601de10-8712-0000-0700-000000000000
+  Driver UUID                                     f508ef15-8475-39e7-45e9-a4b7024738f4
+  Valid Device LUID                               No
+  Device LUID                                     0000-000000000000
+  Device Node Mask                                0
+  Device Numeric Version                          0xc00000 (3.0.0)
+  Driver Version                                  25.0.7-2+deb13u1
+  Device OpenCL C Version                         OpenCL C 1.2 
+  Device OpenCL C Numeric Version                 0x402000 (1.2.0)
+  Device OpenCL C all versions                    OpenCL C                                                         0xc00000 (3.0.0)
+                                                  OpenCL C                                                         0x402000 (1.2.0)
+                                                  OpenCL C                                                         0x401000 (1.1.0)
+                                                  OpenCL C                                                         0x400000 (1.0.0)
+  Device OpenCL C features                        __opencl_c_integer_dot_product_input_4x8bit                      0x800000 (2.0.0)
+                                                  __opencl_c_integer_dot_product_input_4x8bit_packed               0x800000 (2.0.0)
+                                                  __opencl_c_int64                                                 0x400000 (1.0.0)
+                                                  __opencl_c_images                                                0x400000 (1.0.0)
+                                                  __opencl_c_3d_image_writes                                       0x400000 (1.0.0)
+  Latest conformance test passed                  v0000-01-01-00
+  Device Type                                     GPU
+  Device PCI bus info (KHR)                       PCI-E, 0000:07:00.0
+  Device Profile                                  EMBEDDED_PROFILE
+  Device Available                                Yes
+  Compiler Available                              Yes
+  Linker Available                                Yes
+  Max compute units                               2
+  Max clock frequency                             512MHz
+  Device Partition                                (core)
+    Max number of sub-devices                     0
+    Supported partition types                     None
+    Supported affinity domains                    (n/a)
+  Max work item dimensions                        3
+  Max work item sizes                             1024x1024x64
+  Max work group size                             1024
+  Preferred work group size multiple (device)     32
+  Preferred work group size multiple (kernel)     32
+  Max sub-groups per work group                   0
+  Preferred / native vector sizes                 
+    char                                                 1 / 1       
+    short                                                1 / 1       
+    int                                                  1 / 1       
+    long                                                 1 / 1       
+    half                                                 0 / 0        (n/a)
+    float                                                1 / 1       
+    double                                               0 / 0        (n/a)
+  Half-precision Floating-point support           (n/a)
+  Single-precision Floating-point support         (core)
+    Denormals                                     No
+    Infinity and NANs                             Yes
+    Round to nearest                              Yes
+    Round to zero                                 No
+    Round to infinity                             No
+    IEEE754-2008 fused multiply-add               No
+    Support is emulated in software               No
+    Correctly-rounded divide and sqrt operations  No
+  Double-precision Floating-point support         (n/a)
+  Address bits                                    64, Little-Endian
+  Global memory size                              1073721344 (1024MiB)
+  Error Correction support                        No
+  Max memory allocation                           1073721344 (1024MiB)
+  Unified memory for Host and Device              No
+  Shared Virtual Memory (SVM) capabilities        (core)
+    Coarse-grained buffer sharing                 No
+    Fine-grained buffer sharing                   No
+    Fine-grained system sharing                   No
+    Atomics                                       No
+  Minimum alignment for any data type             128 bytes
+  Alignment of base address                       4096 bits (512 bytes)
+  Preferred alignment for atomics                 
+    SVM                                           0 bytes
+    Global                                        0 bytes
+    Local                                         0 bytes
+  Atomic memory capabilities                      relaxed, work-group scope
+  Atomic fence capabilities                       relaxed, acquire/release, work-group scope
+  Max size for global variable                    0
+  Preferred total size of global vars             0
+  Global Memory cache type                        None
+  Image support                                   Yes
+    Max number of samplers per kernel             32
+    Max size for 1D images from buffer            67107584 pixels
+    Max 1D or 2D image array size                 2048 images
+    Base address alignment for 2D image buffers   0 bytes
+    Pitch alignment for 2D image buffers          0 pixels
+    Max 2D image size                             16384x16384 pixels
+    Max 3D image size                             2048x2048x2048 pixels
+    Max number of read image args                 32
+    Max number of write image args                8
+    Max number of read/write image args           0
+  Pipe support                                    No
+  Max number of pipe args                         0
+  Max active pipe reservations                    0
+  Max pipe packet size                            0
+  Local memory type                               Global
+  Local memory size                               49152 (48KiB)
+  Max number of constant args                     15
+  Max constant buffer size                        67108864 (64MiB)
+  Generic address space support                   No
+  Max size of kernel argument                     4096 (4KiB)
+  Queue properties (on host)                      
+    Out-of-order execution                        Yes
+    Profiling                                     Yes
+  Device enqueue capabilities                     (n/a)
+  Queue properties (on device)                    
+    Out-of-order execution                        No
+    Profiling                                     No
+    Preferred size                                0
+    Max size                                      0
+  Max queues on device                            0
+  Max events on device                            0
+  Prefer user sync for interop                    Yes
+  Profiling timer resolution                      1000ns
+  Execution capabilities                          
+    Run OpenCL kernels                            Yes
+    Run native kernels                            No
+    Non-uniform work-groups                       No
+    Work-group collective functions               No
+    Sub-group independent forward progress        No
+    IL version                                    SPIR-V_1.0 SPIR-V_1.1 SPIR-V_1.2 SPIR-V_1.3 SPIR-V_1.4
+    ILs with version                              SPIR-V                                                           0x400000 (1.0.0)
+                                                  SPIR-V                                                           0x401000 (1.1.0)
+                                                  SPIR-V                                                           0x402000 (1.2.0)
+                                                  SPIR-V                                                           0x403000 (1.3.0)
+                                                  SPIR-V                                                           0x404000 (1.4.0)
+  printf() buffer size                            1048576 (1024KiB)
+  Built-in kernels                                (n/a)
+  Built-in kernels with version                   (n/a)
+  Device Extensions                               cl_khr_byte_addressable_store cl_khr_create_command_queue cl_khr_expect_assume cl_khr_extended_versioning cl_khr_global_int32_base_atomics cl_khr_global_int32_extended_atomics cl_khr_il_program cl_khr_local_int32_base_atomics cl_khr_local_int32_extended_atomics cl_khr_integer_dot_product cl_khr_spirv_no_integer_wrap_decoration cl_khr_suggested_local_work_size cles_khr_int64 cl_khr_3d_image_writes cl_khr_depth_images cl_khr_pci_bus_info cl_khr_device_uuid
+  Device Extensions with Version                  cl_khr_byte_addressable_store                                    0x400000 (1.0.0)
+                                                  cl_khr_create_command_queue                                      0x400000 (1.0.0)
+                                                  cl_khr_expect_assume                                             0x400000 (1.0.0)
+                                                  cl_khr_extended_versioning                                       0x400000 (1.0.0)
+                                                  cl_khr_global_int32_base_atomics                                 0x400000 (1.0.0)
+                                                  cl_khr_global_int32_extended_atomics                             0x400000 (1.0.0)
+                                                  cl_khr_il_program                                                0x400000 (1.0.0)
+                                                  cl_khr_local_int32_base_atomics                                  0x400000 (1.0.0)
+                                                  cl_khr_local_int32_extended_atomics                              0x400000 (1.0.0)
+                                                  cl_khr_integer_dot_product                                       0x800000 (2.0.0)
+                                                  cl_khr_spirv_no_integer_wrap_decoration                          0x400000 (1.0.0)
+                                                  cl_khr_suggested_local_work_size                                 0x400000 (1.0.0)
+                                                  cles_khr_int64                                                   0x400000 (1.0.0)
+                                                  cl_khr_3d_image_writes                                           0x400000 (1.0.0)
+                                                  cl_khr_depth_images                                              0x400000 (1.0.0)
+                                                  cl_khr_pci_bus_info                                              0x400000 (1.0.0)
+                                                  cl_khr_device_uuid                                               0x400000 (1.0.0)
+
+  Device Name                                     NV106
+  Device Vendor                                   NVIDIA
+  Device Vendor ID                                0x10de
+  Device Version                                  OpenCL 3.0 
+  Device UUID                                     0601de10-8b12-0000-0800-000000000000
+  Driver UUID                                     f508ef15-8475-39e7-45e9-a4b7024738f4
+  Valid Device LUID                               No
+  Device LUID                                     0000-000000000000
+  Device Node Mask                                0
+  Device Numeric Version                          0xc00000 (3.0.0)
+  Driver Version                                  25.0.7-2+deb13u1
+  Device OpenCL C Version                         OpenCL C 1.2 
+  Device OpenCL C Numeric Version                 0x402000 (1.2.0)
+  Device OpenCL C all versions                    OpenCL C                                                         0xc00000 (3.0.0)
+                                                  OpenCL C                                                         0x402000 (1.2.0)
+                                                  OpenCL C                                                         0x401000 (1.1.0)
+                                                  OpenCL C                                                         0x400000 (1.0.0)
+  Device OpenCL C features                        __opencl_c_integer_dot_product_input_4x8bit                      0x800000 (2.0.0)
+                                                  __opencl_c_integer_dot_product_input_4x8bit_packed               0x800000 (2.0.0)
+                                                  __opencl_c_int64                                                 0x400000 (1.0.0)
+                                                  __opencl_c_images                                                0x400000 (1.0.0)
+                                                  __opencl_c_3d_image_writes                                       0x400000 (1.0.0)
+  Latest conformance test passed                  v0000-01-01-00
+  Device Type                                     GPU
+  Device PCI bus info (KHR)                       PCI-E, 0000:08:00.0
+  Device Profile                                  EMBEDDED_PROFILE
+  Device Available                                Yes
+  Compiler Available                              Yes
+  Linker Available                                Yes
+  Max compute units                               1
+  Max clock frequency                             512MHz
+  Device Partition                                (core)
+    Max number of sub-devices                     0
+    Supported partition types                     None
+    Supported affinity domains                    (n/a)
+  Max work item dimensions                        3
+  Max work item sizes                             1024x1024x64
+  Max work group size                             1024
+  Preferred work group size multiple (device)     32
+  Preferred work group size multiple (kernel)     32
+  Max sub-groups per work group                   0
+  Preferred / native vector sizes                 
+    char                                                 1 / 1       
+    short                                                1 / 1       
+    int                                                  1 / 1       
+    long                                                 1 / 1       
+    half                                                 0 / 0        (n/a)
+    float                                                1 / 1       
+    double                                               0 / 0        (n/a)
+  Half-precision Floating-point support           (n/a)
+  Single-precision Floating-point support         (core)
+    Denormals                                     No
+    Infinity and NANs                             Yes
+    Round to nearest                              Yes
+    Round to zero                                 No
+    Round to infinity                             No
+    IEEE754-2008 fused multiply-add               No
+    Support is emulated in software               No
+    Correctly-rounded divide and sqrt operations  No
+  Double-precision Floating-point support         (n/a)
+  Address bits                                    64, Little-Endian
+  Global memory size                              2147463168 (2GiB)
+  Error Correction support                        No
+  Max memory allocation                           2147463168 (2GiB)
+  Unified memory for Host and Device              No
+  Shared Virtual Memory (SVM) capabilities        (core)
+    Coarse-grained buffer sharing                 No
+    Fine-grained buffer sharing                   No
+    Fine-grained system sharing                   No
+    Atomics                                       No
+  Minimum alignment for any data type             128 bytes
+  Alignment of base address                       4096 bits (512 bytes)
+  Preferred alignment for atomics                 
+    SVM                                           0 bytes
+    Global                                        0 bytes
+    Local                                         0 bytes
+  Atomic memory capabilities                      relaxed, work-group scope
+  Atomic fence capabilities                       relaxed, acquire/release, work-group scope
+  Max size for global variable                    0
+  Preferred total size of global vars             0
+  Global Memory cache type                        None
+  Image support                                   Yes
+    Max number of samplers per kernel             32
+    Max size for 1D images from buffer            134216448 pixels
+    Max 1D or 2D image array size                 2048 images
+    Base address alignment for 2D image buffers   0 bytes
+    Pitch alignment for 2D image buffers          0 pixels
+    Max 2D image size                             16384x16384 pixels
+    Max 3D image size                             2048x2048x2048 pixels
+    Max number of read image args                 32
+    Max number of write image args                8
+    Max number of read/write image args           0
+  Pipe support                                    No
+  Max number of pipe args                         0
+  Max active pipe reservations                    0
+  Max pipe packet size                            0
+  Local memory type                               Global
+  Local memory size                               49152 (48KiB)
+  Max number of constant args                     15
+  Max constant buffer size                        67108864 (64MiB)
+  Generic address space support                   No
+  Max size of kernel argument                     4096 (4KiB)
+  Queue properties (on host)                      
+    Out-of-order execution                        Yes
+    Profiling                                     Yes
+  Device enqueue capabilities                     (n/a)
+  Queue properties (on device)                    
+    Out-of-order execution                        No
+    Profiling                                     No
+    Preferred size                                0
+    Max size                                      0
+  Max queues on device                            0
+  Max events on device                            0
+  Prefer user sync for interop                    Yes
+  Profiling timer resolution                      1000ns
+  Execution capabilities                          
+    Run OpenCL kernels                            Yes
+    Run native kernels                            No
+    Non-uniform work-groups                       No
+    Work-group collective functions               No
+    Sub-group independent forward progress        No
+    IL version                                    SPIR-V_1.0 SPIR-V_1.1 SPIR-V_1.2 SPIR-V_1.3 SPIR-V_1.4
+    ILs with version                              SPIR-V                                                           0x400000 (1.0.0)
+                                                  SPIR-V                                                           0x401000 (1.1.0)
+                                                  SPIR-V                                                           0x402000 (1.2.0)
+                                                  SPIR-V                                                           0x403000 (1.3.0)
+                                                  SPIR-V                                                           0x404000 (1.4.0)
+  printf() buffer size                            1048576 (1024KiB)
+  Built-in kernels                                (n/a)
+  Built-in kernels with version                   (n/a)
+  Device Extensions                               cl_khr_byte_addressable_store cl_khr_create_command_queue cl_khr_expect_assume cl_khr_extended_versioning cl_khr_global_int32_base_atomics cl_khr_global_int32_extended_atomics cl_khr_il_program cl_khr_local_int32_base_atomics cl_khr_local_int32_extended_atomics cl_khr_integer_dot_product cl_khr_spirv_no_integer_wrap_decoration cl_khr_suggested_local_work_size cles_khr_int64 cl_khr_3d_image_writes cl_khr_depth_images cl_khr_pci_bus_info cl_khr_device_uuid
+  Device Extensions with Version                  cl_khr_byte_addressable_store                                    0x400000 (1.0.0)
+                                                  cl_khr_create_command_queue                                      0x400000 (1.0.0)
+                                                  cl_khr_expect_assume                                             0x400000 (1.0.0)
+                                                  cl_khr_extended_versioning                                       0x400000 (1.0.0)
+                                                  cl_khr_global_int32_base_atomics                                 0x400000 (1.0.0)
+                                                  cl_khr_global_int32_extended_atomics                             0x400000 (1.0.0)
+                                                  cl_khr_il_program                                                0x400000 (1.0.0)
+                                                  cl_khr_local_int32_base_atomics                                  0x400000 (1.0.0)
+                                                  cl_khr_local_int32_extended_atomics                              0x400000 (1.0.0)
+                                                  cl_khr_integer_dot_product                                       0x800000 (2.0.0)
+                                                  cl_khr_spirv_no_integer_wrap_decoration                          0x400000 (1.0.0)
+                                                  cl_khr_suggested_local_work_size                                 0x400000 (1.0.0)
+                                                  cles_khr_int64                                                   0x400000 (1.0.0)
+                                                  cl_khr_3d_image_writes                                           0x400000 (1.0.0)
+                                                  cl_khr_depth_images                                              0x400000 (1.0.0)
+                                                  cl_khr_pci_bus_info                                              0x400000 (1.0.0)
+                                                  cl_khr_device_uuid                                               0x400000 (1.0.0)
+
+  Platform Name                                   Clover
+Number of devices                                 2
+  Device Name                                     AMD Radeon RX 6400 (radeonsi, navi24, LLVM 19.1.7, DRM 3.61, 6.12.107+deb13-amd64)
+  Device Vendor                                   AMD
+  Device Vendor ID                                0x1002
+  Device Version                                  OpenCL 1.1 Mesa 25.0.7-2+deb13u1
+  Device Numeric Version                          0x401000 (1.1.0)
+  Driver Version                                  25.0.7-2+deb13u1
+  Device OpenCL C Version                         OpenCL C 1.1 
+  Device OpenCL C Numeric Version                 0x401000 (1.1.0)
+  Device Type                                     GPU
+  Device Profile                                  FULL_PROFILE
+  Device Available                                Yes
+  Compiler Available                              Yes
+  Max compute units                               12
+  Max clock frequency                             2320MHz
+  Max work item dimensions                        3
+  Max work item sizes                             256x256x256
+  Max work group size                             256
+  Preferred work group size multiple (kernel)     64
+  Preferred / native vector sizes                 
+    char                                                16 / 16      
+    short                                                8 / 8       
+    int                                                  4 / 4       
+    long                                                 2 / 2       
+    half                                                 0 / 0        (n/a)
+    float                                                4 / 4       
+    double                                               2 / 2        (cl_khr_fp64)
+  Half-precision Floating-point support           (n/a)
+  Single-precision Floating-point support         (core)
+    Denormals                                     No
+    Infinity and NANs                             Yes
+    Round to nearest                              Yes
+    Round to zero                                 No
+    Round to infinity                             No
+    IEEE754-2008 fused multiply-add               No
+    Support is emulated in software               No
+    Correctly-rounded divide and sqrt operations  No
+  Double-precision Floating-point support         (cl_khr_fp64)
+    Denormals                                     Yes
+    Infinity and NANs                             Yes
+    Round to nearest                              Yes
+    Round to zero                                 Yes
+    Round to infinity                             Yes
+    IEEE754-2008 fused multiply-add               Yes
+    Support is emulated in software               No
+  Address bits                                    64, Little-Endian
+  Global memory size                              4294967296 (4GiB)
+  Error Correction support                        No
+  Max memory allocation                           1073741824 (1024MiB)
+  Unified memory for Host and Device              No
+  Minimum alignment for any data type             128 bytes
+  Alignment of base address                       32768 bits (4096 bytes)
+  Global Memory cache type                        None
+  Image support                                   No
+  Local memory type                               Local
+  Local memory size                               65536 (64KiB)
+  Max number of constant args                     16
+  Max constant buffer size                        67108864 (64MiB)
+  Max size of kernel argument                     1024
+  Queue properties                                
+    Out-of-order execution                        No
+    Profiling                                     Yes
+  Profiling timer resolution                      0ns
+  Execution capabilities                          
+    Run OpenCL kernels                            Yes
+    Run native kernels                            No
+    ILs with version                              (n/a)
+  Built-in kernels with version                   (n/a)
+  Device Extensions                               cl_khr_byte_addressable_store cl_khr_global_int32_base_atomics cl_khr_global_int32_extended_atomics cl_khr_local_int32_base_atomics cl_khr_local_int32_extended_atomics cl_khr_int64_base_atomics cl_khr_int64_extended_atomics cl_khr_fp64 cl_khr_extended_versioning
+  Device Extensions with Version                  cl_khr_byte_addressable_store                                    0x400000 (1.0.0)
+                                                  cl_khr_global_int32_base_atomics                                 0x400000 (1.0.0)
+                                                  cl_khr_global_int32_extended_atomics                             0x400000 (1.0.0)
+                                                  cl_khr_local_int32_base_atomics                                  0x400000 (1.0.0)
+                                                  cl_khr_local_int32_extended_atomics                              0x400000 (1.0.0)
+                                                  cl_khr_int64_base_atomics                                        0x400000 (1.0.0)
+                                                  cl_khr_int64_extended_atomics                                    0x400000 (1.0.0)
+                                                  cl_khr_fp64                                                      0x400000 (1.0.0)
+                                                  cl_khr_extended_versioning                                       0x400000 (1.0.0)
+
+  Device Name                                     AMD Radeon Pro WX 2100 (radeonsi, polaris12, ACO, DRM 3.61, 6.12.107+deb13-amd64)
+  Device Vendor                                   AMD
+  Device Vendor ID                                0x1002
+  Device Version                                  OpenCL 1.1 Mesa 25.0.7-2+deb13u1
+  Device Numeric Version                          0x401000 (1.1.0)
+  Driver Version                                  25.0.7-2+deb13u1
+  Device OpenCL C Version                         OpenCL C 1.1 
+  Device OpenCL C Numeric Version                 0x401000 (1.1.0)
+  Device Type                                     GPU
+  Device Profile                                  FULL_PROFILE
+  Device Available                                Yes
+  Compiler Available                              Yes
+  Max compute units                               8
+  Max clock frequency                             1219MHz
+  Max work item dimensions                        3
+  Max work item sizes                             256x256x256
+  Max work group size                             256
+  Preferred work group size multiple (kernel)     64
+  Preferred / native vector sizes                 
+    char                                                16 / 16      
+    short                                                8 / 8       
+    int                                                  4 / 4       
+    long                                                 2 / 2       
+    half                                                 0 / 0        (n/a)
+    float                                                4 / 4       
+    double                                               2 / 2        (cl_khr_fp64)
+  Half-precision Floating-point support           (n/a)
+  Single-precision Floating-point support         (core)
+    Denormals                                     No
+    Infinity and NANs                             Yes
+    Round to nearest                              Yes
+    Round to zero                                 No
+    Round to infinity                             No
+    IEEE754-2008 fused multiply-add               No
+    Support is emulated in software               No
+    Correctly-rounded divide and sqrt operations  No
+  Double-precision Floating-point support         (cl_khr_fp64)
+    Denormals                                     Yes
+    Infinity and NANs                             Yes
+    Round to nearest                              Yes
+    Round to zero                                 Yes
+    Round to infinity                             Yes
+    IEEE754-2008 fused multiply-add               Yes
+    Support is emulated in software               No
+  Address bits                                    64, Little-Endian
+  Global memory size                              2147483648 (2GiB)
+  Error Correction support                        No
+  Max memory allocation                           536870912 (512MiB)
+  Unified memory for Host and Device              No
+  Minimum alignment for any data type             128 bytes
+  Alignment of base address                       32768 bits (4096 bytes)
+  Global Memory cache type                        None
+  Image support                                   No
+  Local memory type                               Local
+  Local memory size                               65536 (64KiB)
+  Max number of constant args                     16
+  Max constant buffer size                        67108864 (64MiB)
+  Max size of kernel argument                     1024
+  Queue properties                                
+    Out-of-order execution                        No
+    Profiling                                     Yes
+  Profiling timer resolution                      0ns
+  Execution capabilities                          
+    Run OpenCL kernels                            Yes
+    Run native kernels                            No
+    ILs with version                              (n/a)
+  Built-in kernels with version                   (n/a)
+  Device Extensions                               cl_khr_byte_addressable_store cl_khr_global_int32_base_atomics cl_khr_global_int32_extended_atomics cl_khr_local_int32_base_atomics cl_khr_local_int32_extended_atomics cl_khr_int64_base_atomics cl_khr_int64_extended_atomics cl_khr_fp64 cl_khr_extended_versioning
+  Device Extensions with Version                  cl_khr_byte_addressable_store                                    0x400000 (1.0.0)
+                                                  cl_khr_global_int32_base_atomics                                 0x400000 (1.0.0)
+                                                  cl_khr_global_int32_extended_atomics                             0x400000 (1.0.0)
+                                                  cl_khr_local_int32_base_atomics                                  0x400000 (1.0.0)
+                                                  cl_khr_local_int32_extended_atomics                              0x400000 (1.0.0)
+                                                  cl_khr_int64_base_atomics                                        0x400000 (1.0.0)
+                                                  cl_khr_int64_extended_atomics                                    0x400000 (1.0.0)
+                                                  cl_khr_fp64                                                      0x400000 (1.0.0)
+                                                  cl_khr_extended_versioning                                       0x400000 (1.0.0)
+
+
+NULL platform behavior
+  clGetPlatformInfo(NULL, CL_PLATFORM_NAME, ...)  No platform
+  clGetDeviceIDs(NULL, CL_DEVICE_TYPE_ALL, ...)   No platform
+  clCreateContext(NULL, ...) [default]            No platform
+  clCreateContext(NULL, ...) [other]              Success [MESA]
+  clCreateContextFromType(NULL, CL_DEVICE_TYPE_DEFAULT)  No platform
+  clCreateContextFromType(NULL, CL_DEVICE_TYPE_CPU)  No platform
+  clCreateContextFromType(NULL, CL_DEVICE_TYPE_GPU)  No platform
+  clCreateContextFromType(NULL, CL_DEVICE_TYPE_ACCELERATOR)  No platform
+  clCreateContextFromType(NULL, CL_DEVICE_TYPE_CUSTOM)  No platform
+  clCreateContextFromType(NULL, CL_DEVICE_TYPE_ALL)  No platform
+	NOTE:	your OpenCL library only supports OpenCL 2.0,
+		but some installed platforms support OpenCL 3.0.
+		Programs using 3.0 features may crash
+		or behave unexpectedly
+# rc=0

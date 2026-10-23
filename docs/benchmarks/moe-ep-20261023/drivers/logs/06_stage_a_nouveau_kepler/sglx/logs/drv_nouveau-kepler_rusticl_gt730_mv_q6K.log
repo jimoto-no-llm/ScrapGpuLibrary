@@ -1,0 +1,8 @@
+# date: 2026-10-24_00:28:37  host: tb250  tag: drv_nouveau-kepler_rusticl_gt730_mv_q6K
+# temps at start:  amd35 amd31 amd32 amd33 NVIDIA-SMI has failed because it couldn't communicate with the NVIDIA driver. Make sure that the latest NVIDIA driver is installed and running.     (max  C)
+# env: GGML_CL11_PLATFORMS=rusticl RUSTICL_ENABLE=nouveau:0 GGML_BACKEND_PATH=/home/eightman/moe-ep/hec/plug/libggml-cl11.so VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json GGML_CL11_AUTO_RPC=0 
+# cmd: /home/eightman/moe-ep/cuda/bB/scrapgpu_mm_bench opencl11 mv --type q6_K
+ERROR: unknown nir_op f2f16
+nvc0_program_translate:659 - shader translation failed: -2
+# rc=136  seconds=4
+# temps at end:  amd34 amd31 amd32 amd33 NVIDIA-SMI has failed because it couldn't communicate with the NVIDIA driver. Make sure that the latest NVIDIA driver is installed and running.     (max  C)

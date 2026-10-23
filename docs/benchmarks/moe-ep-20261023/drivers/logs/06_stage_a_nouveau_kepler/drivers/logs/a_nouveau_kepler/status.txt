@@ -1,0 +1,14 @@
+# sudo -n /usr/local/sbin/sgl-driver-switch status
+0000:04:00.0 driver
+0000:07:00.0 nouveau
+0000:08:00.0 nouveau
+nouveau              3055616  0
+0000:03:00.0 perf=auto
+0000:06:00.0 perf=auto
+state: nouveau-kepler
+0000:04:00.0 nodes: 
+0000:07:00.0 nodes: card2 controlD66 renderD130 
+0000:08:00.0 nodes: card3 controlD67 renderD131 
+nouveau modeset=1
+userspace libcuda=390.157 marker=NVIDIA-Linux-x86_64-390.157.run kernel module=not loaded
+# rc=0

@@ -1,0 +1,1 @@
+device=NV106 backend=opencl11 driver=OpenCL 3.0  tuning=default

@@ -1,0 +1,7 @@
+# bash -c grep . /sys/module/nouveau/parameters/{modeset,config,debug,runpm,noaccel} 2>&1
+grep: /sys/module/nouveau/parameters/modeset: Permission denied
+grep: /sys/module/nouveau/parameters/config: Permission denied
+grep: /sys/module/nouveau/parameters/debug: Permission denied
+grep: /sys/module/nouveau/parameters/runpm: Permission denied
+grep: /sys/module/nouveau/parameters/noaccel: Permission denied
+# rc=2

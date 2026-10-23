@@ -1,0 +1,5 @@
+# env OCL_ICD_VENDORS=/dev/null OCL_ICD_FILENAMES=libnvidia-opencl.so.1 clinfo -l
+Platform #0: NVIDIA CUDA
+ +-- Device #0: NVIDIA GeForce GT 730
+ `-- Device #1: NVIDIA GeForce GT 710
+# rc=0

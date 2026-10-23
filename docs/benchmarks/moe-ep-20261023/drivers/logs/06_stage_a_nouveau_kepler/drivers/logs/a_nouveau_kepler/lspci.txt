@@ -1,0 +1,31 @@
+# bash -c lspci -nnk | grep -A3 -E "VGA|3D"
+00:02.0 VGA compatible controller [0300]: Intel Corporation HD Graphics 610 [8086:5902] (rev 04)
+	Subsystem: Biostar Microtech Int'l Corp Device [1565:3114]
+	Kernel driver in use: i915
+	Kernel modules: i915
+--
+03:00.0 VGA compatible controller [0300]: Advanced Micro Devices, Inc. [AMD/ATI] Navi 24 [Radeon RX 6400/6500 XT/6500M] [1002:743f] (rev c7)
+	Subsystem: Sapphire Technology Limited Device [1da2:e458]
+	Kernel driver in use: amdgpu
+	Kernel modules: amdgpu
+--
+04:00.0 VGA compatible controller [0300]: NVIDIA Corporation GF108 [GeForce GT 430] [10de:0de1] (rev a1)
+	Subsystem: ZOTAC International (MCO) Ltd. Device [19da:1167]
+	Kernel modules: nouveau, nvidia_legacy_390xx_drm, nvidia_tesla_470, nvidia_legacy_390xx, nvidia_tesla_470_drm
+04:00.1 Audio device [0403]: NVIDIA Corporation GF108 High Definition Audio Controller [10de:0bea] (rev a1)
+--
+06:00.0 VGA compatible controller [0300]: Advanced Micro Devices, Inc. [AMD/ATI] Lexa XT [Radeon PRO WX 2100] [1002:6995]
+	Subsystem: Dell Device [1028:0b0c]
+	Kernel driver in use: amdgpu
+	Kernel modules: amdgpu
+--
+07:00.0 VGA compatible controller [0300]: NVIDIA Corporation GK208B [GeForce GT 730] [10de:1287] (rev a1)
+	Subsystem: NVIDIA Corporation Device [10de:1081]
+	Kernel driver in use: nouveau
+	Kernel modules: nouveau, nvidia_legacy_390xx_drm, nvidia_tesla_470, nvidia_legacy_390xx, nvidia_tesla_470_drm
+--
+08:00.0 VGA compatible controller [0300]: NVIDIA Corporation GK208B [GeForce GT 710] [10de:128b] (rev a1)
+	Subsystem: NVIDIA Corporation Device [10de:118b]
+	Kernel driver in use: nouveau
+	Kernel modules: nouveau, nvidia_legacy_390xx_drm, nvidia_tesla_470, nvidia_legacy_390xx, nvidia_tesla_470_drm
+# rc=0

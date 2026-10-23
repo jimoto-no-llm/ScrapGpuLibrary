@@ -1,0 +1,7 @@
+# bash -c for d in 0000:04:00.0 0000:07:00.0 0000:08:00.0 0000:03:00.0 0000:06:00.0; do echo $d $(ls /sys/bus/pci/devices/$d/drm 2>/dev/null | tr "\n" " "); done
+0000:04:00.0
+0000:07:00.0 card2 controlD66 renderD130
+0000:08:00.0 card3 controlD67 renderD131
+0000:03:00.0 card1 controlD65 renderD129
+0000:06:00.0 card5 controlD69 renderD133
+# rc=0

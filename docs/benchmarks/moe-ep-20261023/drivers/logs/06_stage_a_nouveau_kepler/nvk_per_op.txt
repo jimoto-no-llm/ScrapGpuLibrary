@@ -1,0 +1,18 @@
+# test-backend-ops test -b Vulkan0 -o <OP>, NVK (Mesa 25.0.7, NVK_I_WANT_A_BROKEN_VULKAN_DRIVER=1), GGML_VK_VISIBLE_DEVICES=0 (= the GT 710, 2176 MB)
+ADD: FAIL pipeline add_f16_f16_f16_norepeat: vk::Device::createComputePipeline: ErrorUnknown (abort)
+MUL: FAIL pipeline mul_f16_f16_f16_norepeat: ErrorUnknown (abort)
+SCALE: 4/4 passed
+CPY: FAIL pipeline contig_cpy_f32_f16: ErrorUnknown (abort)
+CONT: 78/78 passed
+RMS_NORM: 53/53 passed
+SOFT_MAX: 214/214 passed
+ROPE: FAIL pipeline rope_norm_f16: ErrorUnknown (abort)
+GET_ROWS: FAIL pipeline get_rows_iq2_xxs_f32: ErrorUnknown (abort)
+UNARY, GLU: 0/0 (nothing run)
+SSM_CONV: 45/45 passed
+MUL_MAT_ID: FAIL pipeline mul_mat_vec_id_q4_k_f32: ErrorUnknown (abort)
+ARGSORT: 46/46 passed
+SUM_ROWS: 10/10 passed
+CLAMP: FAIL pipeline clamp_f16: ErrorUnknown (abort)
+# MUL_MAT type_a=q4_0 (type_b=f32): 94/94 passed (logs/.../drv_nvk_gt730_ops.out; fp16: 0, so only the f32 path)
+# llama-bench (LFM2.5-1.2B Q4_0): aborts in createComputePipeline: ErrorUnknown (drv_nvk_gt730_bench.log)

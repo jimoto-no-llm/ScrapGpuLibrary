@@ -1,0 +1,27 @@
+# bash -c ls -l /usr/lib/x86_64-linux-gnu/libcuda.so* /usr/lib/x86_64-linux-gnu/libnvidia-opencl.so* /etc/OpenCL/vendors/ /etc/vulkan/icd.d/ /usr/share/vulkan/icd.d/
+lrwxrwxrwx 1 root root       12 Oct 24 00:05 /usr/lib/x86_64-linux-gnu/libcuda.so -> libcuda.so.1
+lrwxrwxrwx 1 root root       18 Oct 24 00:05 /usr/lib/x86_64-linux-gnu/libcuda.so.1 -> libcuda.so.390.157
+-rwxr-xr-x 1 root root 10034392 Oct 24 00:05 /usr/lib/x86_64-linux-gnu/libcuda.so.390.157
+lrwxrwxrwx 1 root root       27 Oct 24 00:05 /usr/lib/x86_64-linux-gnu/libnvidia-opencl.so.1 -> libnvidia-opencl.so.390.157
+-rwxr-xr-x 1 root root 15871000 Oct 24 00:05 /usr/lib/x86_64-linux-gnu/libnvidia-opencl.so.390.157
+
+/etc/OpenCL/vendors/:
+total 12
+-rw-r--r-- 1 root root 19 Jun 20 04:20 mesa.icd
+-r--r--r-- 1 root root 22 Oct 24 00:05 nvidia.icd
+-rw-r--r-- 1 root root 22 Jun 20 04:20 rusticl.icd
+
+/etc/vulkan/icd.d/:
+total 4
+-rw-r--r-- 1 root root 139 Oct 24 00:05 nvidia_icd.json
+
+/usr/share/vulkan/icd.d/:
+total 28
+-rw-r--r-- 1 root root 141 Jun 20 04:20 gfxstream_vk_icd.json
+-rw-r--r-- 1 root root 143 Jun 20 04:20 intel_hasvk_icd.json
+-rw-r--r-- 1 root root 137 Jun 20 04:20 intel_icd.json
+-rw-r--r-- 1 root root 135 Jun 20 04:20 lvp_icd.json
+-rw-r--r-- 1 root root 139 Jun 20 04:20 nouveau_icd.json
+-rw-r--r-- 1 root root 138 Jun 20 04:20 radeon_icd.json
+-rw-r--r-- 1 root root 138 Jun 20 04:20 virtio_icd.json
+# rc=0

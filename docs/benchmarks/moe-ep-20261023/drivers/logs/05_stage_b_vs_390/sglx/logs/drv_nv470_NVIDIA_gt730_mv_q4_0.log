@@ -1,0 +1,10 @@
+# date: 2026-10-23_23:48:45  host: tb250  tag: drv_nv470_NVIDIA_gt730_mv_q4_0
+# temps at start:  amd39 amd40 NVIDIA GT 730=35 NVIDIA GT 710=33    (max 35 C)
+# env: GGML_CL11_PLATFORMS=NVIDIA GGML_CL11_DEVICES=GT 730 GGML_BACKEND_PATH=/home/eightman/moe-ep/hec/plug/libggml-cl11.so VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json GGML_CL11_AUTO_RPC=0 
+# cmd: /home/eightman/moe-ep/cuda/bB/scrapgpu_mm_bench opencl11 mv --type q4_0
+cl11_ensure_program: rebuilding the kernels with smaller work-groups
+cl11_ensure_program: CL11_0: multi mat-vec (Q / K / V, FFN gate / up in one launch) enabled
+cl11_ensure_program: CL11_0: mat-mat variant: tile 64 x 64, 8 x 4 values per work-item, BK 16, unroll 16, prefetch 0, 128 work-items
+cl11_ensure_program: CL11_0: NVIDIA GeForce GT 730, OpenCL 3.0 CUDA, kernels built (work-group sizes: element-wise 128, row 128, mat-vec 128, mat-mat 16x16)
+# rc=0  seconds=2
+# temps at end:  amd40 amd40 NVIDIA GT 730=37 NVIDIA GT 710=33    (max 36 C)

@@ -7,7 +7,7 @@
 . "$(dirname "$0")/env_drv.sh"
 P=${1:?NVIDIA|rusticl|Clover}; shift
 STATE=$(cat /run/sgl-driver.state 2>/dev/null || echo unknown)
-case $P in NVIDIA) need_state nv390 nv470 nv470-nouveau430;; *) need_state nouveau nv470-nouveau430;; esac
+case $P in NVIDIA) need_state nv390 nv470 nv470-nouveau430;; *) need_state nouveau nouveau-kepler nv470-nouveau430;; esac
 for C in "$@"; do
   clean_env
   I=$(card_idx $C) || { echo "bad card $C" >&2; continue; }

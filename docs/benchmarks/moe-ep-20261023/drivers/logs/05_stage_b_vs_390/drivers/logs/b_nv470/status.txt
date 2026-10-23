@@ -1,0 +1,17 @@
+# sudo -n /usr/local/sbin/sgl-driver-switch status
+0000:04:00.0 driver
+0000:07:00.0 nvidia
+0000:08:00.0 nvidia
+nvidia_drm             77824  0
+nvidia_modeset       1511424  1 nvidia_drm
+nvidia_uvm           1433600  0
+nvidia              40747008  2 nvidia_uvm,nvidia_modeset
+0000:03:00.0 perf=auto
+0000:06:00.0 perf=auto
+state: nv470
+NVRM version: NVIDIA UNIX x86_64 Kernel Module  470.256.02  Thu May  2 14:37:44 UTC 2024
+0000:04:00.0 nodes: 
+0000:07:00.0 nodes: card2 renderD130 
+0000:08:00.0 nodes: card3 renderD131 
+userspace libcuda=470.256.02 marker=NVIDIA-470.run kernel module=470.256.02
+# rc=0

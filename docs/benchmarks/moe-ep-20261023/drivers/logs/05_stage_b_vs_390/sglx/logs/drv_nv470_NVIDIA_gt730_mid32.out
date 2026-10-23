@@ -1,0 +1,4 @@
+device=NVIDIA GeForce GT 730 backend=opencl11 driver=OpenCL 3.0 CUDA tuning=Kepler (sm_3x)
+mid q4_0 experts=32 rows=1792 k=2048 used=4 tokens=32  weights read per op 252.00 MiB
+  throughput: best 56.624 ms  median 56.746 ms  = 4.67 / 4.66 GB/s
+  latency   : best 56.716 ms  median 56.866 ms  = 4.66 / 4.65 GB/s

@@ -1,0 +1,100 @@
+# nvidia-smi -q -d CLOCK,PERFORMANCE,MEMORY
+
+==============NVSMI LOG==============
+
+Timestamp                                 : Fri Oct 23 23:45:30 2026
+Driver Version                            : 470.256.02
+CUDA Version                              : 11.4
+
+Attached GPUs                             : 2
+GPU 00000000:07:00.0
+    Performance State                     : P0
+    Clocks Throttle Reasons               : N/A
+    FB Memory Usage
+        Total                             : 981 MiB
+        Used                              : 0 MiB
+        Free                              : 981 MiB
+    BAR1 Memory Usage
+        Total                             : N/A
+        Used                              : N/A
+        Free                              : N/A
+    Clocks
+        Graphics                          : N/A
+        SM                                : N/A
+        Memory                            : N/A
+        Video                             : N/A
+    Applications Clocks
+        Graphics                          : 954 MHz
+        Memory                            : 2505 MHz
+    Default Applications Clocks
+        Graphics                          : 954 MHz
+        Memory                            : 2505 MHz
+    Max Clocks
+        Graphics                          : N/A
+        SM                                : N/A
+        Memory                            : N/A
+        Video                             : N/A
+    Max Customer Boost Clocks
+        Graphics                          : N/A
+    SM Clock Samples
+        Duration                          : N/A
+        Number of Samples                 : N/A
+        Max                               : N/A
+        Min                               : N/A
+        Avg                               : N/A
+    Memory Clock Samples
+        Duration                          : N/A
+        Number of Samples                 : N/A
+        Max                               : N/A
+        Min                               : N/A
+        Avg                               : N/A
+    Clock Policy
+        Auto Boost                        : N/A
+        Auto Boost Default                : N/A
+
+GPU 00000000:08:00.0
+    Performance State                     : P0
+    Clocks Throttle Reasons               : N/A
+    FB Memory Usage
+        Total                             : 2002 MiB
+        Used                              : 0 MiB
+        Free                              : 2002 MiB
+    BAR1 Memory Usage
+        Total                             : N/A
+        Used                              : N/A
+        Free                              : N/A
+    Clocks
+        Graphics                          : N/A
+        SM                                : N/A
+        Memory                            : N/A
+        Video                             : N/A
+    Applications Clocks
+        Graphics                          : 954 MHz
+        Memory                            : 800 MHz
+    Default Applications Clocks
+        Graphics                          : 954 MHz
+        Memory                            : 800 MHz
+    Max Clocks
+        Graphics                          : N/A
+        SM                                : N/A
+        Memory                            : N/A
+        Video                             : N/A
+    Max Customer Boost Clocks
+        Graphics                          : N/A
+    SM Clock Samples
+        Duration                          : N/A
+        Number of Samples                 : N/A
+        Max                               : N/A
+        Min                               : N/A
+        Avg                               : N/A
+    Memory Clock Samples
+        Duration                          : N/A
+        Number of Samples                 : N/A
+        Max                               : N/A
+        Min                               : N/A
+        Avg                               : N/A
+    Clock Policy
+        Auto Boost                        : N/A
+        Auto Boost Default                : N/A
+
+# rc=0
