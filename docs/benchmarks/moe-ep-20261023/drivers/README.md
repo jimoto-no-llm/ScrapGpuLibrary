@@ -56,3 +56,10 @@ state=`nv390`、`/sys/module/nvidia/version`=390.157、userspace 390.157、GT 43
 ### 次にやること（利用者の判断待ち）
 1. 再起動（ブート既定の 390 で GT 3 枚が戻るはず）。
 2. スクリプト修正案: (a) ユーザ空間 `.run` のインストール**前**にモジュールを load せず、インストールの**後**に load する順にする（installer がモジュールを外す疑いを回避）。(b) 各切替の最後で `/sys/module/nvidia/version` と各カードの束縛先を読み戻し、期待と違えば `failed` にする。(c) nv470-nouveau430 は GT 430 を nouveau に掴ませる前に、userspace を先に入れる。
+
+## 再開 3: 修正版（userspace 先・load 後・expect_bound）での再試行（2026-10-23）— 段階 C で停止
+
+- `nv390 --reinstall-userspace` の往復: 通過（390.157、3 枚束縛、`nvidia-smi -L` で 3 枚）。userspace を実際に入れ直してもモジュールは外れなかった（前回の「module が消える」現象は修正版で解消）。
+- 段階 C `nv470-nouveau430`: 470 のロードと Kepler 2 枚の束縛は成功（`/sys/module/nvidia/version`=470.256.02、userspace 470.256.02、`nvidia-smi -L` に GT 730 / GT 710）。**GT 430 に nouveau が束縛されなかった**（`expect_bound`: `0000:04:00.0 is bound to 'driver', wanted nouveau`、state=`failed(1) at line 221`）。`driver_override`=nouveau、`nouveau` モジュールはロード済み（lsmod に `nouveau`、`/sys/bus/pci/drivers/nouveau` あり）、`modeset` は `/sys` から一般ユーザで読めない。probe が黙って失敗した（原因はカーネルログが読めず不明）。`logs/04_stage_c_retry/after_c_failed.txt`。
+- 戻し: `nv390` は state=`nv390`、3 枚束縛、モジュール 390.157 だが、**GT 430 は再び `The NVIDIA kernel module detected an issue with GPU interrupts`**（`nvidia-smi -L` に GT 730 / GT 710 のみ）。nouveau を GT 430 に掴ませようとして失敗した後に 390 を載せるとこうなる。再起動が要る兆候として、指示どおりここで停止。段階 A / B、probe、pstate は未実施。
+- 所見: GT 430 の nouveau probe 失敗は、(a) `driver_override` 経由の bind が nouveau ロード時に走らない、(b) GF108 の nouveau probe 自体が失敗（ファームウェア／modeset=1 の fbcon 関連等）、のどちらか。(a) なら `echo 0000:04:00.0 > /sys/bus/pci/drivers/nouveau/bind` が要る（`drivers_probe` でも可）。`journalctl -k`／`dmesg` の nouveau 行が必要。
