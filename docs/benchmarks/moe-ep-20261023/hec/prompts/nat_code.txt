@@ -1,0 +1,23 @@
+import argparse
+import json
+import sys
+from collections import Counter
+
+
+def load_records(path):
+    """Read a JSON-lines file and return a list of dicts, skipping blank lines."""
+    records = []
+    with open(path, encoding="utf-8") as f:
+        for lineno, line in enumerate(f, 1):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                records.append(json.loads(line))
+            except json.JSONDecodeError as e:
+                print(f"{path}:{lineno}: {e}", file=sys.stderr)
+    return records
+
+
+def summarize(records, key):
+    """Count how often each value of `key` occurs and print a table sorted by count."""

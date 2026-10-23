@@ -1,0 +1,4 @@
+Available devices:
+  ROCm0: AMD Radeon RX 6400 (4080 MiB, 4056 MiB free)
+  Vulkan0: AMD Radeon RX 6400 (RADV NAVI24) (4080 MiB, 4064 MiB free)
+  Vulkan1: AMD Radeon Pro WX 2100 (RADV POLARIS12) (2048 MiB, 2042 MiB free)

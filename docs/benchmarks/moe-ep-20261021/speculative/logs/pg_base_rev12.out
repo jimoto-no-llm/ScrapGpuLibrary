@@ -1,0 +1,6 @@
+
+<think>
+The user asks: "Summarise the following passage in a few sentences." The passage is a repeated sentence about the history of computing, describing progression from rewiring panels to punched cards to languages describing intent, trading efficiency for productivity, and criticism from those valuing control. So we need to produce a concise summary, maybe 2-3 sentences. The passage is repetitive but we can capture the gist.
+
+We must not repeat the passage. Provide a summary: "The passage traces computing's evolution from manual rewiring to punched cards and finally to high-level languages that abstract away mechanisms, each step gaining
+

@@ -1,0 +1,14 @@
+# tb250, 2026-10-23, after stage C retry + nv390; `sudo journalctl -k -b | grep -iE "nouveau|nvidia|NVRM" | tail -60` (run by the user)
+# Only the 390 side is in the last 60 lines: RmInitAdapter fails for the GT 430 (minor 0) on every open.
+# The nouveau probe messages of the GT 430 are earlier in the boot and were not captured.
+Oct 23 23:34:21 tb250 kernel: NVRM: RmInitAdapter failed! (0x12:0x45:1920)
+Oct 23 23:34:21 tb250 kernel: NVRM: rm_init_adapter failed for device bearing minor number 0
+Oct 23 23:34:21 tb250 kernel: CPU: 0 UID: 1000 PID: 1567 Comm: nvidia-smi Tainted: P        W  OE      6.12.107+deb13-amd64 #1  Debian 6.12.107-1
+Oct 23 23:34:21 tb250 kernel:  os_flush_work_queue+0x41/0x60 [nvidia]
+Oct 23 23:34:21 tb250 kernel:  rm_disable_adapter+0x52/0xd0 [nvidia]
+Oct 23 23:34:21 tb250 kernel:  nv_shutdown_adapter+0x17/0xa0 [nvidia]
+Oct 23 23:34:21 tb250 kernel:  nv_close_device+0xea/0x170 [nvidia]
+Oct 23 23:34:21 tb250 kernel:  nvidia_close+0xc4/0x390 [nvidia]
+Oct 23 23:38:26 tb250 kernel: NVRM: RmInitAdapter failed! (0x12:0x45:1920)
+Oct 23 23:38:26 tb250 kernel: NVRM: rm_init_adapter failed for device bearing minor number 0
+(the same RmInitAdapter failure and nv_close_device / os_flush_work_queue trace repeat on every nvidia-smi)

@@ -1,0 +1,21 @@
+ 用の `cl11` バックエンドの実装は、[cl11/cl11_ggml.c](cl11/cl11_ggml.c) です。既存の ggml は `cl11` に接続され、`cl11` は OpenCL 1.1 をバックエンドとして扱います。
+
+## 動作環境
+
+- OpenCL 1.1 が使えないGPUは使えません（NVIDIA Kepler 以前、旧 Radeon、Intel GPU など）。
+- OpenCL 1.1 は、Intel OpenCL SDK 2021 以降、NVIDIA CUDA で OpenCL 1.1 がサポートされている場合の動作確認済み。
+- OpenCL 1.1 は、GPU と CPU で使用可能。CPU の場合、OpenCL 1.1 で動作するよう設定が必要。
+
+## コンパイル方法
+
+Linux で、OpenCL 1.1 が使える環境で以下を実行：
+
+```
+mkdir build
+cd build
+cmake ..
+make
+```
+
+## 開発状況
+

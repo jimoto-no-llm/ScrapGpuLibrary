@@ -1,0 +1,37 @@
+# date: 2026-10-21_10:58:33  host: tb250  tag: s_ts51_Vulkan0_0.8_Vulkan1_0.2
+# temps at start:  amd47 amd52 GT 430=43 GT 730=34 GT 710=35    (max 43 C)
+# env: GGML_CL11_PLATFORMS=NVIDIA GGML_SGLX_PROFILE=1 GGML_CL11_DEVICES=GT 730,GT 710 GGML_SGLX_SPLIT=Vulkan0:0.8,Vulkan1:0.2 GGML_BACKEND_PATH=/home/eightman/moe-ep/sglx/build-cl11/libggml-cl11.so VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json GGML_CL11_AUTO_RPC=0 
+# cmd: /home/eightman/moe-ep/src/llama-build/bin/llama-bench -m /home/eightman/moe-ep/models/LFM2.5-8B-A1B-Q4_0.gguf -dev Vulkan0/Vulkan1/SGLX0 -ngl 99 -fa 0 -t 2 -b 512 -ub 512 -r 5 -sm layer -ncmoe 0 -ts 5/1/0 -ot token_embd\.weight=SGLX0 -o jsonl -p 512 -n 128 -pg 512,128
+load_backend: loaded RPC backend from /home/eightman/moe-ep/src/llama-build/bin/libggml-rpc.so
+ggml_vulkan: Found 2 Vulkan devices:
+ggml_vulkan: 0 = AMD Radeon RX 6400 (RADV NAVI24) (radv) | uma: 0 | fp16: 1 | bf16: 0 | fp4: 0 | warp size: 32 | shared memory: 65536 | int dot: 1 | matrix cores: none
+ggml_vulkan: 1 = AMD Radeon Pro WX 2100 (RADV POLARIS12) (radv) | uma: 0 | fp16: 0 | bf16: 0 | fp4: 0 | warp size: 64 | shared memory: 65536 | int dot: 0 | matrix cores: none
+load_backend: loaded Vulkan backend from /home/eightman/moe-ep/src/llama-build/bin/libggml-vulkan.so
+load_backend: loaded CPU backend from /home/eightman/moe-ep/src/llama-build/bin/libggml-cpu.so
+load_backend: loaded CL11 backend from /home/eightman/moe-ep/sglx/build-cl11/libggml-cl11.so
+SGLX: SGLX0 splits the rows of its weights over: Vulkan0 (AMD Radeon RX 6400 (RADV NAVI24)) 0.800, Vulkan1 (AMD Radeon Pro WX 2100 (RADV POLARIS12)) 0.200
+SGLX: uploaded 205.1 MiB (q6_K 2048 x 128000) in 264.8 ms: Vulkan0[0..102400) Vulkan1[102400..128000)
+SGLX profile MUL_MAT N=1: calls 128, mean 8.367 ms (max 280.581), gather 2.075, scatter 0.001;  Vulkan0: submit 4.220 ms, done at 8.364 ms (max 280.580)  Vulkan1: submit 2.060 ms, done at 8.366 ms (max 280.581)
+SGLX profile upload: 1 weights, 264.8 ms in total
+SGLX profile MUL_MAT N=1: calls 256, mean 7.265 ms (max 280.581), gather 1.039, scatter 0.001;  Vulkan0: submit 4.169 ms, done at 7.262 ms (max 280.580)  Vulkan1: submit 2.047 ms, done at 7.264 ms (max 280.581)
+SGLX profile upload: 1 weights, 264.8 ms in total
+SGLX profile MUL_MAT N=1: calls 384, mean 6.929 ms (max 280.581), gather 0.693, scatter 0.001;  Vulkan0: submit 4.185 ms, done at 6.926 ms (max 280.580)  Vulkan1: submit 2.040 ms, done at 6.928 ms (max 280.581)
+SGLX profile upload: 1 weights, 264.8 ms in total
+SGLX profile MUL_MAT N=1: calls 512, mean 6.745 ms (max 280.581), gather 0.520, scatter 0.001;  Vulkan0: submit 4.189 ms, done at 6.742 ms (max 280.580)  Vulkan1: submit 2.024 ms, done at 6.744 ms (max 280.581)
+SGLX profile upload: 1 weights, 264.8 ms in total
+SGLX profile MUL_MAT N=1: calls 640, mean 6.612 ms (max 280.581), gather 0.417, scatter 0.001;  Vulkan0: submit 4.165 ms, done at 6.609 ms (max 280.580)  Vulkan1: submit 2.020 ms, done at 6.611 ms (max 280.581)
+SGLX profile upload: 1 weights, 264.8 ms in total
+SGLX profile MUL_MAT N=1: calls 768, mean 6.440 ms (max 280.581), gather 0.347, scatter 0.001;  Vulkan0: submit 4.065 ms, done at 6.437 ms (max 280.580)  Vulkan1: submit 2.017 ms, done at 6.440 ms (max 280.581)
+SGLX profile upload: 1 weights, 264.8 ms in total
+SGLX profile MUL_MAT N=1: calls 896, mean 6.332 ms (max 280.581), gather 0.298, scatter 0.001;  Vulkan0: submit 4.011 ms, done at 6.329 ms (max 280.580)  Vulkan1: submit 2.012 ms, done at 6.331 ms (max 280.581)
+SGLX profile upload: 1 weights, 264.8 ms in total
+SGLX profile MUL_MAT N=1: calls 1024, mean 6.227 ms (max 280.581), gather 0.261, scatter 0.001;  Vulkan0: submit 3.951 ms, done at 6.224 ms (max 280.580)  Vulkan1: submit 2.004 ms, done at 6.226 ms (max 280.581)
+SGLX profile upload: 1 weights, 264.8 ms in total
+SGLX profile MUL_MAT N=1: calls 1152, mean 6.155 ms (max 280.581), gather 0.232, scatter 0.001;  Vulkan0: submit 3.909 ms, done at 6.152 ms (max 280.580)  Vulkan1: submit 2.003 ms, done at 6.154 ms (max 280.581)
+SGLX profile upload: 1 weights, 264.8 ms in total
+SGLX profile MUL_MAT N=1: calls 1280, mean 6.096 ms (max 280.581), gather 0.209, scatter 0.001;  Vulkan0: submit 3.873 ms, done at 6.093 ms (max 280.580)  Vulkan1: submit 2.003 ms, done at 6.096 ms (max 280.581)
+SGLX profile upload: 1 weights, 264.8 ms in total
+SGLX profile MUL_MAT N=1: calls 1294, mean 6.089 ms (max 280.581), gather 0.207, scatter 0.001;  Vulkan0: submit 3.869 ms, done at 6.086 ms (max 280.580)  Vulkan1: submit 2.002 ms, done at 6.089 ms (max 280.581)
+SGLX profile upload: 1 weights, 264.8 ms in total
+# rc=0  seconds=82
+# temps at end:  amd51 amd51 GT 430=42 GT 730=33 GT 710=35    (max 42 C)

@@ -1,0 +1,20 @@
+# moe_rt_bench mb5  args: --csv /home/eightman/moe-ep/rt-bench/logs/all.csv --devices WX 2100,GT 730 --iters 10 --ntok 128 --platforms NVIDIA,rusticl --ratios 176,55
+# env RUSTICL_ENABLE=radeonsi
+# generating the layer, ntok=128...
+# device: AMD Radeon Pro WX 2100       [AMD Radeon Pro WX 2100 (radeonsi, polaris12, ACO, DRM 3.61, 6.12.107+deb13-amd64)] platform=rusticl version=OpenCL 3.0  driver=25.0.7-2+deb13u1 max_wg=1024 max_alloc=512MiB gmem=2048MiB
+MB5   CHECK single AMD Radeon Pro WX 2100 n=128      OK nmse(3 tokens) 1.95e-12
+MB5   single_full_cycle_n128             AMD Radeon Pro WX 2100   n=10     median=   65639.3 p99=   66803.7 min=   64042.0 mean=   65334.9 us  ntok=128 pairs=512 tiles=47  171.8 GFLOPS effective, 1950.1 tok/s (layer)
+# device: GeForce GT 730               [GeForce GT 730] platform=NVIDIA CUDA version=OpenCL 1.2 CUDA driver=390.157 max_wg=1024 max_alloc=245MiB gmem=981MiB
+MB5   CHECK single GeForce GT 730 n=128              OK nmse(3 tokens) 1.95e-12
+MB5   single_full_cycle_n128             GeForce GT 730           n=10     median=  205532.1 p99=  211380.2 min=  198449.6 mean=  205318.0 us  ntok=128 pairs=512 tiles=47  54.9 GFLOPS effective, 622.8 tok/s (layer)
+# ES split: AMD Radeon Pro WX 2100:1376 rows GeForce GT 730:416 rows 
+MB5   CHECK ES AMD Radeon Pro WX 2100+GeForce GT 730 n=128 OK nmse(3 tokens) 1.78e-12
+MB5   ES_full_cycle_n128                 AMD Radeon Pro WX 2100+GeForce GT 730 n=10     median=   57193.5 p99=   59648.1 min=   55534.2 mean=   57210.9 us  AMD Radeon Pro WX 2100:1376 rows GeForce GT 730:416 rows  ; 2238.0 tok/s (layer) ; max pairs/device=512 ; host prep(last,max)=3047 us ; x+out transfer 4.2 MB total
+MB5   ES_part_alone_n128                 AMD Radeon Pro WX 2100   n=10     median=   52481.1 p99=   53797.2 min=   50688.9 mean=   52341.7 us  pairs=512 tokens=128
+MB5   ES_part_alone_n128                 GeForce GT 730           n=10     median=   52001.1 p99=   53811.9 min=   50950.4 mean=   51992.4 us  pairs=512 tokens=128
+# EP split: AMD Radeon Pro WX 2100:24 experts GeForce GT 730:8 experts 
+MB5   CHECK EP AMD Radeon Pro WX 2100+GeForce GT 730 n=128 OK nmse(3 tokens) 1.95e-12
+MB5   EP_full_cycle_n128                 AMD Radeon Pro WX 2100+GeForce GT 730 n=10     median=   58055.9 p99=   62172.2 min=   53348.6 mean=   58053.8 us  AMD Radeon Pro WX 2100:24 experts GeForce GT 730:8 experts  ; 2204.8 tok/s (layer) ; max pairs/device=383 ; host prep(last,max)=2647 us ; x+out transfer 3.6 MB total
+MB5   EP_part_alone_n128                 AMD Radeon Pro WX 2100   n=10     median=   51431.0 p99=   53215.1 min=   49674.3 mean=   51516.1 us  pairs=383 tokens=128
+MB5   EP_part_alone_n128                 GeForce GT 730           n=10     median=   53839.5 p99=   57992.2 min=   50101.3 mean=   53468.8 us  pairs=129 tokens=93
+# done mb5: all OK (0 failed check(s))

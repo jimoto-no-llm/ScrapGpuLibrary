@@ -1,0 +1,8 @@
+# date: 2026-10-23_23:12:04  host: tb250  tag: drv_nv390_NVIDIA_gt430_mv_q4_0
+# temps at start:  amd34 amd32 GT 430=42 GT 730=37 GT 710=32    (max 42 C)
+# env: GGML_CL11_PLATFORMS=NVIDIA GGML_CL11_DEVICES=GT 430 GGML_BACKEND_PATH=/home/eightman/moe-ep/hec/plug/libggml-cl11.so VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json GGML_CL11_AUTO_RPC=0 
+# cmd: /home/eightman/moe-ep/cuda/bB/scrapgpu_mm_bench opencl11 mv --type q4_0
+cl11_ensure_program: rebuilding the kernels with smaller work-groups
+cl11_ensure_program: CL11_0: GeForce GT 430, OpenCL 1.1 CUDA, kernels built (work-group sizes: element-wise 128, row 128, mat-vec 128, mat-mat 16x16)
+# rc=0  seconds=4
+# temps at end:  amd33 amd32 GT 430=42 GT 730=36 GT 710=32    (max 42 C)

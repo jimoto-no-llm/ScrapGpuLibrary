@@ -1,6 +1,6 @@
 # Contributing to ScrapGpuLibrary
 
-（日本語の要約）ビルドは core 単体、ツリー外プラグイン、ツリー内パッチの 3 経路。変更したら `test-backend-ops` を 3 つの調整で、`mvm_check` / `attn_check`、`ctest`、`clBuildProgram` のソースとオプションの不変を必ず確認し、性能に触る変更は TB250 の回帰まで取る。OpenCL 1.1 のみ、起動ごとのオーバーヘッド禁止、ggml の include は `adapters/ggml` の外に出さない、正しさは許容値で判定。コミットは Conventional Commits。実機の結果は GPU・ドライバ・温度・コマンドを添えて報告する。第三者のコードは [docs/REUSE.md](docs/REUSE.md) の条件を守る。詳細は以下。
+（日本語の要約）ビルドは core 単体、ツリー外プラグイン、ツリー内パッチの 3 経路。変更したら `test-backend-ops`、`mvm_check` / `attn_check` / `mid_check`、`ctest` で正しさを確認し、ビルドオプション・起動回数・TB250 の性能は測って記録する。古いハードを使い切ることが最優先で、API・ドライバ・拡張は何を使ってもよい（合否は正しさのみ、他は記録）。ggml の include は `adapters/ggml` の外に出さない、正しさは許容値で判定。コミットは Conventional Commits。実機の結果は GPU・ドライバ・温度・コマンドを添えて報告する。第三者のコードは [docs/REUSE.md](docs/REUSE.md) の条件を守る。詳細は以下。
 
 ## Builds
 
@@ -42,7 +42,13 @@ cmake --build build-cl11 -j --target llama-cli llama-bench test-backend-ops
 
 `tools/mvm_check`, `tools/attn_check` and `tools/mid_check` (MUL_MAT_ID of one token at MoE shapes, ids from an on-device ARGSORT, a 6-layer MoE chain against the CPU: run it on every GPU after a change to the queue handling, the sort or MUL_MAT_ID) are built by hand; the command is in the header comment of each file.
 
-## Checks every change must pass
+## Priority: use the old hardware to the fullest
+
+The aim of this project is to get everything the old cards can give. Anything that makes them do more is allowed: any API (OpenCL of any version, CUDA through any toolkit or the driver API, Vulkan, HIP / ROCm, RPC / remote processes, the CPU), vendor extensions, a different driver (the 390 / 470 blobs, nouveau with rusticl or NVK, Mesa versions), old toolchains in a chroot or container, and patches to upstream drivers or libraries when they refuse an old card. Experimental paths stay opt-in until they win; a path that loses is kept behind its flag and documented, not deleted.
+
+The only gate is correctness (below). Everything else in the table is measured and recorded with the change, but a number going the wrong way does not block it by itself.
+
+## Checks
 
 | Check | Command | Expected |
 | --- | --- | --- |
@@ -56,27 +62,9 @@ cmake --build build-cl11 -j --target llama-cli llama-bench test-backend-ops
 | Launch count | `GGML_CL11_LAUNCH_LOG=1` | launches per token do not increase (Qwen3-0.6B Q8_0: 452 on Kepler, 564 on Fermi) |
 | TB250 regression | `sweep.sh STAGES="build regress summary" BENCH_REPS=5` against `baseline.csv` | NVIDIA within ±3%, AMD within `tol_pct` (RX 6400: 20%); no `REGRESSION` line in `summary.md` |
 
-The TB250 regression is required for changes that touch the launch path, the kernels, the packing or the tuning, and for any change whose performance effect is not obvious. Run it with the bench lock held (`flock` on the bench lock), one GPU per run (`GGML_CL11_DEVICES`), after the card is below 85 °C. One configuration of the regression takes 20-50 minutes on the TB250; the `test-backend-ops` round above takes about 4 minutes on a Mac.
+Gate: the correctness checks (`test-backend-ops` on the backends a change touches, `mvm_check`, `attn_check`, `mid_check`, `ctest`, and the KL divergence / top-1 agreement of [Correctness](#correctness) for model-level changes). Recorded, not gating: warnings, build-option identity, launch count and the TB250 regression. Run the TB250 measurements with the bench lock held (`flock` on the bench lock), one GPU per run (`GGML_CL11_DEVICES`) unless the run is about several GPUs, after the card is below 85 °C. One configuration of the regression takes 20-50 minutes on the TB250; the `test-backend-ops` round above takes about 4 minutes on a Mac.
 
-The Gate 2 regression covered the speed table of [docs/BASELINES.md](docs/BASELINES.md), the correctness table, the launch count, the model load time and the VRAM use. Phase 3 keeps the same conditions and adds the ggml-free tests and examples ([docs/plans/PHASE3_STANDALONE.md](docs/plans/PHASE3_STANDALONE.md)).
-
-## Hard rules
-
-### OpenCL 1.1 only
-
-- Host: the C API of OpenCL 1.1 only (`CL_TARGET_OPENCL_VERSION=110`). No `cl2.hpp`, no `clEnqueueFillBuffer`, no `clEnqueueMarkerWithWaitList`, no images, no SVM, no sub-buffers outside the backend's own internal use (memset is a kernel).
-- Device: OpenCL C 1.1 (`-cl-std=CL1.1`). No `cl_khr_fp16`, no fp16 arithmetic (fp16 is a storage format), no sub-groups, no features of 1.2 or later.
-- A device that reports OpenCL 3.0 (rusticl) is used with 1.1 features only.
-- Work-group sizes are never hard coded: start from `CL_DEVICE_MAX_WORK_GROUP_SIZE`, reduce and rebuild the program until every kernel accepts them.
-
-### No per-launch overhead
-
-The GT 430 mat-vec runs at about 80% of the memory bandwidth, so anything added in front of a launch shows up directly in decode. Some GPUs need ~10 µs per launch, with 450-700 launches per token.
-
-- Kernel variant selection happens once, at plan build, and the result (kernel handle, work-group size, fixed argument layout) is stored on the node. No table lookups, no string work and no allocation per launch.
-- Argument setting stays a POD builder on the stack; the kernel ABI structs are fixed.
-- With profiling off, no event is created and no string is built. No `clFinish` per node; the whole graph is enqueued on one in-order queue.
-- Node dispatch adds no virtual call, map lookup, allocation or string generation.
+## Rules
 
 ### ggml stays in `adapters/ggml`
 
@@ -100,7 +88,29 @@ Tolerances are calibrated against benign differences: measure the official backe
 
 `op_supported` returns a reason for what it cannot do. There is no implicit CPU execution and no implicit copy: whether the CPU takes an op is the adapter's (for ggml, the scheduler's) decision.
 
-### Keep the optimizations
+### Optimizations and old rules as guidance
+
+The OpenCL 1.1-only rule, the ban on per-launch overhead and the list of CL11 optimizations to keep (R32 repacking, Fermi / Kepler / AMD tuning, constant-memory mat-vec, fusions, `MUL_MAT_ID` generation kernels, Mesa `split_programs`, the lazy-allocation probe and the rest) used to be hard rules. They are now guidance: they record what made the cards fast. Replacing one is fine when a measurement on the card shows the replacement is faster or lets the card do something it could not; write the measurement in the commit.
+
+The former rules, kept for reference:
+
+#### OpenCL 1.1 only
+
+- Host: the C API of OpenCL 1.1 only (`CL_TARGET_OPENCL_VERSION=110`). No `cl2.hpp`, no `clEnqueueFillBuffer`, no `clEnqueueMarkerWithWaitList`, no images, no SVM, no sub-buffers outside the backend's own internal use (memset is a kernel).
+- Device: OpenCL C 1.1 (`-cl-std=CL1.1`). No `cl_khr_fp16`, no fp16 arithmetic (fp16 is a storage format), no sub-groups, no features of 1.2 or later.
+- A device that reports OpenCL 3.0 (rusticl) is used with 1.1 features only.
+- Work-group sizes are never hard coded: start from `CL_DEVICE_MAX_WORK_GROUP_SIZE`, reduce and rebuild the program until every kernel accepts them.
+
+#### No per-launch overhead
+
+The GT 430 mat-vec runs at about 80% of the memory bandwidth, so anything added in front of a launch shows up directly in decode. Some GPUs need ~10 µs per launch, with 450-700 launches per token.
+
+- Kernel variant selection happens once, at plan build, and the result (kernel handle, work-group size, fixed argument layout) is stored on the node. No table lookups, no string work and no allocation per launch.
+- Argument setting stays a POD builder on the stack; the kernel ABI structs are fixed.
+- With profiling off, no event is created and no string is built. No `clFinish` per node; the whole graph is enqueued on one in-order queue.
+- Node dispatch adds no virtual call, map lookup, allocation or string generation.
+
+#### Keep the optimizations
 
 Do not replace what CL11 already does with a generic version: the R32 repacking of Q4_0 / Q8_0 / Q4_K / Q6_K (including partial reads and writes and the ban on views), the Fermi / Kepler / AMD tuning, the Fermi denormal products, the constant-memory mat-vec, the workaround for the Kepler constant-memory bug, the 128-bit coalesced loads, the K / V cache kernels, the fusions (`RMS_NORM`+`MUL`, `ADD`+`RMS_NORM`+`MUL`, several `MUL_MAT`, `SET_ROWS` pairs, omitted `CONT`, V cache `CONT`+`MUL_MAT`), the buffer splitting for large tensors, the `MUL_MAT_ID` generation kernels, the Mesa `split_programs`, the AMD `mad()` and the lazy-allocation probe. Do not dequantize whole tensors to make a layout generic.
 
@@ -108,7 +118,7 @@ Do not mark an unsupported op as supported to make a test pass. Report it as uns
 
 ### Machine rules
 
-No `sudo`, no kernel module work, no driver installation or switching, no clock changes. Driver experiments (nouveau for Fermi, VFIO for the 390 driver) are separate work and only get a written plan and a restore procedure.
+Driver and machine experiments are allowed. Driver switching goes through the TB250 switch script, which must be able to return to the 390 driver from every state; write the plan and the restore procedure before the first run of a new state. Results are recorded per driver state.
 
 ## Commits
 

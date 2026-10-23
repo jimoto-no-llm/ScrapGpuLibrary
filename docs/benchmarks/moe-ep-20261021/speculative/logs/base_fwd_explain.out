@@ -1,0 +1,8 @@
+
+<think>
+Okay, I need to explain how a hash table works, including collision handling and the time complexity of lookups. Let me start by recalling what I know about hash tables.
+
+First, a hash table is a data structure that stores key-value pairs. The main idea is to use a hash function to map each key to an index in an array, which is called a bucket. The hash function takes the key and produces an integer that determines the index where the element should be stored.
+
+But wait, there's a problem when different keys produce the same hash value. That's a collision. So how do hash tables handle collisions? I remember there are two main methods: chaining and open addressing. Chaining uses linked lists at each bucket, so each bucket can hold multiple entries. Open addressing doesn't use linked lists; instead, it looks for an empty slot in the array directly. There are different strategies for open addressing, like linear prob
+

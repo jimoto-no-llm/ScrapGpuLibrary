@@ -1,0 +1,1 @@
+{"test":"text:ja_tech.txt","n_prompt":512,"pp_s":19.973,"pp_ts":25.6340,"n_gen":64,"tg_ts":6.5267,"tg_total_ts":6.5064,"gen":" は、`cl11` バックエンドで動かすための `ggml_cl11` が実装済みです。\n\n## ビルド\n\n### 依存\n\n- CMake 3.20+\n- OpenCL 1.1 または "}

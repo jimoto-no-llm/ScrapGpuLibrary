@@ -1,0 +1,7 @@
+
+<think>
+We need to produce a Python function that merges overlapping intervals. Include a short docstring and three example calls with expected output. No extra formatting unless requested. The user didn't specify any formatting constraints beyond that. They want a function, docstring, and three example calls with expected output. Probably plain text, maybe code blocks. The instruction says avoid markdown unless explicitly asked. The user didn't ask for markdown, but typical answer may include code fences. However the instruction says "Do NOT use formatting (bold, italic, underline, markdown) unless explicitly asked". So we should not use markdown. That means we should not wrap code in triple backticks. We can just present code as plain text, maybe with indentation. Provide docstring as a string literal. Provide three example calls and their expected output. Could be like:
+
+def merge_intervals(intervals):
+    """Merge overlapping intervals into a list of
+

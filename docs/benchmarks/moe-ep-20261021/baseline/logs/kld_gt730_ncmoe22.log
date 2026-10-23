@@ -1,0 +1,15 @@
+# date: 2026-10-21_05:18:23  host: tb250  tag: kld_gt730_ncmoe22
+# temps at start:  amd48 amd44 GT 430=46 GT 730=36 GT 710=37 
+# env: GGML_CL11_PLATFORMS=NVIDIA GGML_CL11_DEVICES=GT 730 GGML_BACKEND_PATH=/home/eightman/moe-ep/src/build-cl11/libggml-cl11.so VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json 
+# cmd: /home/eightman/moe-ep/src/llama-build/bin/llama-perplexity -m /home/eightman/moe-ep/models/LFM2.5-8B-A1B-Q4_0.gguf -f /home/eightman/moe-ep/kl/text.txt -c 512 --chunks 4 -b 128 -ub 128 -t 2 -fa off -dev CL11_0 -ngl 99 -ncmoe 22 --kl-divergence-base /home/eightman/moe-ep/kl/base.kld --kl-divergence
+cl11_ensure_program: CL11_0: multi mat-vec (Q / K / V, FFN gate / up in one launch) enabled
+cl11_ensure_program: CL11_0: mat-mat variant: tile 64 x 64, 8 x 4 values per work-item, BK 16, unroll 16, prefetch 0, 128 work-items
+cl11_ensure_program: CL11_0: GeForce GT 730, OpenCL 1.2 CUDA, kernels built (work-group sizes: element-wise 128, row 128, mat-vec 128, mat-mat 16x16)
+0.01.752.024 W common_fit_params: failed to fit params to free device memory: n_gpu_layers already set by user to 99, abort
+0.06.276.746 W llama_kv_cache: the V embeddings have different sizes across layers and FA is not enabled - padding V cache to 512
+0.06.285.193 I cmn          init: llama threadpool init, n_threads = 2
+0.06.643.218 I 
+0.06.643.291 I system_info: n_threads = 2 (n_threads_batch = 2) / 2 | CPU : SSE3 = 1 | SSSE3 = 1 | LLAMAFILE = 1 | OPENMP = 1 | REPACK = 1 | 
+0.06.654.169 I kl_divergence: computing over 4 chunks, n_ctx=512, batch_size=128, n_seq=1
+0.36.608.813 I kl_divergence: 29.95 seconds per pass - ETA # rc=0  seconds=129
+# temps at end:  amd38 amd39 GT 430=42 GT 730=37 GT 710=33 

@@ -7,6 +7,7 @@
 // executable (SCRAPGPU_DEVICE_SERVER overrides the path).
 
 #include "protocol.h"
+#include "trace.h"
 
 #include "scrapgpu/backend.h"
 #include "scrapgpu/remote.h"
@@ -89,6 +90,11 @@ struct rmt_client {
     size_t                  device_count = 0;
     std::vector<std::unique_ptr<rmt_device>> devices;
     std::string             reason_scratch;  // the op_supported reason of the last call
+    // scrapgpu_remote_set_batching: the held-back requests, serialized as {u32 op, u64 size, bytes}
+    bool                    batching  = false;
+    std::vector<uint8_t>    batch;
+    uint32_t                batch_n   = 0;
+    bool                    batch_shm = false; // a queued write reads the shared memory: nothing may overwrite it before the batch is sent
 };
 
 // ---------------------------------------------------------------------------------------------
@@ -177,7 +183,50 @@ struct rmt_resp {
     std::vector<uint8_t>  storage;
 };
 
+rmt_resp rmt_exchange(rmt_client * c, uint32_t op, const std::vector<uint8_t> & req);
+
+void batch_append(std::vector<uint8_t> & b, uint32_t op, const std::vector<uint8_t> & req) {
+    sgr::put_u32(b, op);
+    sgr::put_u64(b, req.size());
+    sgr::put_bytes(b, req.data(), req.size());
+}
+
+// sends the held-back requests, with `last` (if any) as the final one; the response is the one of the last request
+rmt_resp rmt_flush(rmt_client * c, uint32_t last_op = 0, const std::vector<uint8_t> * last = nullptr) {
+    std::vector<uint8_t> msg;
+    msg.reserve(4 + c->batch.size() + (last != nullptr ? 12 + last->size() : 0));
+    sgr::put_u32(msg, c->batch_n + (last != nullptr ? 1u : 0u));
+    sgr::put_bytes(msg, c->batch.data(), c->batch.size());
+    if (last != nullptr) {
+        batch_append(msg, last_op, *last);
+    }
+    c->batch.clear();
+    c->batch_n = 0;
+    c->batch_shm = false;
+    return rmt_exchange(c, sgr::SGR_OP_BATCH, msg);
+}
+
 rmt_resp rmt_invoke(rmt_client * c, uint32_t op, const std::vector<uint8_t> & req) {
+    if (c->batching && !c->dead) {
+        if (op == sgr::SGR_OP_BUFFER_WRITE || op == sgr::SGR_OP_OP_EXECUTE) {
+            // hold the request back; it goes in front of the next call that needs an answer
+            if (c->batch.size() + req.size() + 12 <= sgr::kMaxPayload / 2) {
+                batch_append(c->batch, op, req);
+                ++c->batch_n;
+                rmt_resp ok;
+                ok.status = SCRAPGPU_STATUS_OK;
+                ok.body = { nullptr, 0 };
+                return ok;
+            }
+        }
+        if (c->batch_n != 0) {
+            return rmt_flush(c, op, &req);
+        }
+    }
+    return rmt_exchange(c, op, req);
+}
+
+rmt_resp rmt_exchange(rmt_client * c, uint32_t op, const std::vector<uint8_t> & req) {
     rmt_resp r;
     if (c->dead) {
         r.status = SCRAPGPU_STATUS_DEVICE_LOST;
@@ -186,16 +235,19 @@ rmt_resp rmt_invoke(rmt_client * c, uint32_t op, const std::vector<uint8_t> & re
     }
     uint8_t hdr[sgr::kHdrSize];
     hdr_put(hdr, op, req.size());
+    sgr::trace("c_send_b", op);
     if (!write_all(c->fd, hdr, sizeof(hdr)) || (!req.empty() && !write_all(c->fd, req.data(), req.size()))) {
         r.status = rmt_lost(c, "remote: sending the request failed (server died?)");
         return r;
     }
+    sgr::trace("c_send_e", op);
     uint64_t size = 0;
     uint32_t code = 0;
     if (!read_all(c->fd, hdr, sizeof(hdr)) || !hdr_get(hdr, code, size)) {
         r.status = rmt_lost(c, "remote: the server closed the connection");
         return r;
     }
+    sgr::trace("c_resp_hdr", op);
     // a legitimate response carries at most the inline bulk limit plus the framing; anything
     // bigger means a corrupt or hostile peer (audit H-2)
     if (size > (uint64_t) sgr::kMaxPayload + 64 * 1024) {
@@ -283,7 +335,17 @@ rmt_resp rmt_push(rmt_client * c, uint32_t op, std::vector<uint8_t> & req, const
         return r;
     }
     if (shm) {
+        if (c->batch_shm) {
+            // a held-back write still has to read the shared memory: send it first
+            const rmt_resp f = rmt_flush(c);
+            if (f.status != SCRAPGPU_STATUS_OK) {
+                return f;
+            }
+        }
         std::memcpy(c->shm, data, size);
+        if (c->batching && op == sgr::SGR_OP_BUFFER_WRITE) {
+            c->batch_shm = true;
+        }
     }
     sgr::put_u32(req, shm ? 1u : 0u);
     if (!shm && size > 0) {
@@ -1131,6 +1193,23 @@ scrapgpu_status scrapgpu_remote_spawn(const char * const * env_spec, scrapgpu_re
         return st;
     }
     return rmt_register_client(std::move(c), out);
+}
+
+scrapgpu_status scrapgpu_remote_set_batching(scrapgpu_remote_t * remote, int enable) {
+    if (remote == nullptr) {
+        scrapgpu_set_last_error("remote is null");
+        return SCRAPGPU_STATUS_INVALID_ARGUMENT;
+    }
+    auto * c = reinterpret_cast<rmt_client *>(remote);
+    std::lock_guard<std::mutex> lock(c->mtx);
+    if (!enable && c->batch_n != 0) {
+        const rmt_resp r = rmt_flush(c);
+        if (r.status != SCRAPGPU_STATUS_OK) {
+            return r.status;
+        }
+    }
+    c->batching = enable != 0;
+    return SCRAPGPU_STATUS_OK;
 }
 
 void scrapgpu_remote_close(scrapgpu_remote_t * remote) {

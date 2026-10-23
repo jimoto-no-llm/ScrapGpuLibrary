@@ -1,0 +1,4 @@
+device=GeForce GT 710 backend=cuda driver=CUDA driver tuning=sm_35
+mv q4_0 k=2048 rows=65536 n=1 weight=72.0 MiB
+  throughput: best 10.509 ms  median 10.510 ms  = 7.18 / 7.18 GB/s (weights read once per column chunk)
+  latency   : best 10.515 ms  median 10.518 ms

@@ -1,0 +1,15 @@
+# moe_rt_bench mb1  args: --csv /home/eightman/moe-ep/rt-bench/logs/all.csv --devices WX 2100 --platforms Clover
+# device: AMD Radeon Pro WX 2100 (radeonsi, polaris12, ACO, DRM 3.61, 6.12.107+deb13-amd64) platform=Clover version=OpenCL 1.1 Mesa 25.0.7-2+deb13u1 driver=25.0.7-2+deb13u1 max_wg=256 max_alloc=512MiB gmem=2048MiB
+MB1   rt_blocking                        AMD Radeon Pro WX 2100 (radeonsi, polaris12, ACO, DRM 3.61, 6.12.107+deb13-amd64) n=10000  median=     127.4 p99=     165.0 min=     124.0 mean=     131.5 us  check=OK
+MB1   rt_nonblock_finish                 AMD Radeon Pro WX 2100 (radeonsi, polaris12, ACO, DRM 3.61, 6.12.107+deb13-amd64) n=10000  median=     130.8 p99=     150.5 min=     126.9 mean=     131.8 us  check=OK
+MB1   rt_event_busypoll                  AMD Radeon Pro WX 2100 (radeonsi, polaris12, ACO, DRM 3.61, 6.12.107+deb13-amd64) n=10000  median=     128.9 p99=     149.6 min=     125.2 mean=     130.0 us  check=OK
+MB1   rt_pinned_finish                   AMD Radeon Pro WX 2100 (radeonsi, polaris12, ACO, DRM 3.61, 6.12.107+deb13-amd64) n=10000  median=     115.7 p99=     144.5 min=     111.6 mean=     119.5 us  check=OK
+MB1   rt_pinned_busypoll                 AMD Radeon Pro WX 2100 (radeonsi, polaris12, ACO, DRM 3.61, 6.12.107+deb13-amd64) n=10000  median=     113.8 p99=     132.7 min=     111.0 mean=     114.6 us  check=OK
+MB1   piece_clFinish_idle                AMD Radeon Pro WX 2100 (radeonsi, polaris12, ACO, DRM 3.61, 6.12.107+deb13-amd64) n=10000  median=       0.8 p99=       0.8 min=       0.7 mean=       0.8 us  
+MB1   piece_kernel_finish                AMD Radeon Pro WX 2100 (radeonsi, polaris12, ACO, DRM 3.61, 6.12.107+deb13-amd64) n=10000  median=      66.0 p99=      84.7 min=      63.6 mean=      66.8 us  T_k: tiny kernel + clFinish
+MB1   piece_write8k_blocking             AMD Radeon Pro WX 2100 (radeonsi, polaris12, ACO, DRM 3.61, 6.12.107+deb13-amd64) n=10000  median=      22.7 p99=      23.0 min=      14.2 mean=      23.2 us  
+MB1   piece_read8k_blocking              AMD Radeon Pro WX 2100 (radeonsi, polaris12, ACO, DRM 3.61, 6.12.107+deb13-amd64) n=10000  median=      78.0 p99=      94.9 min=      75.5 mean=      79.2 us  
+MB1   piece_write8k_pinned               AMD Radeon Pro WX 2100 (radeonsi, polaris12, ACO, DRM 3.61, 6.12.107+deb13-amd64) n=10000  median=      22.7 p99=      23.0 min=      14.5 mean=      23.3 us  
+MB1   piece_read8k_pinned                AMD Radeon Pro WX 2100 (radeonsi, polaris12, ACO, DRM 3.61, 6.12.107+deb13-amd64) n=10000  median=      78.1 p99=      98.2 min=      74.7 mean=      79.8 us  
+MB1   piece_write32B_blocking            AMD Radeon Pro WX 2100 (radeonsi, polaris12, ACO, DRM 3.61, 6.12.107+deb13-amd64) n=10000  median=       3.1 p99=       4.7 min=       1.5 mean=       4.3 us  
+# done mb1: all OK (0 failed check(s))

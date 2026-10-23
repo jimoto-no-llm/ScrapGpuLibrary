@@ -1,0 +1,19 @@
+# date: 2026-10-22_16:37:15  host: tb250  tag: pp3_Cself128
+# temps at start:  amd49 amd54 GT 430=45 GT 730=36 GT 710=36    (max 45 C)
+# env: GGML_CL11_PLATFORMS=NVIDIA GGML_SGLX_PROFILE=0 GGML_CL11_DEVICES=GT 730,GT 710 GGML_SGLX_SPLIT=Vulkan0:0.5,Vulkan1:0.2,CL11_0:0.2,CL11_1:0.1 GGML_BACKEND_PATH=/home/eightman/moe-ep/pp/build-cl11/libggml-cl11.so VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json GGML_CL11_AUTO_RPC=0 
+# cmd: /home/eightman/moe-ep/src/llama-build/bin/llama-perplexity -m /home/eightman/moe-ep/models/LFM2.5-8B-A1B-Q4_0.gguf -f /home/eightman/moe-ep/kl/text.txt -c 512 --chunks 4 -b 128 -ub 128 -t 2 -fa off -dev Vulkan0,Vulkan1,SGLX0 -ngl 99 -sm layer -ts 5/1/0 -ot token_embd\.weight=SGLX0 --kl-divergence-base /home/eightman/moe-ep/sglx/kl/pp3_one.kld --kl-divergence
+SGLX: SGLX0 splits the rows of its weights over: Vulkan0 (AMD Radeon RX 6400 (RADV NAVI24)) 0.500, Vulkan1 (AMD Radeon Pro WX 2100 (RADV POLARIS12)) 0.200, CL11_0 (GeForce GT 730) 0.200, CL11_1 (GeForce GT 710) 0.100
+0.01.655.098 W common_fit_params: failed to fit params to free device memory: n_gpu_layers already set by user to 99, abort
+0.06.888.348 W llama_kv_cache: the V embeddings have different sizes across layers and FA is not enabled - padding V cache to 512
+0.07.092.358 I cmn          init: llama threadpool init, n_threads = 2
+cl11_ensure_program: CL11_0: multi mat-vec (Q / K / V, FFN gate / up in one launch) enabled
+cl11_ensure_program: CL11_0: mat-mat variant: tile 64 x 64, 8 x 4 values per work-item, BK 16, unroll 16, prefetch 0, 128 work-items
+cl11_ensure_program: CL11_0: GeForce GT 730, OpenCL 1.2 CUDA, kernels built (work-group sizes: element-wise 128, row 128, mat-vec 128, mat-mat 16x16)
+cl11_ensure_program: CL11_1: multi mat-vec (Q / K / V, FFN gate / up in one launch) enabled
+cl11_ensure_program: CL11_1: mat-mat variant: tile 64 x 64, 8 x 4 values per work-item, BK 16, unroll 16, prefetch 0, 128 work-items
+cl11_ensure_program: CL11_1: GeForce GT 710, OpenCL 1.2 CUDA, kernels built (work-group sizes: element-wise 128, row 128, mat-vec 128, mat-mat 16x16)
+0.07.569.930 I 
+0.07.569.998 I system_info: n_threads = 2 (n_threads_batch = 2) / 2 | CPU : SSE3 = 1 | SSSE3 = 1 | LLAMAFILE = 1 | OPENMP = 1 | REPACK = 1 | 
+0.07.580.014 I kl_divergence: computing over 4 chunks, n_ctx=512, batch_size=128, n_seq=1
+0.09.244.449 I kl_divergence: 1.66 seconds per pass - ETA # rc=0  seconds=15
+# temps at end:  amd51 amd55 GT 430=45 GT 730=37 GT 710=37    (max 45 C)

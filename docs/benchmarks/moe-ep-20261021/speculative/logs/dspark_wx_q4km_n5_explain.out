@@ -1,0 +1,16 @@
+
+
+<|startoftext|><|im_start|>user
+Explain how a hash table works, including how collisions are handled and what the time complexity of lookups is.<|im_end|>
+<|im_start|>assistant
+<think>
+Okay, I need to explain how a hash table works, including collision handling and the time complexity of lookups. Let me start by recalling what I know about hash tables.
+
+First, a hash table is a data structure that stores key-value pairs. The main idea is to use a hash function to map each key to an index in an underlying array. The hash function takes the key and produces a number, which is the index where the element is stored. But since different keys might hash to the same index, collisions occur. So, how do we handle those collisions?
+
+Collision handling methods: There are open addressing and chaining. Open addressing involves placing elements in the array and, when a collision occurs, searching for the next available slot. The methods here include linear probing, quadratic probing, double hashing. Chaining uses linked lists at each index to handle collisions, so each bucket can have multiple entries.
+
+Now, the time complexity.
+
+
+

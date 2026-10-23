@@ -1,0 +1,13 @@
+# date: 2026-10-23_16:06:30  host: tb250  tag: hip_kld_rocm_nc7_mmq
+# temps at start:  amd49 amd40 GT 430=42 GT 730=33 GT 710=33    (max 42 C)
+# env: GGML_CUDA_FORCE_MMQ=1 LD_LIBRARY_PATH=/mnt/hdd/rocm/v713/lib/python3.13/site-packages/_rocm_sdk_devel/lib:/mnt/hdd/rocm/v713/lib/python3.13/site-packages/_rocm_sdk_devel/lib/llvm/lib VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json 
+# cmd: /home/eightman/moe-ep/hip/llama-build/bin/llama-perplexity -m /home/eightman/moe-ep/models/LFM2.5-8B-A1B-Q4_0.gguf -f /home/eightman/moe-ep/kl/text.txt -c 512 --chunks 4 -b 128 -ub 128 -t 2 -fa off -dev ROCm0 -ngl 99 -ncmoe 7 --kl-divergence-base /home/eightman/moe-ep/kl/base.kld --kl-divergence
+0.03.645.572 W common_fit_params: failed to fit params to free device memory: n_gpu_layers already set by user to 99, abort
+0.04.002.573 W llama_model_loader: tensor overrides to CPU are used with mmap enabled - consider using --load-mode none for better performance
+0.27.815.438 W llama_kv_cache: the V embeddings have different sizes across layers and FA is not enabled - padding V cache to 512
+0.27.849.475 I cmn          init: llama threadpool init, n_threads = 2
+0.28.297.755 I 
+0.28.297.821 I system_info: n_threads = 2 (n_threads_batch = 2) / 2 | ROCm : NO_VMM = 1 | FA_QUANTS = q4_0-q4_0,q8_0-q8_0,f16-f16,bf16-bf16 | CPU : SSE3 = 1 | SSSE3 = 1 | LLAMAFILE = 1 | OPENMP = 1 | REPACK = 1 | 
+0.29.059.274 I kl_divergence: computing over 4 chunks, n_ctx=512, batch_size=128, n_seq=1
+0.52.212.174 I kl_divergence: 23.15 seconds per pass - ETA # rc=0  seconds=127
+# temps at end:  amd49 amd39 GT 430=42 GT 730=32 GT 710=33    (max 42 C)

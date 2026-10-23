@@ -1,0 +1,6 @@
+pageable               H2D: 1.73 GB/s
+pageable               D2H: 1.78 GB/s
+pinned(hipHostMalloc)  H2D: 1.72 GB/s
+pinned(hipHostMalloc)  D2H: 1.82 GB/s
+registered             H2D: 1.72 GB/s
+registered             D2H: 1.82 GB/s

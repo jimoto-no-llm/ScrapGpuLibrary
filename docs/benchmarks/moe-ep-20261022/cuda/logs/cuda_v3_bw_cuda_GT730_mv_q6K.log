@@ -1,0 +1,6 @@
+# date: 2026-10-22_00:49:37  host: tb250  tag: cuda_v3_bw_cuda_GT730_mv_q6K
+# temps at start:  amd52 amd40 GT 430=47 GT 730=37 GT 710=36    (max 47 C)
+# env: 
+# cmd: env SCRAPGPU_CUDA_DEVICES=GT 730 /home/eightman/moe-ep/cuda/bB/scrapgpu_mm_bench cuda mv --type q6_K
+# rc=0  seconds=5
+# temps at end:  amd52 amd40 GT 430=47 GT 730=38 GT 710=36    (max 47 C)

@@ -1,0 +1,6 @@
+# date: 2026-10-21_03:13:35  host: tb250  tag: mb1c
+# temps at start:  amd40 amd40 GT 430=42 GT 730=33 GT 710=34    (max 42 C)
+# env: 
+# cmd: /home/eightman/moe-ep/rt-bench/moe_rt_bench mb1c --csv /home/eightman/moe-ep/rt-bench/logs/all.csv
+# rc=0  seconds=17
+# temps at end:  amd40 amd41 GT 430=42 GT 730=35 GT 710=35    (max 42 C)

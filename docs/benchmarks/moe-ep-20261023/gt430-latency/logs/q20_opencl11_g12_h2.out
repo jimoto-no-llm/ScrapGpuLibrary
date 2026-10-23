@@ -1,0 +1,7 @@
+device remote:GeForce GT 430, backend opencl11; 4608 rows x 2048, q6_K
+upload of 7.4 MiB: 29.9 ms
+gap 12000 us (sleep), hog 2 threads, 400 jobs
+write x                            mean 0.093  p10 0.053  p50 0.057  p90 0.062  max 4.989 ms
+op_execute (enqueue)               mean 0.083  p10 0.029  p50 0.033  p90 0.036  max 5.146 ms
+read (kernel + read)               mean 0.681  p10 0.624  p50 0.627  p90 0.631  max 4.856 ms
+job                                mean 0.857  p10 0.711  p50 0.717  p90 0.727  max 8.853 ms

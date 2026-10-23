@@ -1,0 +1,1 @@
+cold_vs_sglx_multi: {"positions":301,"kld_mean":0.003238,"kld_p99":0.037052,"kld_max":0.081510,"top1":97.674,"nmse":3.672e-03}

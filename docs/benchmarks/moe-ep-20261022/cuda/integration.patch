@@ -1,0 +1,65 @@
+diff -ru a/adapters/ggml/CMakeLists.txt b/adapters/ggml/CMakeLists.txt
+--- a/adapters/ggml/CMakeLists.txt	2026-10-22 00:44:54
++++ b/adapters/ggml/CMakeLists.txt	2026-10-22 15:20:18
+@@ -79,6 +79,7 @@
+     composite/composite_device.cpp
+     composite/pdev_ggml.cpp
+     composite/pdev_cl11.cpp
++    composite/pdev_cuda.cpp
+     composite/composite.h
+     composite/pdev.h)
+ 
+@@ -174,6 +175,23 @@
+         BUILD_RPATH "${_base_dir}"
+         INSTALL_RPATH "${_base_dir}")
+     install(TARGETS ${TARGET_NAME} LIBRARY DESTINATION lib)
++endif()
++
++# NVIDIA GPUs as physical devices of the SGLX composite device through the CUDA Driver API ("CUDA0", "CUDA1", ... in GGML_SGLX_SPLIT, see
++# composite/pdev_cuda.cpp): the CUDA backend of src/backends/cuda, with libcuda loaded at run time. No CUDA toolkit and no libcuda are needed to
++# build or to load the plugin (without libcuda there are 0 CUDA devices). Out-of-tree builds only.
++option(CL11_WITH_CUDA "SGLX: NVIDIA GPUs through the CUDA Driver API (composite/pdev_cuda.cpp, src/backends/cuda)" OFF)
++if (CL11_WITH_CUDA)
++    if (NOT EXISTS "${CL11_SRC_DIR}/backends/cuda/device.cpp")
++        message(FATAL_ERROR "CL11_WITH_CUDA needs the repository tree (src/backends/cuda), not the in-tree copy")
++    endif()
++    target_sources(${TARGET_NAME} PRIVATE
++        "${CL11_SRC_DIR}/backends/cuda/driver.cpp"
++        "${CL11_SRC_DIR}/backends/cuda/device.cpp"
++        "${CL11_SRC_DIR}/backends/cuda/r32_transfer.cpp")
++    target_include_directories(${TARGET_NAME} PRIVATE "${CL11_SRC_DIR}/backends")
++    target_compile_definitions(${TARGET_NAME} PRIVATE SGLX_WITH_CUDA)
++    target_link_libraries(${TARGET_NAME} PRIVATE ${CMAKE_DL_LIBS})
+ endif()
+ 
+ target_link_libraries(${TARGET_NAME} PRIVATE scrapgpu_opencl11 scrapgpu_tensor ${OpenCL_LIBRARIES})
+diff -ru a/adapters/ggml/composite/composite.h b/adapters/ggml/composite/composite.h
+--- a/adapters/ggml/composite/composite.h	2026-10-22 00:44:54
++++ b/adapters/ggml/composite/composite.h	2026-10-22 15:20:18
+@@ -31,6 +31,10 @@
+ // a CL11 physical device (pdev_cl11.cpp)
+ std::unique_ptr<pdev> make_pdev_cl11(cl11_device * d);
+ 
++// an NVIDIA GPU through the CUDA backend of src/backends/cuda (pdev_cuda.cpp); `index` is the number in "CUDA<index>". nullptr when the plugin is
++// built without CL11_WITH_CUDA, there is no libcuda, or there is no such device.
++std::unique_ptr<pdev> make_pdev_cuda(int index);
++
+ // Called once by the CL11 registry after it probed its devices: reads GGML_SGLX_SPLIT and, when it is set, creates the device SGLX0.
+ // `cl11` are the CL11 devices of the plugin as (name "CL11_<i>", device); the physical devices of the split are resolved on first use.
+ void attach(ggml_backend_reg_t reg, const std::vector<std::pair<std::string, cl11_device *>> & cl11);
+diff -ru a/adapters/ggml/composite/composite_device.cpp b/adapters/ggml/composite/composite_device.cpp
+--- a/adapters/ggml/composite/composite_device.cpp	2026-10-22 00:44:54
++++ b/adapters/ggml/composite/composite_device.cpp	2026-10-22 15:20:18
+@@ -190,6 +190,12 @@
+                 SGLX_LOG("GGML_SGLX_SPLIT: no CL11 device %s\n", s.first.c_str());
+                 return false;
+             }
++        } else if (s.first.size() > 4 && s.first.rfind("CUDA", 0) == 0 && s.first.find_first_not_of("0123456789", 4) == std::string::npos) {
++            p = make_pdev_cuda(atoi(s.first.c_str() + 4));
++            if (!p) {
++                SGLX_LOG("GGML_SGLX_SPLIT: no CUDA device %s (plugin built without CL11_WITH_CUDA, no libcuda, or not in SCRAPGPU_CUDA_DEVICES)\n", s.first.c_str());
++                return false;
++            }
+         } else {
+             ggml_backend_dev_t d = find_ggml_device(s.first.c_str());
+             if (d == nullptr) {

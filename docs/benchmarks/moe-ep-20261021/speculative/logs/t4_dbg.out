@@ -1,0 +1,10 @@
+
+
+<|startoftext|><|im_start|>user
+Explain how a hash table works, including how collisions are handled and what the time complexity of lookups is.<|im_end|>
+<|im_start|>assistant
+<think>
+We need to explain how a hash table works, including collision handling and time complexity of lookups. The user didn't specify any constraints
+
+
+

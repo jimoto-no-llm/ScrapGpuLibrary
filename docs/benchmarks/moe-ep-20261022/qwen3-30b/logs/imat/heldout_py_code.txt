@@ -1,0 +1,13 @@
+coverage of corpus B traffic by the top-K set chosen on corpus A (mean over 48 layers; uniform = K/128)
+A \ B       py_code_h1  py_code_h2   K
+py_code_h1  0.613      0.653       16 (uniform 0.125)
+py_code_h2  0.579      0.701       16 (uniform 0.125)
+py_code_h1  0.788      0.830       32 (uniform 0.250)
+py_code_h2  0.753      0.867       32 (uniform 0.250)
+py_code_h1  0.884      0.903       48 (uniform 0.375)
+py_code_h2  0.849      0.935       48 (uniform 0.375)
+py_code_h1  0.944      0.950       64 (uniform 0.500)
+py_code_h2  0.913      0.971       64 (uniform 0.500)
+
+py_code_h1 experts needed per layer (of 128): 50% of traffic mean 11.8 (min 7 max 27), 80% mean 34.3 (min 16 max 64)
+py_code_h2 experts needed per layer (of 128): 50% of traffic mean 9.4 (min 7 max 24), 80% mean 24.2 (min 15 max 57)

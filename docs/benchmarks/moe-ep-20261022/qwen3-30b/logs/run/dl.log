@@ -1,0 +1,5 @@
+Qwen3-30B-A3B-Q4_0 rc=0 Thu Oct 22 05:18:33 PM JST 2026
+curl: (92) HTTP/2 stream 1 was not closed cleanly: CANCEL (err 8)
+Qwen3-30B-A3B-Q3_K_M rc=92 Thu Oct 22 05:30:25 PM JST 2026
+ALLDONE
+Q3DONE

@@ -1,0 +1,12 @@
+t=0 card1:vram=15,gtt=13 card5:vram=5,gtt=7 nv=0/0/0/ sysused=6541 cached=22303 rss=16697
+t=4 card1:vram=3734,gtt=13 card5:vram=1928,gtt=7 nv=0/0/0/ sysused=6544 cached=22303 rss=16697
+t=9 card1:vram=2804,gtt=1948 card5:vram=1928,gtt=932 nv=0/0/0/ sysused=11489 cached=20047 rss=16697
+t=13 card1:vram=15,gtt=3732 card5:vram=9,gtt=1926 nv=0/0/0/ sysused=12269 cached=19318 rss=11416
+t=16 card1:vram=1972,gtt=2803 card5:vram=5,gtt=1930 nv=0/0/0/ sysused=8531 cached=19318 rss=11416
+t=20 card1:vram=3756,gtt=14 card5:vram=1931,gtt=1926 nv=0/0/0/ sysused=7558 cached=19318 rss=11416
+t=24 card1:vram=3880,gtt=25 card5:vram=1950,gtt=9 nv=0/0/0/ sysused=6570 cached=19318 rss=11426
+t=28 card1:vram=3880,gtt=25 card5:vram=1950,gtt=9 nv=0/0/0/ sysused=6569 cached=19318 rss=11426
+t=32 card1:vram=3880,gtt=25 card5:vram=1950,gtt=9 nv=0/0/0/ sysused=6569 cached=19319 rss=11426
+t=36 card1:vram=3880,gtt=25 card5:vram=1950,gtt=9 nv=0/0/0/ sysused=6566 cached=19319 rss=11426
+t=39 card1:vram=3880,gtt=25 card5:vram=1950,gtt=9 nv=0/0/0/ sysused=6570 cached=19319 rss=11426
+t=43 card1:vram=794,gtt=15 card5:vram=1004,gtt=7 nv=0/0/0/ sysused=6464 cached=19319 rss=

@@ -1,0 +1,1 @@
+{"test":"text:ja_design.txt","n_prompt":512,"pp_s":20.670,"pp_ts":24.7702,"n_gen":64,"tg_ts":5.1634,"tg_total_ts":5.1474,"gen":"」** に割り当てて、`expert_cache` で管理する。層ごとの expert テンソルは `expert_cache` に格納され、`expert_cache` は `SGLX0` にマウントされる。\n\n2. **SGLX0"}

@@ -82,6 +82,10 @@ TB250 での使い方：メインプロセスは 4 枚（`GGML_CL11_PLATFORMS=NV
 
 コスト（M2 Max で実測、仕様は docs/API_CONTRACT.md 15 章）：呼び出し 1 回ごとにソケット 1 往復。アイドル `stream_sync` が約 11.5 µs、`op_execute` の投入だけで直接比 +27 µs、`op_execute` + `stream_sync` で +39 µs。bulk データ（buffer / tensor の転送）はソケットではなく共有メモリ（初期 1 MiB、需要で倍々拡大）を通る。`tests/ops` は `SCRAPGPU_TEST_BACKEND=remote` で全件（87 件のうち remote で 82 件実行：同じ NMSE、加えて remote↔local の `tensor_copy` も PASS）をサーバー越しに回せる。
 
+- 呼び出しをまとめる（`scrapgpu_remote_set_batching(remote, 1)`、既定は OFF）：`buffer_write` と `op_execute` はクライアント側で保留し、次に答えが要る呼び出し（読み出し、`stream_sync`、確保など）の前に、順番どおり 1 回の `SGR_OP_BATCH` として送る。write + op_execute + 読み出しが 1 往復になる。保留した呼び出しの失敗は、それを運んだ呼び出しが報告する。ホストが忙しいと往復ごとにプロセスの起床が 2 回入る、という理由で入れたが、TB250 の GT 430（SGLX の `REMOTE0`）では 1 job の時間は変わらなかった（`docs/benchmarks/moe-ep-20261022/gt430/README.md`）。
+- SGLX0 の物理デバイスとして使う：`GGML_SGLX_SPLIT` に `REMOTE0:0.07` のように書くと、`adapters/ggml/composite/pdev_scrapgpu.cpp` がサーバーを起動して（`GGML_SGLX_REMOTE_BACKEND` / `GGML_SGLX_REMOTE_ENV` / `GGML_SGLX_REMOTE_SOCKET`）GT 430 の行を受け持つ。プラグインのビルドは `-DCL11_WITH_REMOTE=ON`。
+- macOS の注意：POSIX の共有メモリは `ftruncate` で一度しか大きさを決められないので、初期の 1 MiB を超えるデータはソケットに載る（上限 64 MiB）。サーバーは大きくできなかったときも古いマッピングを保つ。
+
 ## 次の課題
 
 - ~~GT 430 を別プロセスで加える~~ → `remote` バックエンドとして実装し、TB250 で確かめた：GT 430 を remote、ほかの 4 枚をローカルにして、`tests/ops` が 87 件 PASS（remote↔local の `tensor_copy` もバイト一致）、`examples/pipeline_mlp.c` が 5 枚で NMSE 2.4e-10。終了後にサーバーのプロセスやソケットは残らない。ソケットは `mkdtemp` で作った本人だけのディレクトリに置き（0600）、サーバーは接続元が同じユーザーかを確かめる。

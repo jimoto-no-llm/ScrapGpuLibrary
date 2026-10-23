@@ -1,0 +1,11 @@
+device remote:GeForce GT 430, backend opencl11; 4608 rows x 2048, q6_K
+upload of 7.4 MiB: 30.2 ms
+stream_sync, idle (one round trip)                      0.022 ms  (min 0.014)
+buffer_write x (non-blocking flag)                      0.072 ms  (min 0.045)
+buffer_write x (blocking flag)                          0.070 ms  (min 0.042)
+op_execute MUL_MAT, enqueue only                        0.042 ms  (min 0.024)
+stream_sync after it (the kernel + one round trip)      0.563 ms  (min 0.537)
+op_execute + stream_sync (kernel alone, device idle)    0.621 ms  (min 0.592)
+buffer_read result, device idle                         0.104 ms  (min 0.076)
+job: write x + op_execute + read (blocking)             0.742 ms  (min 0.694)
+weights 7.74 MB: the kernel alone = 12.5 GB/s

@@ -1,0 +1,6 @@
+sweep_rx-vk_ub256_ncmoe6: 128 0 169.31 | 0 64 23.91 | 
+sweep_rx-vk_ub256_ncmoe5: 128 0 71.04 | 0 64 23.97 | 
+sweep_rx-vk_ub256_ncmoe4: 128 0 223.84 | 0 64 19.2 | 
+sweep_rx-vk_ub64_ncmoe5: 128 0 48.64 | 0 64 26.8 | 
+sweep_rx-vk_ub64_ncmoe4: 128 0 123.42 | 0 64 19.48 | 
+final_rx-vk_ncmoe5_ub128 rc=0

@@ -1,0 +1,163 @@
+device 0: NVIDIA GeForce GT 730 sm_35, 981 MiB, 2 SM, 40.1 GB/s peak
+PASS  MUL_MAT q4_0 K=32 rows=1 N=1                 NMSE 2.579e-12
+PASS  MUL_MAT q4_0 K=32 rows=1 N=2                 NMSE 5.292e-13
+PASS  MUL_MAT q4_0 K=32 rows=1 N=3                 NMSE 1.186e-11
+PASS  MUL_MAT q4_0 K=32 rows=1 N=4                 NMSE 1.709e-11
+PASS  MUL_MAT q4_0 K=32 rows=1 N=5                 NMSE 7.862e-12
+PASS  MUL_MAT q4_0 K=32 rows=1 N=8                 NMSE 1.262e-11
+PASS  MUL_MAT q4_0 K=32 rows=1 N=9                 NMSE 1.989e-11
+PASS  MUL_MAT q4_0 K=32 rows=1 N=17                NMSE 1.179e-11
+PASS  MUL_MAT q4_0 K=32 rows=5 N=1                 NMSE 3.860e-12
+PASS  MUL_MAT q4_0 K=32 rows=5 N=2                 NMSE 2.126e-11
+PASS  MUL_MAT q4_0 K=32 rows=5 N=3                 NMSE 4.539e-12
+PASS  MUL_MAT q4_0 K=32 rows=5 N=4                 NMSE 1.692e-11
+PASS  MUL_MAT q4_0 K=32 rows=5 N=5                 NMSE 7.829e-12
+PASS  MUL_MAT q4_0 K=32 rows=5 N=8                 NMSE 1.921e-11
+PASS  MUL_MAT q4_0 K=32 rows=5 N=9                 NMSE 2.010e-11
+PASS  MUL_MAT q4_0 K=32 rows=5 N=17                NMSE 5.717e-12
+PASS  MUL_MAT q4_0 K=32 rows=130 N=1               NMSE 6.228e-12
+PASS  MUL_MAT q4_0 K=32 rows=130 N=2               NMSE 1.048e-11
+PASS  MUL_MAT q4_0 K=32 rows=130 N=3               NMSE 2.464e-11
+PASS  MUL_MAT q4_0 K=32 rows=130 N=4               NMSE 6.152e-12
+PASS  MUL_MAT q4_0 K=32 rows=130 N=5               NMSE 1.534e-11
+PASS  MUL_MAT q4_0 K=32 rows=130 N=8               NMSE 1.201e-11
+PASS  MUL_MAT q4_0 K=32 rows=130 N=9               NMSE 2.306e-11
+PASS  MUL_MAT q4_0 K=32 rows=130 N=17              NMSE 1.740e-11
+PASS  MUL_MAT q4_0 K=96 rows=1 N=1                 NMSE 2.453e-12
+PASS  MUL_MAT q4_0 K=96 rows=1 N=2                 NMSE 2.235e-10
+PASS  MUL_MAT q4_0 K=96 rows=1 N=3                 NMSE 3.427e-15
+PASS  MUL_MAT q4_0 K=96 rows=1 N=4                 NMSE 8.811e-12
+PASS  MUL_MAT q4_0 K=96 rows=1 N=5                 NMSE 2.613e-11
+PASS  MUL_MAT q4_0 K=96 rows=1 N=8                 NMSE 1.947e-11
+PASS  MUL_MAT q4_0 K=96 rows=1 N=9                 NMSE 8.897e-12
+PASS  MUL_MAT q4_0 K=96 rows=1 N=17                NMSE 1.303e-11
+PASS  MUL_MAT q4_0 K=96 rows=5 N=1                 NMSE 8.514e-12
+PASS  MUL_MAT q4_0 K=96 rows=5 N=2                 NMSE 3.835e-12
+PASS  MUL_MAT q4_0 K=96 rows=5 N=3                 NMSE 9.634e-12
+PASS  MUL_MAT q4_0 K=96 rows=5 N=4                 NMSE 8.054e-12
+PASS  MUL_MAT q4_0 K=96 rows=5 N=5                 NMSE 2.507e-12
+PASS  MUL_MAT q4_0 K=96 rows=5 N=8                 NMSE 1.020e-11
+PASS  MUL_MAT q4_0 K=96 rows=5 N=9                 NMSE 7.125e-12
+PASS  MUL_MAT q4_0 K=96 rows=5 N=17                NMSE 1.300e-11
+PASS  MUL_MAT q4_0 K=96 rows=130 N=1               NMSE 7.140e-12
+PASS  MUL_MAT q4_0 K=96 rows=130 N=2               NMSE 7.526e-12
+PASS  MUL_MAT q4_0 K=96 rows=130 N=3               NMSE 1.324e-11
+PASS  MUL_MAT q4_0 K=96 rows=130 N=4               NMSE 8.919e-12
+PASS  MUL_MAT q4_0 K=96 rows=130 N=5               NMSE 1.324e-11
+PASS  MUL_MAT q4_0 K=96 rows=130 N=8               NMSE 1.164e-11
+PASS  MUL_MAT q4_0 K=96 rows=130 N=9               NMSE 1.217e-11
+PASS  MUL_MAT q4_0 K=96 rows=130 N=17              NMSE 1.012e-11
+PASS  MUL_MAT q4_0 K=2048 rows=1 N=1               NMSE 1.256e-11
+PASS  MUL_MAT q4_0 K=2048 rows=1 N=2               NMSE 1.263e-10
+PASS  MUL_MAT q4_0 K=2048 rows=1 N=3               NMSE 1.284e-10
+PASS  MUL_MAT q4_0 K=2048 rows=1 N=4               NMSE 1.758e-12
+PASS  MUL_MAT q4_0 K=2048 rows=1 N=5               NMSE 1.162e-11
+PASS  MUL_MAT q4_0 K=2048 rows=1 N=8               NMSE 4.620e-12
+PASS  MUL_MAT q4_0 K=2048 rows=1 N=9               NMSE 2.577e-11
+PASS  MUL_MAT q4_0 K=2048 rows=1 N=17              NMSE 1.920e-11
+PASS  MUL_MAT q4_0 K=2048 rows=5 N=1               NMSE 1.528e-11
+PASS  MUL_MAT q4_0 K=2048 rows=5 N=2               NMSE 2.573e-11
+PASS  MUL_MAT q4_0 K=2048 rows=5 N=3               NMSE 1.992e-11
+PASS  MUL_MAT q4_0 K=2048 rows=5 N=4               NMSE 1.811e-11
+PASS  MUL_MAT q4_0 K=2048 rows=5 N=5               NMSE 1.043e-11
+PASS  MUL_MAT q4_0 K=2048 rows=5 N=8               NMSE 1.148e-11
+PASS  MUL_MAT q4_0 K=2048 rows=5 N=9               NMSE 1.012e-11
+PASS  MUL_MAT q4_0 K=2048 rows=5 N=17              NMSE 1.446e-11
+PASS  MUL_MAT q4_0 K=2048 rows=130 N=1             NMSE 1.024e-11
+PASS  MUL_MAT q4_0 K=2048 rows=130 N=2             NMSE 1.157e-11
+PASS  MUL_MAT q4_0 K=2048 rows=130 N=3             NMSE 1.239e-11
+PASS  MUL_MAT q4_0 K=2048 rows=130 N=4             NMSE 1.148e-11
+PASS  MUL_MAT q4_0 K=2048 rows=130 N=5             NMSE 1.329e-11
+PASS  MUL_MAT q4_0 K=2048 rows=130 N=8             NMSE 1.355e-11
+PASS  MUL_MAT q4_0 K=2048 rows=130 N=9             NMSE 1.106e-11
+PASS  MUL_MAT q4_0 K=2048 rows=130 N=17            NMSE 1.267e-11
+PASS  MUL_MAT q6_K K=256 rows=1 N=1                NMSE 7.105e-13
+PASS  MUL_MAT q6_K K=256 rows=1 N=2                NMSE 6.685e-13
+PASS  MUL_MAT q6_K K=256 rows=1 N=3                NMSE 1.404e-11
+PASS  MUL_MAT q6_K K=256 rows=1 N=4                NMSE 2.741e-12
+PASS  MUL_MAT q6_K K=256 rows=1 N=5                NMSE 9.406e-13
+PASS  MUL_MAT q6_K K=256 rows=1 N=8                NMSE 4.670e-13
+PASS  MUL_MAT q6_K K=256 rows=1 N=9                NMSE 2.952e-13
+PASS  MUL_MAT q6_K K=256 rows=1 N=17               NMSE 9.902e-13
+PASS  MUL_MAT q6_K K=256 rows=5 N=1                NMSE 1.583e-12
+PASS  MUL_MAT q6_K K=256 rows=5 N=2                NMSE 1.375e-12
+PASS  MUL_MAT q6_K K=256 rows=5 N=3                NMSE 2.441e-12
+PASS  MUL_MAT q6_K K=256 rows=5 N=4                NMSE 4.682e-13
+PASS  MUL_MAT q6_K K=256 rows=5 N=5                NMSE 1.662e-12
+PASS  MUL_MAT q6_K K=256 rows=5 N=8                NMSE 1.200e-12
+PASS  MUL_MAT q6_K K=256 rows=5 N=9                NMSE 1.083e-12
+PASS  MUL_MAT q6_K K=256 rows=5 N=17               NMSE 1.817e-12
+PASS  MUL_MAT q6_K K=256 rows=130 N=1              NMSE 1.360e-12
+PASS  MUL_MAT q6_K K=256 rows=130 N=2              NMSE 1.079e-12
+PASS  MUL_MAT q6_K K=256 rows=130 N=3              NMSE 1.757e-12
+PASS  MUL_MAT q6_K K=256 rows=130 N=4              NMSE 1.257e-12
+PASS  MUL_MAT q6_K K=256 rows=130 N=5              NMSE 1.088e-12
+PASS  MUL_MAT q6_K K=256 rows=130 N=8              NMSE 1.172e-12
+PASS  MUL_MAT q6_K K=256 rows=130 N=9              NMSE 1.383e-12
+PASS  MUL_MAT q6_K K=256 rows=130 N=17             NMSE 1.503e-12
+PASS  MUL_MAT q6_K K=768 rows=1 N=1                NMSE 2.771e-12
+PASS  MUL_MAT q6_K K=768 rows=1 N=2                NMSE 2.494e-11
+PASS  MUL_MAT q6_K K=768 rows=1 N=3                NMSE 2.437e-13
+PASS  MUL_MAT q6_K K=768 rows=1 N=4                NMSE 1.826e-12
+PASS  MUL_MAT q6_K K=768 rows=1 N=5                NMSE 1.055e-12
+PASS  MUL_MAT q6_K K=768 rows=1 N=8                NMSE 9.180e-13
+PASS  MUL_MAT q6_K K=768 rows=1 N=9                NMSE 6.886e-13
+PASS  MUL_MAT q6_K K=768 rows=1 N=17               NMSE 1.825e-12
+PASS  MUL_MAT q6_K K=768 rows=5 N=1                NMSE 5.738e-13
+PASS  MUL_MAT q6_K K=768 rows=5 N=2                NMSE 6.358e-13
+PASS  MUL_MAT q6_K K=768 rows=5 N=3                NMSE 3.550e-12
+PASS  MUL_MAT q6_K K=768 rows=5 N=4                NMSE 9.829e-13
+PASS  MUL_MAT q6_K K=768 rows=5 N=5                NMSE 6.543e-13
+PASS  MUL_MAT q6_K K=768 rows=5 N=8                NMSE 2.172e-12
+PASS  MUL_MAT q6_K K=768 rows=5 N=9                NMSE 1.554e-12
+PASS  MUL_MAT q6_K K=768 rows=5 N=17               NMSE 1.540e-12
+PASS  MUL_MAT q6_K K=768 rows=130 N=1              NMSE 1.319e-12
+PASS  MUL_MAT q6_K K=768 rows=130 N=2              NMSE 1.409e-12
+PASS  MUL_MAT q6_K K=768 rows=130 N=3              NMSE 1.275e-12
+PASS  MUL_MAT q6_K K=768 rows=130 N=4              NMSE 1.131e-12
+PASS  MUL_MAT q6_K K=768 rows=130 N=5              NMSE 1.132e-12
+PASS  MUL_MAT q6_K K=768 rows=130 N=8              NMSE 1.081e-12
+PASS  MUL_MAT q6_K K=768 rows=130 N=9              NMSE 1.406e-12
+PASS  MUL_MAT q6_K K=768 rows=130 N=17             NMSE 1.225e-12
+PASS  MUL_MAT q6_K K=2048 rows=1 N=1               NMSE 1.150e-12
+PASS  MUL_MAT q6_K K=2048 rows=1 N=2               NMSE 1.607e-12
+PASS  MUL_MAT q6_K K=2048 rows=1 N=3               NMSE 2.799e-13
+PASS  MUL_MAT q6_K K=2048 rows=1 N=4               NMSE 6.628e-13
+PASS  MUL_MAT q6_K K=2048 rows=1 N=5               NMSE 8.163e-13
+PASS  MUL_MAT q6_K K=2048 rows=1 N=8               NMSE 4.503e-12
+PASS  MUL_MAT q6_K K=2048 rows=1 N=9               NMSE 4.407e-13
+PASS  MUL_MAT q6_K K=2048 rows=1 N=17              NMSE 2.799e-12
+PASS  MUL_MAT q6_K K=2048 rows=5 N=1               NMSE 7.482e-13
+PASS  MUL_MAT q6_K K=2048 rows=5 N=2               NMSE 2.546e-12
+PASS  MUL_MAT q6_K K=2048 rows=5 N=3               NMSE 1.087e-12
+PASS  MUL_MAT q6_K K=2048 rows=5 N=4               NMSE 1.549e-12
+PASS  MUL_MAT q6_K K=2048 rows=5 N=5               NMSE 5.785e-13
+PASS  MUL_MAT q6_K K=2048 rows=5 N=8               NMSE 1.454e-12
+PASS  MUL_MAT q6_K K=2048 rows=5 N=9               NMSE 1.026e-12
+PASS  MUL_MAT q6_K K=2048 rows=5 N=17              NMSE 1.003e-12
+PASS  MUL_MAT q6_K K=2048 rows=130 N=1             NMSE 1.526e-12
+PASS  MUL_MAT q6_K K=2048 rows=130 N=2             NMSE 1.224e-12
+PASS  MUL_MAT q6_K K=2048 rows=130 N=3             NMSE 1.082e-12
+PASS  MUL_MAT q6_K K=2048 rows=130 N=4             NMSE 1.560e-12
+PASS  MUL_MAT q6_K K=2048 rows=130 N=5             NMSE 1.303e-12
+PASS  MUL_MAT q6_K K=2048 rows=130 N=8             NMSE 1.266e-12
+PASS  MUL_MAT q6_K K=2048 rows=130 N=9             NMSE 1.333e-12
+PASS  MUL_MAT q6_K K=2048 rows=130 N=17            NMSE 1.286e-12
+PASS  MUL_MAT q4_0 K=2048 rows=6000 N=1            NMSE 1.180e-11
+PASS  MUL_MAT q6_K K=2048 rows=6000 N=1            NMSE 1.428e-12
+PASS  MUL_MAT q6_K K=2048 rows=6000 N=8            NMSE 1.302e-12
+PASS  MUL_MAT_ID q4_0 K=32 rows=40 E=6 ids=4 tok=1 x/slot NMSE 1.734e-11
+PASS  MUL_MAT_ID q4_0 K=32 rows=40 E=6 ids=4 tok=3 x/slot NMSE 2.087e-11
+PASS  MUL_MAT_ID q4_0 K=96 rows=40 E=6 ids=4 tok=1 x/slot NMSE 8.741e-12
+PASS  MUL_MAT_ID q4_0 K=96 rows=40 E=6 ids=4 tok=3 x/slot NMSE 1.446e-11
+PASS  MUL_MAT_ID q4_0 K=2048 rows=40 E=6 ids=4 tok=1 x/slot NMSE 9.287e-12
+PASS  MUL_MAT_ID q4_0 K=2048 rows=40 E=6 ids=4 tok=3 x/slot NMSE 1.008e-11
+PASS  MUL_MAT_ID q4_0 K=32 rows=40 E=6 ids=4 tok=1 x/tok NMSE 2.827e-12
+PASS  MUL_MAT_ID q4_0 K=32 rows=40 E=6 ids=4 tok=3 x/tok NMSE 1.194e-11
+PASS  MUL_MAT_ID q4_0 K=96 rows=40 E=6 ids=4 tok=1 x/tok NMSE 2.127e-11
+PASS  MUL_MAT_ID q4_0 K=96 rows=40 E=6 ids=4 tok=3 x/tok NMSE 8.523e-12
+PASS  MUL_MAT_ID q4_0 K=2048 rows=40 E=6 ids=4 tok=1 x/tok NMSE 1.267e-11
+PASS  MUL_MAT_ID q4_0 K=2048 rows=40 E=6 ids=4 tok=3 x/tok NMSE 1.027e-11
+PASS  MUL_MAT_ID q4_0 K=2048 rows=64 E=8 ids=4 tok=2 x/slot bad-ids NMSE 1.143e-11
+PASS  MUL_MAT_ID q4_0 K=2048 rows=1792 E=32 ids=4 tok=1 x/tok NMSE 1.187e-11
+161 passed, 0 failed

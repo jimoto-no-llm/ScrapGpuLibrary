@@ -1,0 +1,6 @@
+# date: 2026-10-23_23:45:33  host: tb250  tag: drv_cuda470_ktest_GT730
+# temps at start:  amd33 amd33 NVIDIA GT 730=32 NVIDIA GT 710=32    (max 32 C)
+# env: 
+# cmd: env SCRAPGPU_CUDA_DEVICES=GT 730 /home/eightman/moe-ep/cuda/bB/scrapgpu_cuda_kernel_tests
+# rc=0  seconds=8
+# temps at end:  amd34 amd34 NVIDIA GT 730=32 NVIDIA GT 710=32    (max 33 C)

@@ -1,0 +1,26 @@
+--- ps D done
+0000:04:00.0 driver
+0000:07:00.0 nvidia
+0000:08:00.0 nvidia
+nvidia              40747008  0
+0000:03:00.0 perf=auto
+0000:06:00.0 perf=auto
+state: failed(2) at line 62: kv=$(awk '/NVRM version/ {for (i=1;i<=NF;i++) if ($i ~ /^[0-9]+\.[0-9]+/) {print $i; exit}}' /proc/driver/nvidia/version 2> /dev/null)
+NVRM version: NVIDIA UNIX x86_64 Kernel Module  470.256.02  Thu May  2 14:37:44 UTC 2024
+[sgl-driver] FAILED at line 57 (rc=2); state recorded as failed. Run status, then nv390 (or reboot).
+0000:04:00.0 nodes: 
+[sgl-driver] FAILED at line 57 (rc=2); state recorded as failed. Run status, then nv390 (or reboot).
+0000:07:00.0 nodes: 
+failed(2) at line 57: tr '\n' ' '
+04:00.0 VGA compatible controller [0300]: NVIDIA Corporation GF108 [GeForce GT 430] [10de:0de1] (rev a1)
+	Subsystem: ZOTAC International (MCO) Ltd. Device [19da:1167]
+	Kernel modules: nouveau, nvidia_legacy_390xx_drm, nvidia_tesla_470, nvidia_legacy_390xx, nvidia_tesla_470_drm
+07:00.0 VGA compatible controller [0300]: NVIDIA Corporation GK208B [GeForce GT 730] [10de:1287] (rev a1)
+	Subsystem: NVIDIA Corporation Device [10de:1081]
+	Kernel driver in use: nvidia
+	Kernel modules: nouveau, nvidia_legacy_390xx_drm, nvidia_tesla_470, nvidia_legacy_390xx, nvidia_tesla_470_drm
+08:00.0 VGA compatible controller [0300]: NVIDIA Corporation GK208B [GeForce GT 710] [10de:128b] (rev a1)
+	Subsystem: NVIDIA Corporation Device [10de:118b]
+	Kernel driver in use: nvidia
+	Kernel modules: nouveau, nvidia_legacy_390xx_drm, nvidia_tesla_470, nvidia_legacy_390xx, nvidia_tesla_470_drm
+Failed to initialize NVML: Driver/library version mismatch

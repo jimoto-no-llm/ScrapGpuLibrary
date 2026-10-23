@@ -1,0 +1,22 @@
+cl-clover.txt:# rc=0
+cl-nvidia.txt:# rc=0
+cl-rusticl-full.txt:  Platform Name                                   rusticl
+cl-rusticl-full.txt:  Platform Name                                   rusticl
+cl-rusticl-full.txt:# rc=0
+cl-rusticl.txt:# rc=0
+vk-amd.txt:	apiVersion         = 1.4.305
+vk-amd.txt:	deviceName         = AMD Radeon RX 6400 (RADV NAVI24)
+vk-amd.txt:	driverName         = radv
+vk-amd.txt:	apiVersion         = 1.4.305
+vk-amd.txt:	deviceName         = AMD Radeon Pro WX 2100 (RADV POLARIS12)
+vk-amd.txt:	driverName         = radv
+vk-amd.txt:# rc=0
+vk-nvidia.txt:	apiVersion         = 1.2.175
+vk-nvidia.txt:	deviceName         = NVIDIA GeForce GT 730
+vk-nvidia.txt:	driverName         = NVIDIA
+vk-nvidia.txt:	apiVersion         = 1.2.175
+vk-nvidia.txt:	deviceName         = NVIDIA GeForce GT 710
+vk-nvidia.txt:	driverName         = NVIDIA
+vk-nvidia.txt:# rc=0
+vk-nvk-broken.txt:# rc=1
+vk-nvk-plain.txt:# rc=1

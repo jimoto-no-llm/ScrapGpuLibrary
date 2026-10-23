@@ -1,0 +1,7 @@
+# date: 2026-10-23_12:00:20  host: tb250  tag: build_tune
+# temps at start:  amd48 amd44 GT 430=43 GT 730=35 GT 710=35    (max 43 C)
+# env: 
+# perf: 0000:03:00.0 perf=auto 0000:06:00.0 perf=auto 
+# cmd: bash build_variant.sh tune -DCMAKE_C_FLAGS=-mtune=skylake -DCMAKE_CXX_FLAGS=-mtune=skylake
+# rc=0  seconds=41
+# temps at end:  amd43 amd42 GT 430=44 GT 730=34 GT 710=34    (max 44 C)

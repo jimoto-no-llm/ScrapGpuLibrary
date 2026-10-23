@@ -1,0 +1,27 @@
+# env OCL_ICD_VENDORS=/dev/null OCL_ICD_FILENAMES=libRusticlOpenCL.so.1 RUSTICL_ENABLE=nouveau clinfo
+Number of platforms                               1
+  Platform Name                                   rusticl
+  Platform Vendor                                 Mesa/X.org
+  Platform Version                                OpenCL 3.0 
+  Platform Profile                                FULL_PROFILE
+  Platform Extensions                             cl_khr_icd
+  Platform Extensions with Version                cl_khr_icd                                                       0x400000 (1.0.0)
+  Platform Numeric Version                        0xc00000 (3.0.0)
+  Platform Extensions function suffix             MESA
+  Platform Host timer resolution                  1ns
+
+  Platform Name                                   rusticl
+Number of devices                                 0
+
+NULL platform behavior
+  clGetPlatformInfo(NULL, CL_PLATFORM_NAME, ...)  No platform
+  clGetDeviceIDs(NULL, CL_DEVICE_TYPE_ALL, ...)   No platform
+  clCreateContext(NULL, ...) [default]            No platform
+  clCreateContext(NULL, ...) [other]              <error: no devices in non-default plaforms>
+  clCreateContextFromType(NULL, CL_DEVICE_TYPE_DEFAULT)  No devices found in platform
+  clCreateContextFromType(NULL, CL_DEVICE_TYPE_CPU)  No devices found in platform
+  clCreateContextFromType(NULL, CL_DEVICE_TYPE_GPU)  No devices found in platform
+  clCreateContextFromType(NULL, CL_DEVICE_TYPE_ACCELERATOR)  No devices found in platform
+  clCreateContextFromType(NULL, CL_DEVICE_TYPE_CUSTOM)  No devices found in platform
+  clCreateContextFromType(NULL, CL_DEVICE_TYPE_ALL)  No devices found in platform
+# rc=0

@@ -1,0 +1,29 @@
+# date: 2026-10-21_06:01:11  host: tb250  tag: fail_dspark_rx
+# temps at start:  amd37 amd41 GT 430=43 GT 730=33 GT 710=36 
+# env: VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json GGML_SPEC_CONFIG=amdvk 
+# cmd: /home/eightman/moe-ep/spec/build/bin/llama-speculative-simple -m /home/eightman/moe-ep/models/LFM2.5-8B-A1B-Q4_0.gguf -md /home/eightman/moe-ep/models/LFM2.5-8B-A1B-DSpark-Q8_0.gguf --spec-type draft-dspark -dev Vulkan0,Vulkan1 -ts 5,1 -ngl 99 -ngld 99 -devd Vulkan0 -sm layer -fa off -t 2 -b 128 -ub 128 -c 2048 -n 32 --temp 0 -f prompts/explain.txt --spec-draft-n-max 5
+0.00.947.239 E llama_init_from_model: failed to initialize the context: dflash requires ctx_other to be set (this warning is normal during memory fitting)
+0.01.011.622 W operator(): failed to measure the memory of the extra model, fitting without it: failed to create llama_context from model
+0.01.011.647 W common_fit_params: failed to fit params to free device memory: n_gpu_layers already set by user to 99, abort
+0.07.280.416 W llama_kv_cache: the V embeddings have different sizes across layers and FA is not enabled - padding V cache to 512
+0.07.308.055 I cmn          init: llama threadpool init, n_threads = 2
+0.07.376.226 I common_speculative_init_result: loading draft model '/home/eightman/moe-ep/models/LFM2.5-8B-A1B-DSpark-Q8_0.gguf'
+/home/eightman/moe-ep/src/llama.cpp/ggml/src/ggml-backend.cpp:1084: pre-allocated tensor (token_embd.weight) in a buffer (Vulkan1) that cannot run the operation (NONE)
+/home/eightman/moe-ep/spec/build/bin/libggml-base.so.0(+0x198a5) [0x7fca0fd4d8a5]
+/home/eightman/moe-ep/spec/build/bin/libggml-base.so.0(ggml_print_backtrace+0x1df) [0x7fca0fd4dc7f]
+/home/eightman/moe-ep/spec/build/bin/libggml-base.so.0(ggml_abort+0x11e) [0x7fca0fd4de0e]
+/home/eightman/moe-ep/spec/build/bin/libggml-base.so.0(+0x32d1c) [0x7fca0fd66d1c]
+/home/eightman/moe-ep/spec/build/bin/libggml-base.so.0(ggml_backend_sched_split_graph+0xd46) [0x7fca0fd68d96]
+/home/eightman/moe-ep/spec/build/bin/libllama.so.0(_ZN13llama_context13graph_reserveEjjjPK22llama_memory_context_ibPm+0x121e) [0x7fca1000c63e]
+/home/eightman/moe-ep/spec/build/bin/libllama.so.0(_ZN13llama_context17resolve_fused_opsEPK22llama_memory_context_ij+0x582) [0x7fca1000cff2]
+/home/eightman/moe-ep/spec/build/bin/libllama.so.0(_ZN13llama_context13sched_reserveEv+0x641) [0x7fca1000dbb1]
+/home/eightman/moe-ep/spec/build/bin/libllama.so.0(_ZN13llama_contextC1ERK11llama_model20llama_context_params+0xdb8) [0x7fca1000f1b8]
+/home/eightman/moe-ep/spec/build/bin/libllama.so.0(llama_init_from_model+0x31a) [0x7fca1001021a]
+/home/eightman/moe-ep/spec/build/bin/libllama-common.so.0(_ZN30common_speculative_init_resultC1ER13common_paramsP11llama_modelP13llama_context+0x414) [0x7fca104eb514]
+/home/eightman/moe-ep/spec/build/bin/libllama-common.so.0(_Z35common_speculative_init_from_paramsR13common_paramsP11llama_modelP13llama_context+0x32) [0x7fca104eb7b2]
+/home/eightman/moe-ep/spec/build/bin/llama-speculative-simple(+0x36f6) [0x55cd345926f6]
+/lib/x86_64-linux-gnu/libc.so.6(+0x29ca8) [0x7fca0f835ca8]
+/lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x85) [0x7fca0f835d65]
+/home/eightman/moe-ep/spec/build/bin/llama-speculative-simple(+0x4b41) [0x55cd34593b41]
+# rc=134  seconds=9
+# temps at end:  amd38 amd41 GT 430=43 GT 730=33 GT 710=35 

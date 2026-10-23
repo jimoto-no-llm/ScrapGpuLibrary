@@ -1,0 +1,1 @@
+{"test":"text:nat_chat.txt","n_prompt":49,"pp_s":10.658,"pp_ts":4.5973,"n_gen":64,"tg_ts":3.1476,"tg_total_ts":3.1430,"gen":"Okay, so I need to figure out if I can run a 30 billion parameter mixture-of-experts model on my PC with a 4 GB GPU and 32 GB of RAM. Let me start by breaking down the problem.\n\nFirst, I know that the number of parameters in a model is a big"}

@@ -1,0 +1,467 @@
+MB0,cuCtxCreate,GeForce GT 730,1,82585.4,0,0,0,OK
+MB0,check:launch GeForce GT 730,,0,0,0,0,0,OK 
+MB0,cuCtxCreate,GeForce GT 430,1,41479.0,0,0,0,101 CUDA_ERROR_INVALID_DEVICE (invalid device ordinal)
+MB0,cuCtxCreate,GeForce GT 710,1,91771.3,0,0,0,OK
+MB0,check:launch GeForce GT 710,,0,0,0,0,0,OK 
+MB0,check:interleaved launches on all contexts,,0,0,0,0,0,OK 
+MB0,check:all devices usable in one process,,0,0,0,0,0,FAIL 2 of 3
+MB0,cuCtxCreate,GeForce GT 710,1,82400.4,0,0,0,OK
+MB0,check:launch GeForce GT 710,,0,0,0,0,0,OK 
+MB0,cuCtxCreate,GeForce GT 430,1,40862.0,0,0,0,101 CUDA_ERROR_INVALID_DEVICE (invalid device ordinal)
+MB0,cuCtxCreate,GeForce GT 730,1,82124.9,0,0,0,OK
+MB0,check:launch GeForce GT 730,,0,0,0,0,0,OK 
+MB0,check:interleaved launches on all contexts,,0,0,0,0,0,OK 
+MB0,check:all devices usable in one process,,0,0,0,0,0,FAIL 2 of 3
+MB0,cuCtxCreate,GeForce GT 430,1,26108.9,0,0,0,OK
+MB0,check:launch GeForce GT 430,,0,0,0,0,0,OK 
+MB0,cuCtxCreate,GeForce GT 730,1,134472.9,0,0,0,101 CUDA_ERROR_INVALID_DEVICE (invalid device ordinal)
+MB0,cuCtxCreate,GeForce GT 710,1,132270.9,0,0,0,101 CUDA_ERROR_INVALID_DEVICE (invalid device ordinal)
+MB0,check:interleaved launches on all contexts,,0,0,0,0,0,OK 
+MB0,check:all devices usable in one process,,0,0,0,0,0,FAIL 1 of 3
+MB0,cuCtxCreate,GeForce GT 430,1,26282.9,0,0,0,OK
+MB0,check:launch GeForce GT 430,,0,0,0,0,0,OK 
+MB0,check:interleaved launches on all contexts,,0,0,0,0,0,OK 
+MB0,check:all devices usable in one process,,0,0,0,0,0,OK 1 of 1
+MB0,cuCtxCreate,GeForce GT 730,1,83521.3,0,0,0,OK
+MB0,check:launch GeForce GT 730,,0,0,0,0,0,OK 
+MB0,cuCtxCreate,GeForce GT 430,1,40756.3,0,0,0,101 CUDA_ERROR_INVALID_DEVICE (invalid device ordinal)
+MB0,cuCtxCreate,GeForce GT 710,1,85673.6,0,0,0,OK
+MB0,check:launch GeForce GT 710,,0,0,0,0,0,OK 
+MB1C,cuda_sync_copies,GeForce GT 730,10000,69.57,70.41,67.48,69.59,check=OK
+MB1C,cuda_async_pageable_streamsync,GeForce GT 730,10000,73.22,75.19,65.75,70.48,check=OK
+MB1C,cuda_async_pinned_streamsync,GeForce GT 730,10000,60.32,62.87,58.90,60.15,check=OK
+MB1C,cuda_async_pinned_eventpoll,GeForce GT 730,10000,60.21,63.32,58.74,60.12,check=OK
+MB1C,cuda_kernel_streamsync,GeForce GT 730,10000,10.44,10.88,10.14,10.43,T_k: tiny kernel + sync
+MB1C,cuda_write8k_sync,GeForce GT 730,10000,26.68,27.34,24.48,26.75,
+MB1C,cuda_read8k_sync,GeForce GT 730,10000,30.51,33.18,29.14,30.72,
+MB1C,cuda_sync_copies,GeForce GT 710,10000,69.65,74.24,65.31,71.80,check=OK
+MB1C,cuda_async_pageable_streamsync,GeForce GT 710,10000,73.65,75.23,65.84,70.80,check=OK
+MB1C,cuda_async_pinned_streamsync,GeForce GT 710,10000,60.34,61.33,58.93,60.22,check=OK
+MB1C,cuda_async_pinned_eventpoll,GeForce GT 710,10000,60.22,61.27,58.74,60.11,check=OK
+MB1C,cuda_kernel_streamsync,GeForce GT 710,10000,10.52,11.07,10.32,10.61,T_k: tiny kernel + sync
+MB1C,cuda_write8k_sync,GeForce GT 710,10000,26.79,27.30,23.53,26.84,
+MB1C,cuda_read8k_sync,GeForce GT 710,10000,30.51,31.25,29.22,30.65,
+MB1C,solo_tiny,GeForce GT 730,10000,60.25,61.25,58.35,60.16,
+MB1C,solo_tiny,GeForce GT 710,10000,60.32,61.30,58.88,60.22,
+MB1C,parallel_1thread_tiny,GeForce GT 730+GeForce GT 710,10000,71.47,74.38,69.88,71.50,max(solo)=60.3 sum(solo)=120.6 parallel=71.5 ; parallel/max=1.18 parallel/sum=0.59
+MB1C,check:parallel results tiny,,0,0,0,0,0,OK 
+MB1C,solo_busy500us,GeForce GT 730,3000,554.82,730.27,535.30,572.29,
+MB1C,solo_busy500us,GeForce GT 710,3000,553.72,582.41,471.29,541.98,
+MB1C,parallel_1thread_busy500us,GeForce GT 730+GeForce GT 710,3000,567.97,713.42,536.84,580.35,max(solo)=554.8 sum(solo)=1108.5 parallel=568.0 ; parallel/max=1.02 parallel/sum=0.51
+MB1C,check:parallel results busy500us,,0,0,0,0,0,OK 
+MB1,rt_blocking,GeForce GT 430,10000,77.34,80.79,76.51,77.56,check=OK
+MB1,rt_nonblock_finish,GeForce GT 430,100,100391.31,100826.99,662.16,99738.18,check=OK (slow variant: repetitions reduced)
+MB1,rt_event_busypoll,GeForce GT 430,100,100226.53,100436.38,122.20,96295.80,check=OK (slow variant: repetitions reduced)
+MB1,rt_pinned_finish,GeForce GT 430,10000,69.00,72.84,66.38,69.31,check=OK
+MB1,rt_pinned_busypoll,GeForce GT 430,10000,68.78,76.85,67.47,69.24,check=OK
+MB1,piece_clFinish_idle,GeForce GT 430,10000,0.90,0.93,0.88,0.90,
+MB1,piece_kernel_finish,GeForce GT 430,10000,12.29,12.96,12.06,12.35,T_k: tiny kernel + clFinish
+MB1,piece_write8k_blocking,GeForce GT 430,10000,28.29,28.91,28.02,28.41,
+MB1,piece_read8k_blocking,GeForce GT 430,10000,31.47,33.23,31.05,31.72,
+MB1,piece_write8k_pinned,GeForce GT 430,10000,32.63,33.12,32.33,32.73,
+MB1,piece_read8k_pinned,GeForce GT 430,10000,30.40,31.85,30.09,30.57,
+MB1,piece_write32B_blocking,GeForce GT 430,10000,7.82,8.29,7.60,7.84,
+MB1,rt_blocking,GeForce GT 730,10000,66.41,72.80,65.72,66.82,check=OK
+MB1,rt_nonblock_finish,GeForce GT 730,10000,95.16,99.83,94.26,96.51,check=OK
+MB1,rt_event_busypoll,GeForce GT 730,10000,95.07,99.62,93.97,96.24,check=OK
+MB1,rt_pinned_finish,GeForce GT 730,10000,64.17,65.51,55.53,63.75,check=OK
+MB1,rt_pinned_busypoll,GeForce GT 730,10000,63.50,64.63,55.72,63.40,check=OK
+MB1,piece_clFinish_idle,GeForce GT 730,10000,1.03,1.07,1.00,1.04,
+MB1,piece_kernel_finish,GeForce GT 730,10000,12.01,12.64,11.61,12.06,T_k: tiny kernel + clFinish
+MB1,piece_write8k_blocking,GeForce GT 730,10000,28.50,29.17,28.17,28.63,
+MB1,piece_read8k_blocking,GeForce GT 730,10000,30.61,31.25,29.43,30.69,
+MB1,piece_write8k_pinned,GeForce GT 730,10000,29.25,29.76,28.84,29.30,
+MB1,piece_read8k_pinned,GeForce GT 730,10000,29.38,30.11,28.21,29.49,
+MB1,piece_write32B_blocking,GeForce GT 730,10000,8.37,8.90,7.85,8.45,
+MB1,rt_blocking,GeForce GT 710,10000,66.38,68.09,65.64,66.60,check=OK
+MB1,rt_nonblock_finish,GeForce GT 710,10000,95.13,99.42,74.88,96.92,check=OK
+MB1,rt_event_busypoll,GeForce GT 710,10000,95.02,99.62,85.34,96.95,check=OK
+MB1,rt_pinned_finish,GeForce GT 710,10000,64.19,66.47,56.07,63.73,check=OK
+MB1,rt_pinned_busypoll,GeForce GT 710,10000,63.49,66.72,55.38,63.55,check=OK
+MB1,piece_clFinish_idle,GeForce GT 710,10000,1.04,1.07,1.01,1.04,
+MB1,piece_kernel_finish,GeForce GT 710,10000,11.91,12.58,11.63,11.99,T_k: tiny kernel + clFinish
+MB1,piece_write8k_blocking,GeForce GT 710,10000,28.48,29.04,28.14,28.55,
+MB1,piece_read8k_blocking,GeForce GT 710,10000,30.65,31.53,29.20,30.75,
+MB1,piece_write8k_pinned,GeForce GT 710,10000,29.21,29.88,28.87,29.28,
+MB1,piece_read8k_pinned,GeForce GT 710,10000,29.31,29.84,28.05,29.88,
+MB1,piece_write32B_blocking,GeForce GT 710,10000,8.29,8.92,7.94,8.38,
+MB1,rt_blocking,AMD Radeon Pro WX 2100 (radeonsi; polaris12; ACO; DRM 3.61; 6.12.107+deb13-amd64),10000,127.39,164.95,124.00,131.49,check=OK
+MB1,rt_nonblock_finish,AMD Radeon Pro WX 2100 (radeonsi; polaris12; ACO; DRM 3.61; 6.12.107+deb13-amd64),10000,130.78,150.53,126.92,131.77,check=OK
+MB1,rt_event_busypoll,AMD Radeon Pro WX 2100 (radeonsi; polaris12; ACO; DRM 3.61; 6.12.107+deb13-amd64),10000,128.91,149.57,125.24,129.99,check=OK
+MB1,rt_pinned_finish,AMD Radeon Pro WX 2100 (radeonsi; polaris12; ACO; DRM 3.61; 6.12.107+deb13-amd64),10000,115.66,144.53,111.59,119.52,check=OK
+MB1,rt_pinned_busypoll,AMD Radeon Pro WX 2100 (radeonsi; polaris12; ACO; DRM 3.61; 6.12.107+deb13-amd64),10000,113.82,132.67,110.97,114.59,check=OK
+MB1,piece_clFinish_idle,AMD Radeon Pro WX 2100 (radeonsi; polaris12; ACO; DRM 3.61; 6.12.107+deb13-amd64),10000,0.76,0.79,0.75,0.77,
+MB1,piece_kernel_finish,AMD Radeon Pro WX 2100 (radeonsi; polaris12; ACO; DRM 3.61; 6.12.107+deb13-amd64),10000,66.04,84.69,63.58,66.80,T_k: tiny kernel + clFinish
+MB1,piece_write8k_blocking,AMD Radeon Pro WX 2100 (radeonsi; polaris12; ACO; DRM 3.61; 6.12.107+deb13-amd64),10000,22.67,22.98,14.18,23.16,
+MB1,piece_read8k_blocking,AMD Radeon Pro WX 2100 (radeonsi; polaris12; ACO; DRM 3.61; 6.12.107+deb13-amd64),10000,78.02,94.86,75.46,79.25,
+MB1,piece_write8k_pinned,AMD Radeon Pro WX 2100 (radeonsi; polaris12; ACO; DRM 3.61; 6.12.107+deb13-amd64),10000,22.67,23.00,14.46,23.31,
+MB1,piece_read8k_pinned,AMD Radeon Pro WX 2100 (radeonsi; polaris12; ACO; DRM 3.61; 6.12.107+deb13-amd64),10000,78.10,98.19,74.72,79.81,
+MB1,piece_write32B_blocking,AMD Radeon Pro WX 2100 (radeonsi; polaris12; ACO; DRM 3.61; 6.12.107+deb13-amd64),10000,3.15,4.68,1.49,4.28,
+MB1,rt_blocking,AMD Radeon Pro WX 2100 (radeonsi; polaris12; ACO; DRM 3.61; 6.12.107+deb13-amd64),10000,179.07,224.22,175.17,182.40,check=OK
+MB1,rt_nonblock_finish,AMD Radeon Pro WX 2100 (radeonsi; polaris12; ACO; DRM 3.61; 6.12.107+deb13-amd64),10000,165.20,285.45,160.85,170.94,check=OK
+MB1,rt_event_busypoll,AMD Radeon Pro WX 2100 (radeonsi; polaris12; ACO; DRM 3.61; 6.12.107+deb13-amd64),10000,166.17,201.64,158.08,168.14,check=OK
+MB1,rt_pinned_finish,AMD Radeon Pro WX 2100 (radeonsi; polaris12; ACO; DRM 3.61; 6.12.107+deb13-amd64),10000,165.23,205.45,160.55,169.28,check=OK
+MB1,rt_pinned_busypoll,AMD Radeon Pro WX 2100 (radeonsi; polaris12; ACO; DRM 3.61; 6.12.107+deb13-amd64),10000,165.41,194.35,158.04,166.98,check=OK
+MB1,piece_clFinish_idle,AMD Radeon Pro WX 2100 (radeonsi; polaris12; ACO; DRM 3.61; 6.12.107+deb13-amd64),10000,0.82,0.86,0.79,0.82,
+MB1,piece_kernel_finish,AMD Radeon Pro WX 2100 (radeonsi; polaris12; ACO; DRM 3.61; 6.12.107+deb13-amd64),10000,106.47,139.58,102.85,107.65,T_k: tiny kernel + clFinish
+MB1,piece_write8k_blocking,AMD Radeon Pro WX 2100 (radeonsi; polaris12; ACO; DRM 3.61; 6.12.107+deb13-amd64),10000,29.96,31.67,29.35,30.19,
+MB1,piece_read8k_blocking,AMD Radeon Pro WX 2100 (radeonsi; polaris12; ACO; DRM 3.61; 6.12.107+deb13-amd64),10000,103.71,131.38,100.96,105.41,
+MB1,piece_write8k_pinned,AMD Radeon Pro WX 2100 (radeonsi; polaris12; ACO; DRM 3.61; 6.12.107+deb13-amd64),10000,29.97,33.61,29.31,30.89,
+MB1,piece_read8k_pinned,AMD Radeon Pro WX 2100 (radeonsi; polaris12; ACO; DRM 3.61; 6.12.107+deb13-amd64),10000,103.89,131.15,101.20,105.03,
+MB1,piece_write32B_blocking,AMD Radeon Pro WX 2100 (radeonsi; polaris12; ACO; DRM 3.61; 6.12.107+deb13-amd64),10000,16.92,18.40,14.91,17.28,
+MB1,rt_blocking,AMD Radeon RX 6400 (radeonsi; navi24; LLVM 19.1.7; DRM 3.61; 6.12.107+deb13-amd64),10000,168.74,235.74,165.27,171.31,check=OK
+MB1,rt_nonblock_finish,AMD Radeon RX 6400 (radeonsi; navi24; LLVM 19.1.7; DRM 3.61; 6.12.107+deb13-amd64),10000,154.34,185.30,150.83,155.87,check=OK
+MB1,rt_event_busypoll,AMD Radeon RX 6400 (radeonsi; navi24; LLVM 19.1.7; DRM 3.61; 6.12.107+deb13-amd64),10000,155.12,226.20,148.00,163.92,check=OK
+MB1,rt_pinned_finish,AMD Radeon RX 6400 (radeonsi; navi24; LLVM 19.1.7; DRM 3.61; 6.12.107+deb13-amd64),10000,155.05,246.47,151.63,162.22,check=OK
+MB1,rt_pinned_busypoll,AMD Radeon RX 6400 (radeonsi; navi24; LLVM 19.1.7; DRM 3.61; 6.12.107+deb13-amd64),10000,155.62,339.11,148.21,170.81,check=OK
+MB1,piece_clFinish_idle,AMD Radeon RX 6400 (radeonsi; navi24; LLVM 19.1.7; DRM 3.61; 6.12.107+deb13-amd64),10000,0.79,0.84,0.78,0.81,
+MB1,piece_kernel_finish,AMD Radeon RX 6400 (radeonsi; navi24; LLVM 19.1.7; DRM 3.61; 6.12.107+deb13-amd64),10000,118.61,145.18,116.29,119.79,T_k: tiny kernel + clFinish
+MB1,piece_write8k_blocking,AMD Radeon RX 6400 (radeonsi; navi24; LLVM 19.1.7; DRM 3.61; 6.12.107+deb13-amd64),10000,21.98,23.42,21.10,22.25,
+MB1,piece_read8k_blocking,AMD Radeon RX 6400 (radeonsi; navi24; LLVM 19.1.7; DRM 3.61; 6.12.107+deb13-amd64),10000,99.82,128.26,97.30,101.92,
+MB1,piece_write8k_pinned,AMD Radeon RX 6400 (radeonsi; navi24; LLVM 19.1.7; DRM 3.61; 6.12.107+deb13-amd64),10000,21.93,23.27,21.49,22.16,
+MB1,piece_read8k_pinned,AMD Radeon RX 6400 (radeonsi; navi24; LLVM 19.1.7; DRM 3.61; 6.12.107+deb13-amd64),10000,99.70,127.89,97.49,100.99,
+MB1,piece_write32B_blocking,AMD Radeon RX 6400 (radeonsi; navi24; LLVM 19.1.7; DRM 3.61; 6.12.107+deb13-amd64),10000,17.04,18.39,14.93,17.28,
+MB2,solo_tiny_finish,GeForce GT 730,10000,64.34,65.25,55.58,63.88,
+MB2,solo_tiny_finish,GeForce GT 710,10000,64.41,65.28,56.35,64.09,
+MB2,solo_tiny_finish,AMD Radeon Pro WX 2100 (radeonsi; polaris12; ACO; DRM 3.61; 6.12.107+deb13-amd64),10000,167.07,198.07,162.98,168.52,
+MB2,solo_tiny_finish,AMD Radeon RX 6400 (radeonsi; navi24; LLVM 19.1.7; DRM 3.61; 6.12.107+deb13-amd64),10000,153.87,439.80,149.28,164.24,
+MB2,sequential_tiny_finish,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100 (radeonsi; polaris12; ACO; DRM 3.61; 6.12.107+deb13-amd64)+AMD Radeon RX 6400 (radeonsi; navi24; LLVM 19.1.7; DRM 3.61; 6.12.107+deb13-amd64),10000,563.12,799.30,532.33,588.00,one after the other
+MB2,parallel_1thread_tiny_finish,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100 (radeonsi; polaris12; ACO; DRM 3.61; 6.12.107+deb13-amd64)+AMD Radeon RX 6400 (radeonsi; navi24; LLVM 19.1.7; DRM 3.61; 6.12.107+deb13-amd64),10000,257.72,423.82,244.08,266.13,submit all; then wait in order
+MB2,parallel_threads_tiny_finish,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100 (radeonsi; polaris12; ACO; DRM 3.61; 6.12.107+deb13-amd64)+AMD Radeon RX 6400 (radeonsi; navi24; LLVM 19.1.7; DRM 3.61; 6.12.107+deb13-amd64),10000,328.31,486.43,276.36,357.17,one thread per device (wake-up included)
+MB2,summary_tiny_finish,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100 (radeonsi; polaris12; ACO; DRM 3.61; 6.12.107+deb13-amd64)+AMD Radeon RX 6400 (radeonsi; navi24; LLVM 19.1.7; DRM 3.61; 6.12.107+deb13-amd64),0,0,0,0,0,median max(solo)=167.1 sum(solo)=449.7 sequential=563.1 1thread=257.7 threads=328.3 ; 1thread/max=1.54 1thread/sum=0.57 threads/max=1.97
+MB2,check:results tiny_finish,,0,0,0,0,0,OK 
+MB2,solo_tiny_poll,GeForce GT 730,10000,63.47,64.51,55.53,63.01,
+MB2,solo_tiny_poll,GeForce GT 710,10000,63.50,65.25,55.81,63.80,
+MB2,solo_tiny_poll,AMD Radeon Pro WX 2100 (radeonsi; polaris12; ACO; DRM 3.61; 6.12.107+deb13-amd64),10000,167.26,201.75,160.54,169.18,
+MB2,solo_tiny_poll,AMD Radeon RX 6400 (radeonsi; navi24; LLVM 19.1.7; DRM 3.61; 6.12.107+deb13-amd64),10000,154.53,192.58,146.95,155.61,
+MB2,sequential_tiny_poll,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100 (radeonsi; polaris12; ACO; DRM 3.61; 6.12.107+deb13-amd64)+AMD Radeon RX 6400 (radeonsi; navi24; LLVM 19.1.7; DRM 3.61; 6.12.107+deb13-amd64),10000,568.19,883.35,525.16,608.77,one after the other
+MB2,parallel_1thread_tiny_poll,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100 (radeonsi; polaris12; ACO; DRM 3.61; 6.12.107+deb13-amd64)+AMD Radeon RX 6400 (radeonsi; navi24; LLVM 19.1.7; DRM 3.61; 6.12.107+deb13-amd64),10000,275.02,570.29,245.51,315.34,submit all; then wait in order
+MB2,parallel_threads_tiny_poll,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100 (radeonsi; polaris12; ACO; DRM 3.61; 6.12.107+deb13-amd64)+AMD Radeon RX 6400 (radeonsi; navi24; LLVM 19.1.7; DRM 3.61; 6.12.107+deb13-amd64),10000,3859.10,5457.82,271.55,2812.77,one thread per device (wake-up included)
+MB2,summary_tiny_poll,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100 (radeonsi; polaris12; ACO; DRM 3.61; 6.12.107+deb13-amd64)+AMD Radeon RX 6400 (radeonsi; navi24; LLVM 19.1.7; DRM 3.61; 6.12.107+deb13-amd64),0,0,0,0,0,median max(solo)=167.3 sum(solo)=448.8 sequential=568.2 1thread=275.0 threads=3859.1 ; 1thread/max=1.64 1thread/sum=0.61 threads/max=23.07
+MB2,check:results tiny_poll,,0,0,0,0,0,OK 
+MB2,solo_busy500us_finish,GeForce GT 730,3000,525.20,746.24,514.82,548.52,
+MB2,solo_busy500us_finish,GeForce GT 710,3000,552.85,728.69,505.77,571.68,
+MB2,solo_busy500us_finish,AMD Radeon Pro WX 2100 (radeonsi; polaris12; ACO; DRM 3.61; 6.12.107+deb13-amd64),3000,835.59,1342.92,545.69,847.98,
+MB2,solo_busy500us_finish,AMD Radeon RX 6400 (radeonsi; navi24; LLVM 19.1.7; DRM 3.61; 6.12.107+deb13-amd64),3000,1007.25,1560.98,559.60,1020.95,
+MB2,sequential_busy500us_finish,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100 (radeonsi; polaris12; ACO; DRM 3.61; 6.12.107+deb13-amd64)+AMD Radeon RX 6400 (radeonsi; navi24; LLVM 19.1.7; DRM 3.61; 6.12.107+deb13-amd64),3000,3512.70,3888.99,2674.66,3528.62,one after the other
+MB2,parallel_1thread_busy500us_finish,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100 (radeonsi; polaris12; ACO; DRM 3.61; 6.12.107+deb13-amd64)+AMD Radeon RX 6400 (radeonsi; navi24; LLVM 19.1.7; DRM 3.61; 6.12.107+deb13-amd64),3000,1095.65,1393.02,607.11,998.09,submit all; then wait in order
+MB2,parallel_threads_busy500us_finish,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100 (radeonsi; polaris12; ACO; DRM 3.61; 6.12.107+deb13-amd64)+AMD Radeon RX 6400 (radeonsi; navi24; LLVM 19.1.7; DRM 3.61; 6.12.107+deb13-amd64),3000,1881.96,3506.46,1044.14,1990.21,one thread per device (wake-up included)
+MB2,summary_busy500us_finish,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100 (radeonsi; polaris12; ACO; DRM 3.61; 6.12.107+deb13-amd64)+AMD Radeon RX 6400 (radeonsi; navi24; LLVM 19.1.7; DRM 3.61; 6.12.107+deb13-amd64),0,0,0,0,0,median max(solo)=1007.2 sum(solo)=2920.9 sequential=3512.7 1thread=1095.7 threads=1882.0 ; 1thread/max=1.09 1thread/sum=0.38 threads/max=1.87
+MB2,check:results busy500us_finish,,0,0,0,0,0,OK 
+MB2,solo_busy500us_poll,GeForce GT 730,3000,524.35,737.68,514.47,546.08,
+MB2,solo_busy500us_poll,GeForce GT 710,3000,551.96,728.11,498.53,570.94,
+MB2,solo_busy500us_poll,AMD Radeon Pro WX 2100 (radeonsi; polaris12; ACO; DRM 3.61; 6.12.107+deb13-amd64),3000,838.40,1098.00,646.46,852.58,
+MB2,solo_busy500us_poll,AMD Radeon RX 6400 (radeonsi; navi24; LLVM 19.1.7; DRM 3.61; 6.12.107+deb13-amd64),3000,985.78,1238.48,784.09,992.03,
+MB2,sequential_busy500us_poll,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100 (radeonsi; polaris12; ACO; DRM 3.61; 6.12.107+deb13-amd64)+AMD Radeon RX 6400 (radeonsi; navi24; LLVM 19.1.7; DRM 3.61; 6.12.107+deb13-amd64),3000,3135.28,6147.68,2421.28,3206.85,one after the other
+MB2,parallel_1thread_busy500us_poll,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100 (radeonsi; polaris12; ACO; DRM 3.61; 6.12.107+deb13-amd64)+AMD Radeon RX 6400 (radeonsi; navi24; LLVM 19.1.7; DRM 3.61; 6.12.107+deb13-amd64),3000,1091.81,1414.85,618.62,1011.18,submit all; then wait in order
+MB2,parallel_threads_busy500us_poll,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100 (radeonsi; polaris12; ACO; DRM 3.61; 6.12.107+deb13-amd64)+AMD Radeon RX 6400 (radeonsi; navi24; LLVM 19.1.7; DRM 3.61; 6.12.107+deb13-amd64),3000,3887.26,7938.37,788.36,3711.07,one thread per device (wake-up included)
+MB2,summary_busy500us_poll,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100 (radeonsi; polaris12; ACO; DRM 3.61; 6.12.107+deb13-amd64)+AMD Radeon RX 6400 (radeonsi; navi24; LLVM 19.1.7; DRM 3.61; 6.12.107+deb13-amd64),0,0,0,0,0,median max(solo)=985.8 sum(solo)=2900.5 sequential=3135.3 1thread=1091.8 threads=3887.3 ; 1thread/max=1.11 1thread/sum=0.38 threads/max=3.94
+MB2,check:results busy500us_poll,,0,0,0,0,0,OK 
+MB2,solo_tiny_finish,GeForce GT 730,10000,64.11,65.01,56.04,63.66,
+MB2,solo_tiny_finish,GeForce GT 710,10000,64.33,65.08,55.74,63.83,
+MB2,sequential_tiny_finish,GeForce GT 730+GeForce GT 710,10000,128.91,134.51,113.26,127.87,one after the other
+MB2,parallel_1thread_tiny_finish,GeForce GT 730+GeForce GT 710,10000,77.76,80.49,69.37,77.13,submit all; then wait in order
+MB2,parallel_threads_tiny_finish,GeForce GT 730+GeForce GT 710,10000,162.08,207.63,64.80,158.35,one thread per device (wake-up included)
+MB2,summary_tiny_finish,GeForce GT 730+GeForce GT 710,0,0,0,0,0,median max(solo)=64.3 sum(solo)=128.4 sequential=128.9 1thread=77.8 threads=162.1 ; 1thread/max=1.21 1thread/sum=0.61 threads/max=2.52
+MB2,check:results tiny_finish,,0,0,0,0,0,OK 
+MB2,solo_tiny_poll,GeForce GT 730,10000,63.47,65.72,55.57,62.98,
+MB2,solo_tiny_poll,GeForce GT 710,10000,63.50,67.24,55.63,65.59,
+MB2,sequential_tiny_poll,GeForce GT 730+GeForce GT 710,10000,127.91,130.75,112.52,127.23,one after the other
+MB2,parallel_1thread_tiny_poll,GeForce GT 730+GeForce GT 710,10000,76.82,79.11,68.84,76.46,submit all; then wait in order
+MB2,parallel_threads_tiny_poll,GeForce GT 730+GeForce GT 710,10000,143.31,203.08,67.12,132.02,one thread per device (wake-up included)
+MB2,summary_tiny_poll,GeForce GT 730+GeForce GT 710,0,0,0,0,0,median max(solo)=63.5 sum(solo)=127.0 sequential=127.9 1thread=76.8 threads=143.3 ; 1thread/max=1.21 1thread/sum=0.61 threads/max=2.26
+MB2,check:results tiny_poll,,0,0,0,0,0,OK 
+MB2,solo_busy500us_finish,GeForce GT 730,3000,516.11,746.22,505.67,537.53,
+MB2,solo_busy500us_finish,GeForce GT 710,3000,543.78,719.85,497.41,569.42,
+MB2,sequential_busy500us_finish,GeForce GT 730+GeForce GT 710,3000,1078.33,1321.35,1006.60,1103.94,one after the other
+MB2,parallel_1thread_busy500us_finish,GeForce GT 730+GeForce GT 710,3000,567.37,748.15,513.11,594.84,submit all; then wait in order
+MB2,parallel_threads_busy500us_finish,GeForce GT 730+GeForce GT 710,3000,579.44,774.40,518.75,601.20,one thread per device (wake-up included)
+MB2,summary_busy500us_finish,GeForce GT 730+GeForce GT 710,0,0,0,0,0,median max(solo)=543.8 sum(solo)=1059.9 sequential=1078.3 1thread=567.4 threads=579.4 ; 1thread/max=1.04 1thread/sum=0.54 threads/max=1.07
+MB2,check:results busy500us_finish,,0,0,0,0,0,OK 
+MB2,solo_busy500us_poll,GeForce GT 730,3000,515.58,728.32,505.26,535.91,
+MB2,solo_busy500us_poll,GeForce GT 710,3000,543.53,719.01,496.62,569.93,
+MB2,sequential_busy500us_poll,GeForce GT 730+GeForce GT 710,3000,1078.41,1336.01,1004.56,1104.53,one after the other
+MB2,parallel_1thread_busy500us_poll,GeForce GT 730+GeForce GT 710,3000,565.94,740.98,509.91,592.73,submit all; then wait in order
+MB2,parallel_threads_busy500us_poll,GeForce GT 730+GeForce GT 710,3000,578.70,762.02,518.34,600.47,one thread per device (wake-up included)
+MB2,summary_busy500us_poll,GeForce GT 730+GeForce GT 710,0,0,0,0,0,median max(solo)=543.5 sum(solo)=1059.1 sequential=1078.4 1thread=565.9 threads=578.7 ; 1thread/max=1.04 1thread/sum=0.53 threads/max=1.06
+MB2,check:results busy500us_poll,,0,0,0,0,0,OK 
+MB2,solo_tiny_finish,GeForce GT 730,10000,64.31,65.25,56.04,63.59,
+MB2,solo_tiny_finish,GeForce GT 710,10000,64.37,65.28,56.21,63.96,
+MB2,solo_tiny_finish,AMD Radeon Pro WX 2100,10000,115.55,133.56,113.04,116.46,
+MB2,sequential_tiny_finish,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100,10000,265.54,342.58,239.53,274.99,one after the other
+MB2,parallel_1thread_tiny_finish,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100,10000,162.76,218.73,158.66,166.21,submit all; then wait in order
+MB2,parallel_threads_tiny_finish,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100,10000,213.40,370.40,137.70,226.36,one thread per device (wake-up included)
+MB2,summary_tiny_finish,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100,0,0,0,0,0,median max(solo)=115.6 sum(solo)=244.2 sequential=265.5 1thread=162.8 threads=213.4 ; 1thread/max=1.41 1thread/sum=0.67 threads/max=1.85
+MB2,check:results tiny_finish,,0,0,0,0,0,OK 
+MB2,solo_tiny_poll,GeForce GT 730,10000,63.47,64.63,55.61,62.60,
+MB2,solo_tiny_poll,GeForce GT 710,10000,63.50,64.60,55.04,63.40,
+MB2,solo_tiny_poll,AMD Radeon Pro WX 2100,10000,114.43,126.55,111.95,115.15,
+MB2,sequential_tiny_poll,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100,10000,268.83,448.73,243.97,286.66,one after the other
+MB2,parallel_1thread_tiny_poll,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100,10000,159.19,199.14,154.99,160.99,submit all; then wait in order
+MB2,parallel_threads_tiny_poll,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100,10000,172.75,355.71,131.30,212.00,one thread per device (wake-up included)
+MB2,summary_tiny_poll,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100,0,0,0,0,0,median max(solo)=114.4 sum(solo)=241.4 sequential=268.8 1thread=159.2 threads=172.7 ; 1thread/max=1.39 1thread/sum=0.66 threads/max=1.51
+MB2,check:results tiny_poll,,0,0,0,0,0,OK 
+MB2,solo_busy500us_finish,GeForce GT 730,3000,526.89,755.59,514.99,554.49,
+MB2,solo_busy500us_finish,GeForce GT 710,3000,544.65,718.77,497.57,567.30,
+MB2,solo_busy500us_finish,AMD Radeon Pro WX 2100,3000,603.32,661.55,521.05,602.76,
+MB2,sequential_busy500us_finish,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100,3000,1934.47,2271.81,1673.04,1945.81,one after the other
+MB2,parallel_1thread_busy500us_finish,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100,3000,935.91,1075.28,739.59,929.83,submit all; then wait in order
+MB2,parallel_threads_busy500us_finish,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100,3000,1205.04,2073.16,604.60,1249.99,one thread per device (wake-up included)
+MB2,summary_busy500us_finish,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100,0,0,0,0,0,median max(solo)=603.3 sum(solo)=1674.9 sequential=1934.5 1thread=935.9 threads=1205.0 ; 1thread/max=1.55 1thread/sum=0.56 threads/max=2.00
+MB2,check:results busy500us_finish,,0,0,0,0,0,OK 
+MB2,solo_busy500us_poll,GeForce GT 730,3000,527.88,755.50,514.88,553.12,
+MB2,solo_busy500us_poll,GeForce GT 710,3000,543.76,718.74,496.67,566.22,
+MB2,solo_busy500us_poll,AMD Radeon Pro WX 2100,3000,601.07,657.24,535.04,601.85,
+MB2,sequential_busy500us_poll,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100,3000,1932.78,2257.64,1686.09,1942.99,one after the other
+MB2,parallel_1thread_busy500us_poll,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100,3000,916.49,1049.18,574.29,890.78,submit all; then wait in order
+MB2,parallel_threads_busy500us_poll,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100,3000,1206.35,2157.09,622.35,1269.23,one thread per device (wake-up included)
+MB2,summary_busy500us_poll,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100,0,0,0,0,0,median max(solo)=601.1 sum(solo)=1672.7 sequential=1932.8 1thread=916.5 threads=1206.3 ; 1thread/max=1.52 1thread/sum=0.55 threads/max=2.01
+MB2,check:results busy500us_poll,,0,0,0,0,0,OK 
+MB2,solo_tiny_finish,GeForce GT 730,10000,64.29,64.94,56.02,63.60,
+MB2,solo_tiny_finish,GeForce GT 710,10000,64.39,65.04,56.23,64.10,
+MB2,solo_tiny_finish,AMD Radeon Pro WX 2100,10000,164.91,193.68,160.94,166.35,
+MB2,sequential_tiny_finish,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100,10000,324.74,459.81,298.97,335.96,one after the other
+MB2,parallel_1thread_tiny_finish,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100,10000,221.71,360.91,214.17,230.01,submit all; then wait in order
+MB2,parallel_threads_tiny_finish,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100,10000,239.21,323.83,197.78,233.88,one thread per device (wake-up included)
+MB2,summary_tiny_finish,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100,0,0,0,0,0,median max(solo)=164.9 sum(solo)=293.6 sequential=324.7 1thread=221.7 threads=239.2 ; 1thread/max=1.34 1thread/sum=0.76 threads/max=1.45
+MB2,check:results tiny_finish,,0,0,0,0,0,OK 
+MB2,solo_tiny_poll,GeForce GT 730,10000,63.47,64.57,55.59,62.96,
+MB2,solo_tiny_poll,GeForce GT 710,10000,63.48,64.57,55.80,63.34,
+MB2,solo_tiny_poll,AMD Radeon Pro WX 2100,10000,165.81,227.31,158.49,173.23,
+MB2,sequential_tiny_poll,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100,10000,323.63,417.56,300.08,329.59,one after the other
+MB2,parallel_1thread_tiny_poll,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100,10000,222.94,278.00,213.49,225.65,submit all; then wait in order
+MB2,parallel_threads_tiny_poll,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100,10000,282.36,2974.99,212.64,346.29,one thread per device (wake-up included)
+MB2,summary_tiny_poll,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100,0,0,0,0,0,median max(solo)=165.8 sum(solo)=292.8 sequential=323.6 1thread=222.9 threads=282.4 ; 1thread/max=1.34 1thread/sum=0.76 threads/max=1.70
+MB2,check:results tiny_poll,,0,0,0,0,0,OK 
+MB2,solo_busy500us_finish,GeForce GT 730,3000,526.21,755.68,514.96,551.45,
+MB2,solo_busy500us_finish,GeForce GT 710,3000,562.47,745.47,515.97,585.79,
+MB2,solo_busy500us_finish,AMD Radeon Pro WX 2100,3000,867.42,1594.76,556.66,877.93,
+MB2,sequential_busy500us_finish,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100,3000,2056.11,2600.15,1842.01,2110.05,one after the other
+MB2,parallel_1thread_busy500us_finish,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100,3000,693.26,1362.49,580.53,823.07,submit all; then wait in order
+MB2,parallel_threads_busy500us_finish,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100,3000,1387.86,2396.98,667.86,1470.46,one thread per device (wake-up included)
+MB2,summary_busy500us_finish,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100,0,0,0,0,0,median max(solo)=867.4 sum(solo)=1956.1 sequential=2056.1 1thread=693.3 threads=1387.9 ; 1thread/max=0.80 1thread/sum=0.35 threads/max=1.60
+MB2,check:results busy500us_finish,,0,0,0,0,0,OK 
+MB2,solo_busy500us_poll,GeForce GT 730,3000,525.31,746.50,514.62,548.08,
+MB2,solo_busy500us_poll,GeForce GT 710,3000,561.85,745.48,515.00,583.17,
+MB2,solo_busy500us_poll,AMD Radeon Pro WX 2100,3000,825.71,3084.38,642.24,871.98,
+MB2,sequential_busy500us_poll,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100,3000,2000.24,2379.49,1750.21,2027.19,one after the other
+MB2,parallel_1thread_busy500us_poll,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100,3000,664.99,1406.91,563.96,824.18,submit all; then wait in order
+MB2,parallel_threads_busy500us_poll,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100,3000,2013.39,6157.74,619.31,2605.38,one thread per device (wake-up included)
+MB2,summary_busy500us_poll,GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100,0,0,0,0,0,median max(solo)=825.7 sum(solo)=1912.9 sequential=2000.2 1thread=665.0 threads=2013.4 ; 1thread/max=0.81 1thread/sum=0.35 threads/max=2.44
+MB2,check:results busy500us_poll,,0,0,0,0,0,OK 
+MB3,i_single_compute_only,GeForce GT 430,1000,3189.79,3234.91,3162.51,3192.24,achieved 7.77 GB/s (24.77 MB per layer) nmse=4.16e-14
+MB3,i_single_full_cycle,GeForce GT 430,1000,3243.61,3285.69,3221.99,3250.24,x write + ids + kernels + out read
+MB3,check:single GeForce GT 430 first/last,,0,0,0,0,0,OK nmse 4.16e-14 / 3.62e-14
+MB3,i_single_compute_only,AMD Radeon Pro WX 2100,1000,1331.30,1600.36,933.00,1331.81,achieved 18.61 GB/s (24.77 MB per layer) nmse=4.67e-14
+MB3,i_single_full_cycle,AMD Radeon Pro WX 2100,1000,1462.01,1687.06,1344.40,1465.46,x write + ids + kernels + out read
+MB3,check:single AMD Radeon Pro WX 2100 first/last,,0,0,0,0,0,OK nmse 4.67e-14 / 4.15e-14
+MB3,i_single_compute_only,GeForce GT 730,1000,1210.22,1223.41,1199.12,1210.60,achieved 20.47 GB/s (24.77 MB per layer) nmse=4.16e-14
+MB3,i_single_full_cycle,GeForce GT 730,1000,1399.09,1411.74,1385.36,1399.84,x write + ids + kernels + out read
+MB3,check:single GeForce GT 730 first/last,,0,0,0,0,0,OK nmse 4.16e-14 / 3.62e-14
+MB3,i_single_compute_only,GeForce GT 710,1000,2742.39,2763.42,2720.76,2743.60,achieved 9.03 GB/s (24.77 MB per layer) nmse=4.16e-14
+MB3,i_single_full_cycle,GeForce GT 710,1000,3065.89,3096.11,3037.98,3069.78,x write + ids + kernels + out read
+MB3,check:single GeForce GT 710 first/last,,0,0,0,0,0,OK nmse 4.16e-14 / 3.62e-14
+MB3,ii_ES_full_cycle,AMD Radeon Pro WX 2100+GeForce GT 730+GeForce GT 710,1000,1153.51,1779.31,896.34,1276.01,submit all; wait all; host sum; AMD Radeon Pro WX 2100:832 rows GeForce GT 730:736 rows GeForce GT 710:224 rows 
+MB3,ii_ES_compute_only,AMD Radeon Pro WX 2100+GeForce GT 730+GeForce GT 710,1000,1006.15,2586.86,652.44,1078.73,ids + kernels on all devices; wait all
+MB3,check:ES AMD Radeon Pro WX 2100+GeForce GT 730+GeForce GT 710 first/last,,0,0,0,0,0,OK nmse 4.81e-14 / 3.74e-14
+MB3,ii_ES_slice_compute_only,AMD Radeon Pro WX 2100,1000,999.52,1509.80,775.35,1074.73,slice 832 rows; achieved 11.51 GB/s
+MB3,ii_ES_slice_compute_only,GeForce GT 730,1000,542.38,549.62,536.99,543.08,slice 736 rows; achieved 18.76 GB/s
+MB3,ii_ES_slice_compute_only,GeForce GT 710,1000,454.55,461.85,444.42,454.83,slice 224 rows; achieved 6.81 GB/s
+MB3,i_single_compute_only,AMD Radeon RX 6400,1000,1402.37,1649.14,1204.15,1407.29,achieved 17.66 GB/s (24.77 MB per layer) nmse=4.25e-14
+MB3,i_single_full_cycle,AMD Radeon RX 6400,1000,1505.99,1786.84,966.15,1508.58,x write + ids + kernels + out read
+MB3,check:single AMD Radeon RX 6400 first/last,,0,0,0,0,0,OK nmse 4.25e-14 / 3.55e-14
+MB3,i_single_compute_only,AMD Radeon Pro WX 2100,1000,1191.78,1471.79,914.35,1188.64,achieved 20.79 GB/s (24.77 MB per layer) nmse=4.67e-14
+MB3,i_single_full_cycle,AMD Radeon Pro WX 2100,1000,1312.55,1535.78,1074.65,1324.01,x write + ids + kernels + out read
+MB3,check:single AMD Radeon Pro WX 2100 first/last,,0,0,0,0,0,OK nmse 4.67e-14 / 4.15e-14
+MB3,i_single_compute_only,GeForce GT 730,1000,1210.51,1231.31,1197.66,1211.83,achieved 20.46 GB/s (24.77 MB per layer) nmse=4.16e-14
+MB3,i_single_full_cycle,GeForce GT 730,1000,1397.83,1410.28,1382.46,1397.59,x write + ids + kernels + out read
+MB3,check:single GeForce GT 730 first/last,,0,0,0,0,0,OK nmse 4.16e-14 / 3.62e-14
+MB3,i_single_compute_only,GeForce GT 710,1000,2742.07,2765.22,2720.75,2743.30,achieved 9.03 GB/s (24.77 MB per layer) nmse=4.16e-14
+MB3,i_single_full_cycle,GeForce GT 710,1000,3068.72,3091.99,3038.60,3068.40,x write + ids + kernels + out read
+MB3,check:single GeForce GT 710 first/last,,0,0,0,0,0,OK nmse 4.16e-14 / 3.62e-14
+MB3,ii_ES_full_cycle,AMD Radeon Pro WX 2100+GeForce GT 730+GeForce GT 710,1000,1901.76,2716.19,1697.68,1945.43,submit all; wait all; host sum; AMD Radeon Pro WX 2100:832 rows GeForce GT 730:736 rows GeForce GT 710:224 rows 
+MB3,ii_ES_compute_only,AMD Radeon Pro WX 2100+GeForce GT 730+GeForce GT 710,1000,946.52,1287.35,620.49,899.53,ids + kernels on all devices; wait all
+MB3,check:ES AMD Radeon Pro WX 2100+GeForce GT 730+GeForce GT 710 first/last,,0,0,0,0,0,OK nmse 4.81e-14 / 3.74e-14
+MB3,ii_ES_slice_compute_only,AMD Radeon Pro WX 2100,1000,800.55,1251.18,629.78,832.24,slice 832 rows; achieved 14.37 GB/s
+MB3,ii_ES_slice_compute_only,GeForce GT 730,1000,542.59,550.97,537.56,543.28,slice 736 rows; achieved 18.75 GB/s
+MB3,ii_ES_slice_compute_only,GeForce GT 710,1000,454.63,461.37,445.98,454.61,slice 224 rows; achieved 6.81 GB/s
+MB4,check:1-node add and 8 KiB set/get on Vulkan0 AMD Radeon RX 6400 (RADV NAVI24),,0,0,0,0,0,OK 
+MB4,tensor_set_8KiB,Vulkan0 AMD Radeon RX 6400 (RADV NAVI24),10000,5.64,5.66,4.77,5.65,RT_out half: Vulkan0 <- host
+MB4,tensor_get_8KiB,Vulkan0 AMD Radeon RX 6400 (RADV NAVI24),10000,67.01,95.86,61.24,69.02,RT_in half: host <- Vulkan0
+MB4,tensor_set_16B,Vulkan0 AMD Radeon RX 6400 (RADV NAVI24),10000,0.15,0.15,0.15,0.15,
+MB4,tensor_get_16B,Vulkan0 AMD Radeon RX 6400 (RADV NAVI24),10000,67.00,76.49,64.15,67.35,
+MB4,tensor_get_8KiB+16B+16B,Vulkan0 AMD Radeon RX 6400 (RADV NAVI24),10000,204.55,268.50,196.47,207.60,sched copies of hidden; ids; weights into the composite device
+MB4,set_8KiB+get_8KiB,Vulkan0 AMD Radeon RX 6400 (RADV NAVI24),10000,74.18,91.48,71.76,75.12,RT_out + RT_in with no compute between
+MB4,graph_compute_1node_nosync,Vulkan0 AMD Radeon RX 6400 (RADV NAVI24),10000,73.32,127.69,67.73,76.71,submit only
+MB4,graph_compute_1node+synchronize,Vulkan0 AMD Radeon RX 6400 (RADV NAVI24),10000,73.27,115.46,67.97,73.92,one op round trip without data transfer
+MB4,synchronize_idle,Vulkan0 AMD Radeon RX 6400 (RADV NAVI24),10000,0.05,0.05,0.05,0.05,
+MB4,set8K+node+sync+get8K,Vulkan0 AMD Radeon RX 6400 (RADV NAVI24),10000,144.57,193.79,138.27,151.43,one boundary + one op (the cheapest possible remote layer through sched)
+MB4,check:1-node add and 8 KiB set/get on Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12),,0,0,0,0,0,OK 
+MB4,tensor_set_8KiB,Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12),10000,22.66,22.87,12.98,22.66,RT_out half: Vulkan0 <- host
+MB4,tensor_get_8KiB,Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12),10000,76.37,89.20,63.19,75.42,RT_in half: host <- Vulkan0
+MB4,tensor_set_16B,Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12),10000,0.17,0.18,0.17,0.18,
+MB4,tensor_get_16B,Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12),10000,56.96,68.55,50.82,58.15,
+MB4,tensor_get_8KiB+16B+16B,Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12),10000,191.28,229.35,181.98,192.56,sched copies of hidden; ids; weights into the composite device
+MB4,set_8KiB+get_8KiB,Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12),10000,90.45,103.28,86.77,91.11,RT_out + RT_in with no compute between
+MB4,graph_compute_1node_nosync,Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12),10000,72.82,92.63,65.18,73.54,submit only
+MB4,graph_compute_1node+synchronize,Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12),10000,72.63,112.08,62.53,75.66,one op round trip without data transfer
+MB4,synchronize_idle,Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12),10000,0.05,0.05,0.04,0.05,
+MB4,set8K+node+sync+get8K,Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12),10000,152.62,197.06,146.61,153.51,one boundary + one op (the cheapest possible remote layer through sched)
+MB3G,check:result Vulkan0 AMD Radeon RX 6400 (RADV NAVI24),,0,0,0,0,0,OK nmse 2.95e-05
+MB3G,ggml_compute_only_n1,Vulkan0 AMD Radeon RX 6400 (RADV NAVI24),1000,301.19,352.39,295.73,308.21,ids+weights set; graph_compute; synchronize ; 292.4 GFLOPS ; unsupported nodes 0
+MB3G,ggml_full_cycle_n1,Vulkan0 AMD Radeon RX 6400 (RADV NAVI24),1000,356.65,439.18,349.26,374.30,x + ids + weights set; compute; out get ; 2803.9 tok/s (layer)
+MB3G,check:result Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12),,0,0,0,0,0,OK nmse 3.62e-14
+MB3G,ggml_compute_only_n1,Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12),1000,947.32,1080.89,873.72,951.80,ids+weights set; graph_compute; synchronize ; 93.0 GFLOPS ; unsupported nodes 0
+MB3G,ggml_full_cycle_n1,Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12),1000,1034.22,1437.64,950.32,1060.83,x + ids + weights set; compute; out get ; 966.9 tok/s (layer)
+MB3G,check:result CPU Intel(R) Celeron(R) CPU G3930 @ 2.90GHz,,0,0,0,0,0,OK nmse 1.03e-04
+MB3G,ggml_compute_only_n1,CPU Intel(R) Celeron(R) CPU G3930 @ 2.90GHz,1000,2488.24,5283.15,2474.26,2567.60,ids+weights set; graph_compute; synchronize ; 35.4 GFLOPS ; unsupported nodes 0
+MB3G,ggml_full_cycle_n1,CPU Intel(R) Celeron(R) CPU G3930 @ 2.90GHz,1000,2499.74,2992.65,2483.78,2679.52,x + ids + weights set; compute; out get ; 400.0 tok/s (layer)
+MB5,check:single AMD Radeon Pro WX 2100 n=128,,0,0,0,0,0,OK nmse(3 tokens) 1.95e-12
+MB5,single_full_cycle_n128,AMD Radeon Pro WX 2100,10,63973.20,64829.93,61306.59,63757.84,ntok=128 pairs=512 tiles=47  176.2 GFLOPS effective; 2000.8 tok/s (layer)
+MB5,check:single GeForce GT 730 n=128,,0,0,0,0,0,OK nmse(3 tokens) 1.95e-12
+MB5,single_full_cycle_n128,GeForce GT 730,10,205449.45,211679.07,198361.23,205447.15,ntok=128 pairs=512 tiles=47  54.9 GFLOPS effective; 623.0 tok/s (layer)
+MB5,check:single GeForce GT 710 n=128,,0,0,0,0,0,OK nmse(3 tokens) 1.95e-12
+MB5,single_full_cycle_n128,GeForce GT 710,10,412239.88,424581.49,398376.66,412259.97,ntok=128 pairs=512 tiles=47  27.3 GFLOPS effective; 310.5 tok/s (layer)
+MB5,check:ES AMD Radeon Pro WX 2100+GeForce GT 730+GeForce GT 710 n=128,,0,0,0,0,0,OK nmse(3 tokens) 1.68e-12
+MB5,ES_full_cycle_n128,AMD Radeon Pro WX 2100+GeForce GT 730+GeForce GT 710,10,91468.57,95276.35,89155.06,91236.99,AMD Radeon Pro WX 2100:832 rows GeForce GT 730:736 rows GeForce GT 710:224 rows  ; 1399.4 tok/s (layer) ; max pairs/device=512 ; host prep(last;max)=2584 us ; x+out transfer 6.3 MB total
+MB5,ES_part_alone_n128,AMD Radeon Pro WX 2100,10,35672.07,36069.89,34691.70,35560.65,pairs=512 tokens=128
+MB5,ES_part_alone_n128,GeForce GT 730,10,87206.37,90527.06,85070.41,87221.54,pairs=512 tokens=128
+MB5,ES_part_alone_n128,GeForce GT 710,10,57284.47,59504.99,55805.51,57322.22,pairs=512 tokens=128
+MB5,check:EP AMD Radeon Pro WX 2100+GeForce GT 730+GeForce GT 710 n=128,,0,0,0,0,0,OK nmse(3 tokens) 1.92e-12
+MB5,EP_full_cycle_n128,AMD Radeon Pro WX 2100+GeForce GT 730+GeForce GT 710,10,90168.33,95951.13,83845.28,90259.97,AMD Radeon Pro WX 2100:15 experts GeForce GT 730:13 experts GeForce GT 710:4 experts  ; 1419.6 tok/s (layer) ; max pairs/device=238 ; host prep(last;max)=2010 us ; x+out transfer 4.8 MB total
+MB5,EP_part_alone_n128,AMD Radeon Pro WX 2100,10,35376.11,36543.82,32480.74,35061.79,pairs=238 tokens=116
+MB5,EP_part_alone_n128,GeForce GT 730,10,85372.18,93804.45,84023.38,86766.87,pairs=204 tokens=117
+MB5,EP_part_alone_n128,GeForce GT 710,10,51863.38,62724.43,45195.07,53174.92,pairs=70 tokens=61
+MB5,check:single AMD Radeon RX 6400 n=128,,0,0,0,0,0,OK nmse(3 tokens) 1.94e-12
+MB5,single_full_cycle_n128,AMD Radeon RX 6400,10,21109.19,21622.93,20632.32,21086.03,ntok=128 pairs=512 tiles=47  534.1 GFLOPS effective; 6063.7 tok/s (layer)
+MB5,check:single AMD Radeon Pro WX 2100 n=512,,0,0,0,0,0,OK nmse(3 tokens) 2.00e-12
+MB5,single_full_cycle_n512,AMD Radeon Pro WX 2100,10,220977.89,222094.84,217036.34,220016.49,ntok=512 pairs=2048 tiles=146  204.1 GFLOPS effective; 2317.0 tok/s (layer)
+MB5,check:single GeForce GT 730 n=512,,0,0,0,0,0,OK nmse(3 tokens) 2.03e-12
+MB5,single_full_cycle_n512,GeForce GT 730,10,661380.03,688916.07,620297.57,659463.82,ntok=512 pairs=2048 tiles=146  68.2 GFLOPS effective; 774.1 tok/s (layer)
+MB5,check:single GeForce GT 710 n=512,,0,0,0,0,0,OK nmse(3 tokens) 2.03e-12
+MB5,single_full_cycle_n512,GeForce GT 710,10,1320113.08,1369131.93,1235896.51,1315666.98,ntok=512 pairs=2048 tiles=146  34.2 GFLOPS effective; 387.8 tok/s (layer)
+MB5,check:ES AMD Radeon Pro WX 2100+GeForce GT 730+GeForce GT 710 n=512,,0,0,0,0,0,OK nmse(3 tokens) 1.62e-12
+MB5,ES_full_cycle_n512,AMD Radeon Pro WX 2100+GeForce GT 730+GeForce GT 710,10,296005.75,310899.92,278059.21,295132.41,AMD Radeon Pro WX 2100:832 rows GeForce GT 730:736 rows GeForce GT 710:224 rows  ; 1729.7 tok/s (layer) ; max pairs/device=2048 ; host prep(last;max)=11848 us ; x+out transfer 25.2 MB total
+MB5,ES_part_alone_n512,AMD Radeon Pro WX 2100,10,119563.40,120520.13,117985.28,119470.66,pairs=2048 tokens=512
+MB5,ES_part_alone_n512,GeForce GT 730,10,279671.32,290295.30,277192.45,281264.85,pairs=2048 tokens=512
+MB5,ES_part_alone_n512,GeForce GT 710,10,184656.86,191192.15,183222.34,185608.69,pairs=2048 tokens=512
+MB5,check:EP AMD Radeon Pro WX 2100+GeForce GT 730+GeForce GT 710 n=512,,0,0,0,0,0,OK nmse(3 tokens) 2.01e-12
+MB5,EP_full_cycle_n512,AMD Radeon Pro WX 2100+GeForce GT 730+GeForce GT 710,10,289050.29,302120.15,283673.71,289417.88,AMD Radeon Pro WX 2100:15 experts GeForce GT 730:13 experts GeForce GT 710:4 experts  ; 1771.3 tok/s (layer) ; max pairs/device=930 ; host prep(last;max)=10961 us ; x+out transfer 18.8 MB total
+MB5,EP_part_alone_n512,AMD Radeon Pro WX 2100,10,116232.95,119129.70,114184.10,116385.51,pairs=930 tokens=471
+MB5,EP_part_alone_n512,GeForce GT 730,10,274633.35,288325.57,271288.12,276798.43,pairs=854 tokens=459
+MB5,EP_part_alone_n512,GeForce GT 710,10,173124.04,184558.99,161337.39,172576.95,pairs=264 tokens=218
+MB5,check:single AMD Radeon RX 6400 n=512,,0,0,0,0,0,OK nmse(3 tokens) 2.05e-12
+MB5,single_full_cycle_n512,AMD Radeon RX 6400,10,69218.61,69655.67,68051.06,69014.93,ntok=512 pairs=2048 tiles=146  651.5 GFLOPS effective; 7396.9 tok/s (layer)
+MB5G,check:result Vulkan0 AMD Radeon RX 6400 (RADV NAVI24),,0,0,0,0,0,OK nmse 1.18e-04
+MB5G,ggml_compute_only_n128,Vulkan0 AMD Radeon RX 6400 (RADV NAVI24),10,9981.96,10050.60,9702.01,9939.63,ids+weights set; graph_compute; synchronize ; 1129.5 GFLOPS ; unsupported nodes 0
+MB5G,ggml_full_cycle_n128,Vulkan0 AMD Radeon RX 6400 (RADV NAVI24),10,12325.91,12515.45,12136.78,12321.81,x + ids + weights set; compute; out get ; 10384.6 tok/s (layer)
+MB5G,check:result Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12),,0,0,0,0,0,OK nmse 2.05e-12
+MB5G,ggml_compute_only_n128,Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12),10,71172.79,72986.63,70549.14,71490.30,ids+weights set; graph_compute; synchronize ; 158.4 GFLOPS ; unsupported nodes 0
+MB5G,ggml_full_cycle_n128,Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12),10,79571.87,80569.95,78840.26,79576.11,x + ids + weights set; compute; out get ; 1608.6 tok/s (layer)
+MB5G,check:result Vulkan0 AMD Radeon RX 6400 (RADV NAVI24),,0,0,0,0,0,OK nmse 1.07e-04
+MB5G,ggml_compute_only_n512,Vulkan0 AMD Radeon RX 6400 (RADV NAVI24),10,15595.01,15908.93,14801.50,15451.37,ids+weights set; graph_compute; synchronize ; 2891.8 GFLOPS ; unsupported nodes 0
+MB5G,ggml_full_cycle_n512,Vulkan0 AMD Radeon RX 6400 (RADV NAVI24),10,22673.97,23644.90,21656.62,22526.40,x + ids + weights set; compute; out get ; 22581.0 tok/s (layer)
+MB5G,check:result Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12),,0,0,0,0,0,OK nmse 2.16e-12
+MB5G,ggml_compute_only_n512,Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12),10,122744.03,133390.55,117172.66,123672.85,ids+weights set; graph_compute; synchronize ; 367.4 GFLOPS ; unsupported nodes 0
+MB5G,ggml_full_cycle_n512,Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12),10,157822.95,161733.93,150735.37,157523.00,x + ids + weights set; compute; out get ; 3244.1 tok/s (layer)
+MB0,cuCtxCreate,GeForce GT 730,1,83704.5,0,0,0,OK
+MB0,check:launch GeForce GT 730,,0,0,0,0,0,OK 
+MB0,cuCtxCreate,GeForce GT 430,1,64635.9,0,0,0,101 CUDA_ERROR_INVALID_DEVICE (invalid device ordinal)
+MB0,cuCtxCreate,GeForce GT 710,1,85592.4,0,0,0,OK
+MB0,check:launch GeForce GT 710,,0,0,0,0,0,OK 
+MB1C,cuda_sync_copies,GeForce GT 730,10000,69.63,70.64,63.37,69.72,check=OK
+MB1C,cuda_async_pageable_streamsync,GeForce GT 730,10000,73.36,75.24,65.94,70.63,check=OK
+MB1C,cuda_async_pinned_streamsync,GeForce GT 730,10000,60.26,61.39,58.90,60.16,check=OK
+MB1C,cuda_async_pinned_eventpoll,GeForce GT 730,10000,60.21,63.44,58.72,60.42,check=OK
+MB1C,cuda_kernel_streamsync,GeForce GT 730,10000,10.33,10.89,10.17,10.42,T_k: tiny kernel + sync
+MB1C,cuda_write8k_sync,GeForce GT 730,10000,26.72,27.29,24.68,26.78,
+MB1C,cuda_read8k_sync,GeForce GT 730,10000,30.56,31.50,29.12,31.54,
+MB1C,cuda_sync_copies,GeForce GT 710,10000,69.58,70.60,67.34,69.77,check=OK
+MB1C,cuda_async_pageable_streamsync,GeForce GT 710,10000,73.70,75.25,65.96,70.98,check=OK
+MB1C,cuda_async_pinned_streamsync,GeForce GT 710,10000,60.35,61.34,58.90,60.16,check=OK
+MB1C,cuda_async_pinned_eventpoll,GeForce GT 710,10000,60.20,61.14,58.76,60.07,check=OK
+MB1C,cuda_kernel_streamsync,GeForce GT 710,10000,10.57,10.99,10.17,10.64,T_k: tiny kernel + sync
+MB1C,cuda_write8k_sync,GeForce GT 710,10000,26.78,27.29,24.06,26.84,
+MB1C,cuda_read8k_sync,GeForce GT 710,10000,30.58,32.90,29.19,30.88,
+MB1C,solo_tiny,GeForce GT 730,10000,60.38,63.77,58.63,60.59,
+MB1C,solo_tiny,GeForce GT 710,10000,60.42,61.85,58.94,60.31,
+MB1C,parallel_1thread_tiny,GeForce GT 730+GeForce GT 710,10000,71.51,73.64,69.90,71.57,max(solo)=60.4 sum(solo)=120.8 parallel=71.5 ; parallel/max=1.18 parallel/sum=0.59
+MB1C,check:parallel results tiny,,0,0,0,0,0,OK 
+MB1C,solo_busy500us,GeForce GT 730,3000,554.90,711.60,535.39,572.17,
+MB1C,solo_busy500us,GeForce GT 710,3000,554.69,584.16,480.91,545.19,
+MB1C,parallel_1thread_busy500us,GeForce GT 730+GeForce GT 710,3000,575.00,713.18,537.63,582.52,max(solo)=554.9 sum(solo)=1109.6 parallel=575.0 ; parallel/max=1.04 parallel/sum=0.52
+MB1C,check:parallel results busy500us,,0,0,0,0,0,OK 
+MB0,cuCtxCreate,GeForce GT 430,1,26232.3,0,0,0,OK
+MB0,check:launch GeForce GT 430,,0,0,0,0,0,OK 
+MB1C,cuda_sync_copies,GeForce GT 430,10000,69.47,71.24,67.81,69.59,check=OK
+MB1C,cuda_async_pageable_streamsync,GeForce GT 430,10000,79.19,80.95,76.19,79.31,check=OK
+MB1C,cuda_async_pinned_streamsync,GeForce GT 430,10000,79.23,82.05,72.14,79.44,check=OK
+MB1C,cuda_async_pinned_eventpoll,GeForce GT 430,10000,79.01,81.42,73.16,79.14,check=OK
+MB1C,cuda_kernel_streamsync,GeForce GT 430,10000,10.70,11.08,10.54,10.75,T_k: tiny kernel + sync
+MB1C,cuda_write8k_sync,GeForce GT 430,10000,26.62,27.12,23.09,27.10,
+MB1C,cuda_read8k_sync,GeForce GT 430,10000,31.72,33.22,31.18,31.95,
+MB3X,ES_ggml+opencl_full_cycle,Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12),1000,670.94,980.42,656.84,690.99,ggml slice + OpenCL slices; one thread: Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12):832 rows GeForce GT 730:736 rows GeForce GT 710:224 rows
+MB3X,check:ES result,,0,0,0,0,0,OK nmse 4.24e-14 / 3.58e-14
+MB3X,slice_alone_ggml_full_cycle,Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12),1000,619.94,668.43,561.87,608.86,832 rows
+MB3X,slice_alone_cl_full_cycle,GeForce GT 730,1000,659.37,666.69,648.65,658.91,736 rows
+MB3X,slice_alone_cl_full_cycle,GeForce GT 710,1000,547.18,559.18,535.27,548.77,224 rows
+MB3X,ES_ggml+opencl_full_cycle,Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12),1000,749.60,823.28,732.27,751.66,ggml slice + OpenCL slices; one thread: Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12):960 rows GeForce GT 730:832 rows
+MB3X,check:ES result,,0,0,0,0,0,OK nmse 3.95e-14 / 3.40e-14
+MB3X,slice_alone_ggml_full_cycle,Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12),1000,632.01,704.51,590.92,630.65,960 rows
+MB3X,slice_alone_cl_full_cycle,GeForce GT 730,1000,742.44,751.93,731.11,742.52,832 rows
+MB5,check:single AMD Radeon Pro WX 2100 n=128,,0,0,0,0,0,OK nmse(3 tokens) 1.95e-12
+MB5,single_full_cycle_n128,AMD Radeon Pro WX 2100,10,65256.14,66696.86,63555.99,65196.77,ntok=128 pairs=512 tiles=47  172.8 GFLOPS effective; 1961.5 tok/s (layer)
+MB5,check:single GeForce GT 730 n=128,,0,0,0,0,0,OK nmse(3 tokens) 1.95e-12
+MB5,single_full_cycle_n128,GeForce GT 730,10,205498.23,211319.18,198301.69,205416.83,ntok=128 pairs=512 tiles=47  54.9 GFLOPS effective; 622.9 tok/s (layer)
+MB5,check:single GeForce GT 710 n=128,,0,0,0,0,0,OK nmse(3 tokens) 1.95e-12
+MB5,single_full_cycle_n128,GeForce GT 710,10,412433.98,427534.07,398476.62,412674.16,ntok=128 pairs=512 tiles=47  27.3 GFLOPS effective; 310.4 tok/s (layer)
+MB5,check:ES AMD Radeon Pro WX 2100+GeForce GT 730+GeForce GT 710 n=128,,0,0,0,0,0,OK nmse(3 tokens) 1.75e-12
+MB5,ES_full_cycle_n128,AMD Radeon Pro WX 2100+GeForce GT 730+GeForce GT 710,10,56591.57,58500.92,54799.50,56619.56,AMD Radeon Pro WX 2100:1216 rows GeForce GT 730:384 rows GeForce GT 710:192 rows  ; 2261.8 tok/s (layer) ; max pairs/device=512 ; host prep(last;max)=3071 us ; x+out transfer 6.3 MB total
+MB5,ES_part_alone_n128,AMD Radeon Pro WX 2100,10,47737.48,48446.44,46665.03,47667.16,pairs=512 tokens=128
+MB5,ES_part_alone_n128,GeForce GT 730,10,48442.07,50138.17,47313.92,48461.66,pairs=512 tokens=128
+MB5,ES_part_alone_n128,GeForce GT 710,10,50152.50,51873.19,48924.27,50207.20,pairs=512 tokens=128
+MB5,check:EP AMD Radeon Pro WX 2100+GeForce GT 730+GeForce GT 710 n=128,,0,0,0,0,0,OK nmse(3 tokens) 1.95e-12
+MB5,EP_full_cycle_n128,AMD Radeon Pro WX 2100+GeForce GT 730+GeForce GT 710,10,51200.75,57071.00,49432.43,52073.35,AMD Radeon Pro WX 2100:22 experts GeForce GT 730:7 experts GeForce GT 710:3 experts  ; 2500.0 tok/s (layer) ; max pairs/device=352 ; host prep(last;max)=1800 us ; x+out transfer 4.3 MB total
+MB5,EP_part_alone_n128,AMD Radeon Pro WX 2100,10,48453.83,49014.42,44228.82,47780.88,pairs=352 tokens=127
+MB5,EP_part_alone_n128,GeForce GT 730,10,46093.09,53045.06,45874.71,47616.62,pairs=107 tokens=86
+MB5,EP_part_alone_n128,GeForce GT 710,10,41662.98,47034.37,36224.89,41467.63,pairs=53 tokens=51
+MB5,check:single AMD Radeon Pro WX 2100 n=128,,0,0,0,0,0,OK nmse(3 tokens) 1.95e-12
+MB5,single_full_cycle_n128,AMD Radeon Pro WX 2100,10,65639.33,66803.73,64041.97,65334.92,ntok=128 pairs=512 tiles=47  171.8 GFLOPS effective; 1950.1 tok/s (layer)
+MB5,check:single GeForce GT 730 n=128,,0,0,0,0,0,OK nmse(3 tokens) 1.95e-12
+MB5,single_full_cycle_n128,GeForce GT 730,10,205532.08,211380.16,198449.57,205317.96,ntok=128 pairs=512 tiles=47  54.9 GFLOPS effective; 622.8 tok/s (layer)
+MB5,check:ES AMD Radeon Pro WX 2100+GeForce GT 730 n=128,,0,0,0,0,0,OK nmse(3 tokens) 1.78e-12
+MB5,ES_full_cycle_n128,AMD Radeon Pro WX 2100+GeForce GT 730,10,57193.46,59648.11,55534.23,57210.90,AMD Radeon Pro WX 2100:1376 rows GeForce GT 730:416 rows  ; 2238.0 tok/s (layer) ; max pairs/device=512 ; host prep(last;max)=3047 us ; x+out transfer 4.2 MB total
+MB5,ES_part_alone_n128,AMD Radeon Pro WX 2100,10,52481.11,53797.19,50688.93,52341.70,pairs=512 tokens=128
+MB5,ES_part_alone_n128,GeForce GT 730,10,52001.06,53811.94,50950.43,51992.39,pairs=512 tokens=128
+MB5,check:EP AMD Radeon Pro WX 2100+GeForce GT 730 n=128,,0,0,0,0,0,OK nmse(3 tokens) 1.95e-12
+MB5,EP_full_cycle_n128,AMD Radeon Pro WX 2100+GeForce GT 730,10,58055.91,62172.19,53348.63,58053.83,AMD Radeon Pro WX 2100:24 experts GeForce GT 730:8 experts  ; 2204.8 tok/s (layer) ; max pairs/device=383 ; host prep(last;max)=2647 us ; x+out transfer 3.6 MB total
+MB5,EP_part_alone_n128,AMD Radeon Pro WX 2100,10,51430.97,53215.09,49674.26,51516.11,pairs=383 tokens=128
+MB5,EP_part_alone_n128,GeForce GT 730,10,53839.47,57992.22,50101.33,53468.75,pairs=129 tokens=93
+MB5,check:single AMD Radeon Pro WX 2100 n=512,,0,0,0,0,0,OK nmse(3 tokens) 2.00e-12
+MB5,single_full_cycle_n512,AMD Radeon Pro WX 2100,10,220053.44,221413.18,216016.71,219165.50,ntok=512 pairs=2048 tiles=146  204.9 GFLOPS effective; 2326.7 tok/s (layer)
+MB5,check:single GeForce GT 730 n=512,,0,0,0,0,0,OK nmse(3 tokens) 2.03e-12
+MB5,single_full_cycle_n512,GeForce GT 730,10,661507.41,685343.94,620581.39,659631.72,ntok=512 pairs=2048 tiles=146  68.2 GFLOPS effective; 774.0 tok/s (layer)
+MB5,check:single GeForce GT 710 n=512,,0,0,0,0,0,OK nmse(3 tokens) 2.03e-12
+MB5,single_full_cycle_n512,GeForce GT 710,10,1320087.51,1368601.20,1237537.66,1315498.87,ntok=512 pairs=2048 tiles=146  34.2 GFLOPS effective; 387.9 tok/s (layer)
+MB5,check:ES AMD Radeon Pro WX 2100+GeForce GT 730+GeForce GT 710 n=512,,0,0,0,0,0,OK nmse(3 tokens) 1.69e-12
+MB5,ES_full_cycle_n512,AMD Radeon Pro WX 2100+GeForce GT 730+GeForce GT 710,10,185448.70,191812.79,177190.69,185191.18,AMD Radeon Pro WX 2100:1216 rows GeForce GT 730:384 rows GeForce GT 710:192 rows  ; 2760.9 tok/s (layer) ; max pairs/device=2048 ; host prep(last;max)=11936 us ; x+out transfer 25.2 MB total
+MB5,ES_part_alone_n512,AMD Radeon Pro WX 2100,10,159819.22,161927.34,157529.68,159847.40,pairs=2048 tokens=512
+MB5,ES_part_alone_n512,GeForce GT 730,10,157691.24,162634.83,156124.26,158218.17,pairs=2048 tokens=512
+MB5,ES_part_alone_n512,GeForce GT 710,10,163133.89,167872.54,161661.48,163505.07,pairs=2048 tokens=512
+MB5,check:EP AMD Radeon Pro WX 2100+GeForce GT 730+GeForce GT 710 n=512,,0,0,0,0,0,OK nmse(3 tokens) 1.98e-12
+MB5,EP_full_cycle_n512,AMD Radeon Pro WX 2100+GeForce GT 730+GeForce GT 710,10,171046.74,184272.36,162313.88,172981.95,AMD Radeon Pro WX 2100:22 experts GeForce GT 730:7 experts GeForce GT 710:3 experts  ; 2993.3 tok/s (layer) ; max pairs/device=1380 ; host prep(last;max)=8153 us ; x+out transfer 16.8 MB total
+MB5,EP_part_alone_n512,AMD Radeon Pro WX 2100,10,159601.75,164414.30,158236.91,160423.28,pairs=1380 tokens=506
+MB5,EP_part_alone_n512,GeForce GT 730,10,154940.72,160726.73,141980.14,154162.78,pairs=469 tokens=343
+MB5,EP_part_alone_n512,GeForce GT 710,10,128444.89,129316.37,123838.00,127382.06,pairs=199 tokens=178
+MB5,check:single AMD Radeon Pro WX 2100 n=512,,0,0,0,0,0,OK nmse(3 tokens) 2.00e-12
+MB5,single_full_cycle_n512,AMD Radeon Pro WX 2100,10,220025.63,222487.08,216719.06,219523.29,ntok=512 pairs=2048 tiles=146  205.0 GFLOPS effective; 2327.0 tok/s (layer)
+MB5,check:single GeForce GT 730 n=512,,0,0,0,0,0,OK nmse(3 tokens) 2.03e-12
+MB5,single_full_cycle_n512,GeForce GT 730,10,661447.59,687289.86,619949.32,659312.19,ntok=512 pairs=2048 tiles=146  68.2 GFLOPS effective; 774.1 tok/s (layer)
+MB5,check:ES AMD Radeon Pro WX 2100+GeForce GT 730 n=512,,0,0,0,0,0,OK nmse(3 tokens) 1.79e-12
+MB5,ES_full_cycle_n512,AMD Radeon Pro WX 2100+GeForce GT 730,10,191197.22,199186.48,180099.40,191097.28,AMD Radeon Pro WX 2100:1376 rows GeForce GT 730:416 rows  ; 2677.9 tok/s (layer) ; max pairs/device=2048 ; host prep(last;max)=11931 us ; x+out transfer 16.8 MB total
+MB5,ES_part_alone_n512,AMD Radeon Pro WX 2100,10,176235.17,177035.84,174009.38,176014.97,pairs=2048 tokens=512
+MB5,ES_part_alone_n512,GeForce GT 730,10,168983.67,174384.79,167263.63,169533.24,pairs=2048 tokens=512
+MB5,check:EP AMD Radeon Pro WX 2100+GeForce GT 730 n=512,,0,0,0,0,0,OK nmse(3 tokens) 1.98e-12
+MB5,EP_full_cycle_n512,AMD Radeon Pro WX 2100+GeForce GT 730,10,190926.18,211135.01,181162.50,193859.77,AMD Radeon Pro WX 2100:24 experts GeForce GT 730:8 experts  ; 2681.7 tok/s (layer) ; max pairs/device=1528 ; host prep(last;max)=10654 us ; x+out transfer 14.2 MB total
+MB5,EP_part_alone_n512,AMD Radeon Pro WX 2100,10,172111.38,175064.18,169783.12,172384.16,pairs=1528 tokens=511
+MB5,EP_part_alone_n512,GeForce GT 730,10,172453.44,183534.64,165033.17,174610.57,pairs=520 tokens=356

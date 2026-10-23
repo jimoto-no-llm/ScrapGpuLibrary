@@ -7,6 +7,7 @@
 // checks (same-backend plan/stream, desc validation) apply unchanged in this process.
 
 #include "protocol.h"
+#include "trace.h"
 
 #include "scrapgpu/api.h"
 #include "scrapgpu/backend.h"
@@ -21,6 +22,9 @@
 #endif
 #ifdef SCRAPGPU_SERVER_WITH_VULKAN
 #include "scrapgpu/vulkan.h"
+#endif
+#ifdef SCRAPGPU_SERVER_WITH_CUDA
+#include "scrapgpu/cuda.h"
 #endif
 
 #include <algorithm>
@@ -41,6 +45,10 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/un.h>
+#include <sys/resource.h>
+#ifdef __linux__
+#include <sched.h>
+#endif
 
 namespace {
 
@@ -105,8 +113,20 @@ bool read_all(int fd, void * p, size_t n) {
     return true;
 }
 
+// SGR_OP_BATCH: the responses of all requests but the last are not sent; the first failure is remembered and answers the batch
+bool g_quiet = false;
+bool g_sub_failed = false;
+scrapgpu_status g_sub_status = SCRAPGPU_STATUS_OK;
+
 // the response: the call's status, then the last-error string and the op-specific fields
 bool respond(scrapgpu_status status, const std::vector<uint8_t> & body) {
+    if (g_quiet) {
+        if (status != SCRAPGPU_STATUS_OK) {
+            g_sub_failed = true;
+            g_sub_status = status;
+        }
+        return true;
+    }
     std::vector<uint8_t> msg;
     msg.reserve(sgr::kHdrSize + 4 + body.size() + 256);
     const char * err = status == SCRAPGPU_STATUS_OK ? "" : scrapgpu_last_error();
@@ -158,14 +178,17 @@ void srv_shm_create() {
 }
 
 bool srv_shm_resize(size_t size) {
+    // The old mapping stays valid when the object cannot grow: macOS allows ftruncate() of a POSIX shm object once, so the first request above the
+    // initial 1 MiB fails there. The client keeps its own mapping of the old size in that case and sends the data inline; if the server dropped
+    // its mapping here, the next transfer that the client still routes through the shared memory would find none.
+    if (ftruncate(g_shm_fd, (off_t) size) != 0) {
+        return false;
+    }
     if (g_shm != nullptr) {
         munmap(g_shm, g_shm_size);
         g_shm = nullptr;
     }
     g_shm_size = 0;
-    if (ftruncate(g_shm_fd, (off_t) size) != 0) {
-        return false;
-    }
     void * p = mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED, g_shm_fd, 0);
     if (p == MAP_FAILED) {
         return false;
@@ -237,6 +260,46 @@ bool get_op(sgr::cur & c, srv_op & o) {
 bool handle(uint32_t op, sgr::cur c) {
     scrapgpu_clear_last_error();
     switch (op) {
+        case SGR_OP_BATCH: {
+            if (g_quiet) {
+                return fail(SCRAPGPU_STATUS_INVALID_ARGUMENT, "remote: nested BATCH");
+            }
+            uint32_t n = 0;
+            if (!sgr::get_u32(c, n) || n == 0 || n > 64) {
+                return fail(SCRAPGPU_STATUS_INVALID_ARGUMENT, "remote: malformed BATCH");
+            }
+            for (uint32_t i = 0; i < n; ++i) {
+                uint32_t sub_op = 0;
+                uint64_t sub_size = 0;
+                if (!sgr::get_u32(c, sub_op) || !sgr::get_u64(c, sub_size) || sub_size > c.n || sub_op == SGR_OP_BATCH) {
+                    return fail(SCRAPGPU_STATUS_INVALID_ARGUMENT, "remote: malformed BATCH entry");
+                }
+                const sgr::cur sub{sub_size > 0 ? c.p : nullptr, (size_t) sub_size};
+                c.p += sub_size;
+                c.n -= (size_t) sub_size;
+                const bool last = i + 1 == n;
+                g_quiet = !last;
+                g_sub_failed = false;
+                bool alive = true;
+                try {
+                    sgr::trace("s_sub_b", sub_op);
+                    alive = handle(sub_op, sub);
+                    sgr::trace("s_sub_e", sub_op);
+                } catch (...) {
+                    g_quiet = false;
+                    throw;
+                }
+                g_quiet = false;
+                if (!alive) {
+                    return false;
+                }
+                if (!last && g_sub_failed) {
+                    // the failure answers the batch; scrapgpu_last_error() still holds its message
+                    return respond(g_sub_status, {});
+                }
+            }
+            return true;
+        }
         case SGR_OP_HELLO: {
             uint32_t version = 0;
             if (!sgr::get_u32(c, version) || version != sgr::kVersion) {
@@ -630,7 +693,7 @@ bool handle(uint32_t op, sgr::cur c) {
 // ---------------------------------------------------------------------------------------------
 
 void usage(const char * argv0) {
-    std::fprintf(stderr, "usage: %s --socket PATH [--backend opencl11[,vulkan]]\n", argv0);
+    std::fprintf(stderr, "usage: %s --socket PATH [--backend opencl11[,vulkan][,cuda]]\n", argv0);
 }
 
 int srv_register(const std::string & name) {
@@ -650,8 +713,71 @@ int srv_register(const std::string & name) {
         return 1;
 #endif
     }
+    if (name == "cuda") {
+#ifdef SCRAPGPU_SERVER_WITH_CUDA
+        return scrapgpu_cuda_register() == SCRAPGPU_STATUS_OK ? 0 : 1;
+#else
+        std::fprintf(stderr, "scrapgpu-device-server: built without the cuda backend\n");
+        return 1;
+#endif
+    }
     std::fprintf(stderr, "scrapgpu-device-server: unknown backend '%s'\n", name.c_str());
     return 1;
+}
+
+
+// SCRAPGPU_SERVER_SPIN_US=N: poll the socket for up to N us before sleeping in read() (the sleep and wake-up of the server thread are part of every
+// round trip; on a host whose cores are all busy the wake-up can take a time slice). 0 (default) = plain blocking read.
+long g_spin_us = 0;
+
+void spin_for_input(int fd) {
+    if (g_spin_us <= 0) {
+        return;
+    }
+    const uint64_t t0 = sgr::trace_now_ns();
+    char c;
+    while ((sgr::trace_now_ns() - t0) < (uint64_t) g_spin_us * 1000ull) {
+        const ssize_t r = recv(fd, &c, 1, MSG_PEEK | MSG_DONTWAIT);
+        if (r != -1 || (errno != EAGAIN && errno != EWOULDBLOCK)) {
+            return; // data, EOF or an error: let read() sort it out
+        }
+#if defined(__x86_64__) || defined(__i386__)
+        __builtin_ia32_pause();
+#endif
+    }
+}
+
+// SCRAPGPU_SERVER_CPU=n pins the server to cpu n (Linux); SCRAPGPU_SERVER_SCHED=batch|idle sets the scheduling policy of the process (Linux, no privilege)
+void apply_sched_env() {
+#ifdef __linux__
+    const char * cpu = std::getenv("SCRAPGPU_SERVER_CPU");
+    if (cpu != nullptr && *cpu != '\0') {
+        cpu_set_t set;
+        CPU_ZERO(&set);
+        CPU_SET(std::atoi(cpu), &set);
+        if (sched_setaffinity(0, sizeof(set), &set) != 0) {
+            std::fprintf(stderr, "scrapgpu-device-server: SCRAPGPU_SERVER_CPU: %s\n", strerror(errno));
+        }
+    }
+    const char * pol = std::getenv("SCRAPGPU_SERVER_SCHED");
+    if (pol != nullptr && *pol != '\0') {
+        sched_param sp = {};
+        const int policy = std::string(pol) == "batch" ? SCHED_BATCH : std::string(pol) == "idle" ? SCHED_IDLE : SCHED_OTHER;
+        if (sched_setscheduler(0, policy, &sp) != 0) {
+            std::fprintf(stderr, "scrapgpu-device-server: SCRAPGPU_SERVER_SCHED: %s\n", strerror(errno));
+        }
+    }
+    const char * nice_s = std::getenv("SCRAPGPU_SERVER_NICE");
+    if (nice_s != nullptr && *nice_s != '\0') {
+        if (setpriority(PRIO_PROCESS, 0, std::atoi(nice_s)) != 0) {
+            std::fprintf(stderr, "scrapgpu-device-server: SCRAPGPU_SERVER_NICE: %s\n", strerror(errno));
+        }
+    }
+#endif
+    const char * sp = std::getenv("SCRAPGPU_SERVER_SPIN_US");
+    if (sp != nullptr && *sp != '\0') {
+        g_spin_us = std::atol(sp);
+    }
 }
 
 } // namespace
@@ -679,6 +805,7 @@ int main(int argc, char ** argv) {
     }
 
     signal(SIGPIPE, SIG_IGN);
+    apply_sched_env();
 
     size_t pos = 0;
     int nbackends = 0;
@@ -765,9 +892,11 @@ int main(int argc, char ** argv) {
 
     for (;;) {
         uint8_t hdr[sgr::kHdrSize];
+        spin_for_input(g_client);
         if (!read_all(g_client, hdr, sizeof(hdr))) {
             break; // the client disconnected
         }
+        sgr::trace("s_hdr");
         sgr::cur hc{hdr, sgr::kHdrSize};
         uint32_t magic = 0, op = 0;
         uint64_t size = 0;
@@ -791,6 +920,7 @@ int main(int argc, char ** argv) {
         if (size > 0 && !read_all(g_client, payload.data(), (size_t) size)) {
             break;
         }
+        sgr::trace("s_payload", (int64_t) size);
         sgr::cur body{payload.empty() ? nullptr : payload.data(), payload.size()};
         bool alive = true;
         try {
@@ -799,10 +929,12 @@ int main(int argc, char ** argv) {
             // a handler ran out of memory (a response or a decoded plan): report it and keep serving
             alive = fail(SCRAPGPU_STATUS_OUT_OF_MEMORY, "remote: out of memory");
         }
+        sgr::trace("s_done", op);
         if (!alive) {
             break;
         }
     }
+    sgr::trace_dump(".srv");
 
     close(g_client);
     if (g_shm != nullptr) {

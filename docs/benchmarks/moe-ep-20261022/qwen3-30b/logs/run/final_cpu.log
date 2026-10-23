@@ -1,0 +1,13 @@
+# date: 2026-10-22_18:23:42  host: tb250  tag: final_cpu
+# perf: 0000:03:00.0 perf=auto 0000:06:00.0 perf=auto 
+# temps at start:  amd37 amd34 GT 430=45 GT 730=34 GT 710=34    (max 45 C)
+# env: VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json 
+# cmd: /home/eightman/moe-ep/src/llama-build/bin/llama-bench -m /home/eightman/moe-ep/models/Qwen3-30B-A3B-Q4_0.gguf -dev none -ngl 0 -fa 0 -t 2 -b 512 -ub 512 -r 3 -sm layer -ncmoe 0 -o jsonl -p 512 -n 128 -pg 512,128
+load_backend: loaded RPC backend from /home/eightman/moe-ep/src/llama-build/bin/libggml-rpc.so
+ggml_vulkan: Found 2 Vulkan devices:
+ggml_vulkan: 0 = AMD Radeon RX 6400 (RADV NAVI24) (radv) | uma: 0 | fp16: 1 | bf16: 0 | fp4: 0 | warp size: 32 | shared memory: 65536 | int dot: 1 | matrix cores: none
+ggml_vulkan: 1 = AMD Radeon Pro WX 2100 (RADV POLARIS12) (radv) | uma: 0 | fp16: 0 | bf16: 0 | fp4: 0 | warp size: 64 | shared memory: 65536 | int dot: 0 | matrix cores: none
+load_backend: loaded Vulkan backend from /home/eightman/moe-ep/src/llama-build/bin/libggml-vulkan.so
+load_backend: loaded CPU backend from /home/eightman/moe-ep/src/llama-build/bin/libggml-cpu.so
+# rc=0  seconds=1447
+# temps at end:  amd37 amd33 GT 430=45 GT 730=33 GT 710=34    (max 45 C)

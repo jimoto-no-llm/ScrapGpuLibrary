@@ -1,0 +1,21 @@
+# date: 2026-10-21_13:15:32  host: tb250  tag: kld_sglx1_vk0_save
+# temps at start:  amd39 amd39 GT 430=45 GT 730=35 GT 710=35    (max 46 C)
+# env: GGML_CL11_PLATFORMS=NVIDIA GGML_SGLX_PROFILE=1 GGML_CL11_DEVICES=GT 730,GT 710 GGML_SGLX_SPLIT=Vulkan0:1 GGML_BACKEND_PATH=/home/eightman/moe-ep/sglx/build-cl11/libggml-cl11.so VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json GGML_CL11_AUTO_RPC=0 
+# cmd: /home/eightman/moe-ep/src/llama-build/bin/llama-perplexity -m /home/eightman/moe-ep/models/LFM2.5-8B-A1B-Q4_0.gguf -f /home/eightman/moe-ep/kl/text.txt -c 512 --chunks 4 -b 128 -ub 128 -t 2 -fa off -dev Vulkan0,Vulkan1,SGLX0 -ngl 99 -sm layer -ts 5/1/0 -ot token_embd\.weight=SGLX0 --kl-divergence-base /home/eightman/moe-ep/sglx/kl/kld_sglx1_vk0_save.kld
+SGLX: SGLX0 splits the rows of its weights over: Vulkan0 (AMD Radeon RX 6400 (RADV NAVI24)) 1.000
+0.01.657.292 W common_fit_params: failed to fit params to free device memory: n_gpu_layers already set by user to 99, abort
+0.06.997.398 W llama_kv_cache: the V embeddings have different sizes across layers and FA is not enabled - padding V cache to 512
+0.07.025.731 I cmn          init: llama threadpool init, n_threads = 2
+SGLX: uploaded 205.1 MiB (q6_K 2048 x 128000) in 168.7 ms: Vulkan0[0..128000)
+0.07.267.155 I 
+0.07.267.223 I system_info: n_threads = 2 (n_threads_batch = 2) / 2 | CPU : SSE3 = 1 | SSSE3 = 1 | LLAMAFILE = 1 | OPENMP = 1 | REPACK = 1 | 
+0.07.267.283 I perplexity: saving all logits to /home/eightman/moe-ep/sglx/kl/kld_sglx1_vk0_save.kld
+0.07.267.288 I perplexity: tokenizing the input ..
+0.07.427.781 I perplexity: tokenization took 160.484 ms
+0.07.427.876 I perplexity: calculating perplexity over 4 chunks, n_ctx=512, batch_size=128, n_seq=1
+0.09.314.527 I perplexity: 1.87 seconds per pass - ETA 0.15.433.376 I Final estimate: PPL = 23.9188 +/- 2.65670
+SGLX profile MUL_MAT N>1: calls 6, mean 99.729 ms (max 99.914), gather 0.002, scatter 7.633;  Vulkan0: submit 0.268 ms, done at 92.095 ms (max 92.314)
+SGLX profile token phases (N=1): GET_ROWS 0.000 ms; layers on the other devices (GET_ROWS end -> MUL_MAT start) 57.274 ms; after MUL_MAT (-> next GET_ROWS: logits, sampling, next graph) 0.000 ms
+SGLX profile upload: 1 weights, 168.7 ms in total
+# rc=0  seconds=17
+# temps at end:  amd42 amd41 GT 430=45 GT 730=35 GT 710=35    (max 45 C)

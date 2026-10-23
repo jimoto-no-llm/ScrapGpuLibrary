@@ -1,6 +1,7 @@
 // GPU tests of the ops through the public C API only: every op the selected backend reports as
 // supported is run on the device and compared against the CPU reference (scrapgpu_ref_execute).
-// The backend is selected with SCRAPGPU_TEST_BACKEND=opencl11|vulkan (default opencl11).
+// The backend is selected with SCRAPGPU_TEST_BACKEND=opencl11|vulkan|cuda|remote (default opencl11); SCRAPGPU_TEST_REMOTE_BATCH=1 runs the remote
+// backend with scrapgpu_remote_set_batching.
 // Exit code 77 (ctest SKIP_RETURN_CODE) when no device of the backend exists.
 
 #include "scrapgpu/api.h"
@@ -18,6 +19,9 @@
 #endif
 #if defined(SCRAPGPU_OPS_TEST_WITH_VULKAN)
 #include "scrapgpu/vulkan.h"
+#endif
+#if defined(SCRAPGPU_OPS_TEST_WITH_CUDA)
+#include "scrapgpu/cuda.h"
 #endif
 #if defined(SCRAPGPU_OPS_TEST_WITH_REMOTE)
 #include "scrapgpu/remote.h"
@@ -1078,10 +1082,54 @@ void test_plan_lifetime() {
     node.op.output_count = 1;
     const char * why = nullptr;
     if (scrapgpu_op_supported(g_dev, &node.op, &why) != SCRAPGPU_STATUS_OK) {
-        std::printf("SKIP  %-24s %s\n", "plan buffer lifetime", why != nullptr ? why : "op not supported");
-        ++g_skipped;
         CHECK_OK(scrapgpu_buffer_free(ba));
         CHECK_OK(scrapgpu_buffer_free(bd));
+        // a backend without ADD (the CUDA backend): the same checks with a MUL_MAT of all-zero Q4_0 weights, whose result is exactly 0
+        TT w = tmake(tdesc(SCRAPGPU_DTYPE_Q4_0, 64, 4), g_weight_layout);
+        tquantize(w, std::vector<float>((size_t) tn(w.rdesc), 0.0f));
+        TT x = tmake(tdesc(SCRAPGPU_DTYPE_F32, 64));
+        tfill(x, frand_vec(64));
+        TT o = tmake(tdesc(SCRAPGPU_DTYPE_F32, 4));
+        tfill(o, std::vector<float>(4, 1.0f));
+        scrapgpu_tensor_desc mins[2] = {w.gdesc, x.gdesc};
+        scrapgpu_tensor_desc mouts[1] = {o.gdesc};
+        scrapgpu_mul_mat_params mp{sizeof(mp), 0};
+        scrapgpu_plan_node mnode{};
+        mnode.struct_size = sizeof(mnode);
+        mnode.output_use_count = 1;
+        mnode.op.struct_size = sizeof(mnode.op);
+        mnode.op.op = SCRAPGPU_OP_MUL_MAT;
+        mnode.op.inputs = mins;
+        mnode.op.input_count = 2;
+        mnode.op.outputs = mouts;
+        mnode.op.output_count = 1;
+        mnode.op.params = &mp;
+        mnode.op.params_size = sizeof(mp);
+        if (scrapgpu_op_supported(g_dev, &mnode.op, &why) != SCRAPGPU_STATUS_OK) {
+            std::printf("SKIP  %-24s %s\n", "plan buffer lifetime", why != nullptr ? why : "op not supported");
+            ++g_skipped;
+            return;
+        }
+        tupload(w);
+        tupload(x);
+        tupload(o);
+        scrapgpu_plan_desc mpd{};
+        mpd.struct_size = sizeof(mpd);
+        mpd.nodes = &mnode;
+        mpd.node_count = 1;
+        scrapgpu_plan_t * mplan = nullptr;
+        CHECK_OK(scrapgpu_plan_build(g_dev, &mpd, &mplan));
+        CHECK(scrapgpu_buffer_free(w.buf) == SCRAPGPU_STATUS_INVALID_ARGUMENT);
+        CHECK(scrapgpu_buffer_free(o.buf) == SCRAPGPU_STATUS_INVALID_ARGUMENT);
+        CHECK_OK(scrapgpu_plan_execute(g_stream, mplan));
+        CHECK_OK(scrapgpu_stream_sync(g_stream));
+        tdownload(o);
+        for (float v : tfloats(o)) {
+            CHECK(v == 0.0f);
+        }
+        CHECK_OK(scrapgpu_plan_free(mplan));
+        std::printf("PASS  %-24s plan->buffer refs, free refused, plan executed (MUL_MAT)\n", "plan buffer lifetime");
+        ++g_run;
         return;
     }
     scrapgpu_plan_desc pd{};
@@ -1138,7 +1186,13 @@ void test_tensor_copy() {
         d.input_count = 2;
         d.outputs = &sum_d;
         d.output_count = 1;
-        CHECK_OK(scrapgpu_op_execute(g_stream, &d)); // still in flight
+        if (scrapgpu_op_supported(g_dev, &d, nullptr) == SCRAPGPU_STATUS_OK) {
+            CHECK_OK(scrapgpu_op_execute(g_stream, &d)); // still in flight
+        } else {
+            // a backend without ADD (the CUDA backend): the source holds uploaded bytes instead of a result in flight
+            tfill(sum, frand_vec(tn(sum.rdesc)));
+            tupload(sum);
+        }
         CHECK_OK(scrapgpu_tensor_copy(g_stream, &sum.gdesc, s2, &cpy.gdesc));
         CHECK_OK(scrapgpu_tensor_download(s2, &cpy.gdesc, cpy.host.data(), cpy.host.size()));
         tdownload(sum);
@@ -1226,6 +1280,13 @@ int main() {
         backend = "opencl11";
     }
     if (std::strcmp(backend, "opencl11") == 0) {
+        if (std::getenv("SCRAPGPU_TEST_REMOTE_BATCH") != nullptr && std::atoi(std::getenv("SCRAPGPU_TEST_REMOTE_BATCH")) != 0) {
+            // the same suite with the writes and op executions held back and sent in front of the next call (one round trip)
+            if (scrapgpu_remote_set_batching(g_remote, 1) != SCRAPGPU_STATUS_OK) {
+                std::fprintf(stderr, "scrapgpu_remote_set_batching failed: %s\n", scrapgpu_last_error());
+                return 1;
+            }
+        }
 #if defined(SCRAPGPU_OPS_TEST_WITH_OPENCL11)
         if (scrapgpu_opencl11_register() != SCRAPGPU_STATUS_OK) {
             std::fprintf(stderr, "scrapgpu_opencl11_register failed: %s\n", scrapgpu_last_error());
@@ -1244,6 +1305,17 @@ int main() {
         g_weight_layout = SCRAPGPU_LAYOUT_NATURAL;
 #else
         std::printf("SKIP: built without the Vulkan backend\n");
+        return 77;
+#endif
+    } else if (std::strcmp(backend, "cuda") == 0) {
+#if defined(SCRAPGPU_OPS_TEST_WITH_CUDA)
+        if (scrapgpu_cuda_register() != SCRAPGPU_STATUS_OK) {
+            std::fprintf(stderr, "scrapgpu_cuda_register failed: %s\n", scrapgpu_last_error());
+            return 1;
+        }
+        // g_weight_layout stays R32: the CUDA kernels read the layout of the OpenCL 1.1 backend
+#else
+        std::printf("SKIP: built without the CUDA backend\n");
         return 77;
 #endif
     } else if (std::strcmp(backend, "remote") == 0) {

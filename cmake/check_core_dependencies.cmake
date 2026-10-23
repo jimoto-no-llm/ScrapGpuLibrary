@@ -40,6 +40,12 @@ file(GLOB_RECURSE SCRAPGPU_OPENCL11_SOURCES
     "${ROOT_DIR}/src/backends/opencl11/*.hpp"
     "${ROOT_DIR}/src/backends/opencl11/*.c"
     "${ROOT_DIR}/src/backends/opencl11/*.cpp")
+file(GLOB_RECURSE SCRAPGPU_CUDA_SOURCES
+    "${ROOT_DIR}/src/backends/cuda/*.h"
+    "${ROOT_DIR}/src/backends/cuda/*.hpp"
+    "${ROOT_DIR}/src/backends/cuda/*.c"
+    "${ROOT_DIR}/src/backends/cuda/*.cpp"
+    "${ROOT_DIR}/tests/cuda/*.cpp")
 file(GLOB_RECURSE SCRAPGPU_VULKAN_SOURCES
     "${ROOT_DIR}/src/backends/vulkan/*.h"
     "${ROOT_DIR}/src/backends/vulkan/*.hpp"
@@ -58,7 +64,7 @@ foreach (FILE IN LISTS SCRAPGPU_PUBLIC_HEADERS SCRAPGPU_CORE_SOURCES SCRAPGPU_TE
 endforeach()
 
 set(FORBIDDEN_OPENCL11_PATTERN "(^|\n)[ \t]*#[ \t]*include[ \t]*[<\"]([^>\"]*(ggml|torch|onnxruntime)[^>\"]*)[>\"]")
-foreach (FILE IN LISTS SCRAPGPU_OPENCL11_SOURCES SCRAPGPU_VULKAN_SOURCES)
+foreach (FILE IN LISTS SCRAPGPU_OPENCL11_SOURCES SCRAPGPU_VULKAN_SOURCES SCRAPGPU_CUDA_SOURCES)
     file(READ "${FILE}" CONTENT)
     if (CONTENT MATCHES "${FORBIDDEN_OPENCL11_PATTERN}")
         message(FATAL_ERROR "Forbidden adapter dependency include in ${FILE}: ${CMAKE_MATCH_2}")

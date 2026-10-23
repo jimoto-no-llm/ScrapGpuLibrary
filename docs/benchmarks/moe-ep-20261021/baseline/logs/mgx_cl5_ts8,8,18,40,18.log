@@ -1,0 +1,25 @@
+# date: 2026-10-21_02:26:15  host: tb250  tag: mgx_cl5_ts8,8,18,40,18
+# temps at start:  amd40 amd39 GT 430=44 GT 730=34 GT 710=34 
+# env: GGML_CL11_PLATFORMS=NVIDIA,rusticl RUSTICL_ENABLE=radeonsi GGML_BACKEND_PATH=/home/eightman/moe-ep/src/build-cl11/libggml-cl11.so VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json 
+# cmd: /home/eightman/moe-ep/src/llama-build/bin/llama-bench -m /home/eightman/moe-ep/models/LFM2.5-8B-A1B-Q4_0.gguf -dev RPC0/CL11_0/CL11_1/CL11_2/CL11_3 -ngl 99 -fa 0 -t 2 -b 128 -ub 128 -r 2 -ts 8/8/18/40/18 -sm layer -ncmoe 0 -o jsonl -p 128 -n 64
+load_backend: loaded RPC backend from /home/eightman/moe-ep/src/llama-build/bin/libggml-rpc.so
+ggml_vulkan: Found 2 Vulkan devices:
+ggml_vulkan: 0 = AMD Radeon RX 6400 (RADV NAVI24) (radv) | uma: 0 | fp16: 1 | bf16: 0 | fp4: 0 | warp size: 32 | shared memory: 65536 | int dot: 1 | matrix cores: none
+ggml_vulkan: 1 = AMD Radeon Pro WX 2100 (RADV POLARIS12) (radv) | uma: 0 | fp16: 0 | bf16: 0 | fp4: 0 | warp size: 64 | shared memory: 65536 | int dot: 0 | matrix cores: none
+load_backend: loaded Vulkan backend from /home/eightman/moe-ep/src/llama-build/bin/libggml-vulkan.so
+load_backend: loaded CPU backend from /home/eightman/moe-ep/src/llama-build/bin/libggml-cpu.so
+cl11_filter_open_conflicts: skipping 'GeForce GT 430' (cc 2.1): it cannot be opened in the same process as 'GeForce GT 730' (clCreateContext: CL_INVALID_DEVICE); the NVIDIA driver does not mix GPU generations. Select the devices with GGML_CL11_DEVICES, or run the device in another process (the remote backend / scrapgpu-device-server, or llama.cpp RPC). GGML_CL11_NO_CONFLICT_CHECK=1 disables this check.
+cl11_serve_dropped_over_rpc: 'GeForce GT 430' cannot share a process with the other GPUs: served by ggml-rpc-server (pid 37096, 127.0.0.1:40523) as an RPC device; run with -fa off (the RPC device reports FLASH_ATTN_EXT as supported, the CL11 server aborts on it)
+load_backend: loaded CL11 backend from /home/eightman/moe-ep/src/build-cl11/libggml-cl11.so
+cl11_ensure_program: CL11_1: multi mat-vec (Q / K / V, FFN gate / up in one launch) enabled
+cl11_ensure_program: CL11_1: mat-mat variant: tile 64 x 64, 8 x 4 values per work-item, BK 16, unroll 16, prefetch 0, 128 work-items
+cl11_ensure_program: CL11_1: GeForce GT 710, OpenCL 1.2 CUDA, kernels built (work-group sizes: element-wise 128, row 128, mat-vec 128, mat-mat 16x16)
+cl11_ensure_program: rebuilding the kernels with smaller work-groups
+cl11_ensure_program: CL11_2: AMD Radeon RX 6400 (radeonsi, navi24, LLVM 19.1.7, DRM 3.61, 6.12.107+deb13-amd64), OpenCL 3.0 , kernels built (work-group sizes: element-wise 128, row 128, mat-vec 128, mat-mat 16x16)
+cl11_ensure_program: rebuilding the kernels with smaller work-groups
+cl11_ensure_program: CL11_3: AMD Radeon Pro WX 2100 (radeonsi, polaris12, ACO, DRM 3.61, 6.12.107+deb13-amd64), OpenCL 3.0 , kernels built (work-group sizes: element-wise 128, row 128, mat-vec 128, mat-mat 16x16)
+cl11_ensure_program: CL11_0: multi mat-vec (Q / K / V, FFN gate / up in one launch) enabled
+cl11_ensure_program: CL11_0: mat-mat variant: tile 64 x 64, 8 x 4 values per work-item, BK 16, unroll 16, prefetch 0, 128 work-items
+cl11_ensure_program: CL11_0: GeForce GT 730, OpenCL 1.2 CUDA, kernels built (work-group sizes: element-wise 128, row 128, mat-vec 128, mat-mat 16x16)
+# rc=0  seconds=83
+# temps at end:  amd40 amd41 GT 430=45 GT 730=35 GT 710=35 

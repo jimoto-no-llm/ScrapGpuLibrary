@@ -1,0 +1,3 @@
+samples with llama-bench > 50%: 32
+T:llama-bench                mean   64.5 %   max  102.8 %
+llama-bench                  mean   64.6 %   max   98.9 %

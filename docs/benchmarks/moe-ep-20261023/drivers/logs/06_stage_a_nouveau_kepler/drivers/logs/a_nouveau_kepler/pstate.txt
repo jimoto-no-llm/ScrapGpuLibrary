@@ -1,0 +1,10 @@
+# sudo -n /usr/local/sbin/sgl-driver-switch pstate show
+== 0000:07:00.0 (card2)
+07: core 405 MHz memory 810 MHz
+0f: core 954 MHz memory 5010 MHz
+AC: core 405 MHz memory 810 MHz
+== 0000:08:00.0 (card3)
+07: core 405 MHz memory 810 MHz
+0f: core 653-954 MHz memory 1600 MHz
+AC: core 405 MHz memory 810 MHz
+# rc=0

@@ -1,0 +1,9 @@
+# date: 2026-10-23_11:46:55  host: tb250  tag: trace_py_code
+# temps at start:  amd49 amd41 GT 430=44 GT 730=34 GT 710=34    (max 43 C)
+# env: 
+# perf: 0000:03:00.0 perf=manual 0000:06:00.0 perf=manual 
+# cmd: bin/hec_trace -m /home/eightman/moe-ep/models/Qwen3-30B-A3B-Q4_0.gguf --cpu-lib /home/eightman/moe-ep/src/llama-build/bin/libggml-cpu.so --out trace/py_code --text corpus/py_code.txt --n-prompt 512 --n-gen 256 --seed 1234
+prompt: 512 tokens from corpus/py_code.txt
+wrote trace/py_code.bin (768 tokens x 48 layers x 8)
+# rc=0  seconds=284
+# temps at end:  amd37 amd37 GT 430=44 GT 730=32 GT 710=33    (max 44 C)

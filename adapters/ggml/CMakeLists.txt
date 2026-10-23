@@ -74,9 +74,24 @@ if (NOT TARGET scrapgpu_opencl11)
         POSITION_INDEPENDENT_CODE ON)
 endif()
 
+# the SGLX composite device (GGML_SGLX_SPLIT): composite/
+set(SGLX_SOURCES
+    composite/composite_device.cpp
+    composite/moe_block.cpp
+    composite/moe_cpu.cpp
+    composite/pdev_ggml.cpp
+    composite/pdev_cl11.cpp
+    composite/pdev_cuda.cpp
+    composite/pdev_scrapgpu.cpp
+    composite/composite.h
+    composite/moe_block.h
+    composite/moe_cpu.h
+    composite/pdev.h)
+
 if (CL11_IN_TREE)
     ggml_add_backend_library(${TARGET_NAME}
                              ggml-cl11.cpp
+                             ${SGLX_SOURCES}
                              ../../include/ggml-cl11.h)
 else()
     # ---- out-of-tree plugin -------------------------------------------------------------------------------------
@@ -150,6 +165,7 @@ else()
 
     add_library(${TARGET_NAME} MODULE
                 ggml-cl11.cpp
+                ${SGLX_SOURCES}
                 include/ggml-cl11.h)
     # same definitions as ggml_add_backend_library (ggml/src/CMakeLists.txt) with GGML_BACKEND_DL and BUILD_SHARED_LIBS
     target_compile_definitions(${TARGET_NAME} PRIVATE GGML_BACKEND_DL GGML_BACKEND_BUILD GGML_BACKEND_SHARED)
@@ -164,6 +180,75 @@ else()
         BUILD_RPATH "${_base_dir}"
         INSTALL_RPATH "${_base_dir}")
     install(TARGETS ${TARGET_NAME} LIBRARY DESTINATION lib)
+endif()
+
+# NVIDIA GPUs as physical devices of the SGLX composite device through the CUDA Driver API ("CUDA0", "CUDA1", ... in GGML_SGLX_SPLIT, see
+# composite/pdev_cuda.cpp): the CUDA backend of src/backends/cuda, with libcuda loaded at run time. No CUDA toolkit and no libcuda are needed to
+# build or to load the plugin (without libcuda there are 0 CUDA devices). Out-of-tree builds only.
+option(CL11_WITH_CUDA "SGLX: NVIDIA GPUs through the CUDA Driver API (composite/pdev_cuda.cpp, src/backends/cuda)" OFF)
+if (CL11_WITH_CUDA)
+    if (NOT EXISTS "${CL11_SRC_DIR}/backends/cuda/device.cpp")
+        message(FATAL_ERROR "CL11_WITH_CUDA needs the repository tree (src/backends/cuda), not the in-tree copy")
+    endif()
+    target_sources(${TARGET_NAME} PRIVATE
+        "${CL11_SRC_DIR}/backends/cuda/driver.cpp"
+        "${CL11_SRC_DIR}/backends/cuda/device.cpp"
+        "${CL11_SRC_DIR}/backends/cuda/r32_transfer.cpp")
+    target_include_directories(${TARGET_NAME} PRIVATE "${CL11_SRC_DIR}/backends")
+    target_compile_definitions(${TARGET_NAME} PRIVATE SGLX_WITH_CUDA)
+    target_link_libraries(${TARGET_NAME} PRIVATE ${CMAKE_DL_LIBS})
+endif()
+
+# A device in another process through the ScrapGpu C API ("REMOTE0", ... in GGML_SGLX_SPLIT, see composite/pdev_scrapgpu.cpp): the core library and the
+# client of the remote backend (src/backends/remote) are compiled into the plugin; the server is the scrapgpu-device-server of the main build
+# (SCRAPGPU_BUILD_REMOTE, with --backend opencl11 or cuda). POSIX only, out-of-tree builds only.
+option(CL11_WITH_REMOTE "SGLX: devices of a scrapgpu-device-server (composite/pdev_scrapgpu.cpp, src/backends/remote client)" OFF)
+if (CL11_WITH_REMOTE)
+    if (NOT EXISTS "${CL11_SRC_DIR}/backends/remote/client.cpp")
+        message(FATAL_ERROR "CL11_WITH_REMOTE needs the repository tree (src/backends/remote), not the in-tree copy")
+    endif()
+    if (NOT UNIX)
+        message(FATAL_ERROR "CL11_WITH_REMOTE needs a POSIX system")
+    endif()
+    if (NOT TARGET scrapgpu_core)
+        add_library(scrapgpu_core STATIC
+            "${CL11_SRC_DIR}/core/op.cpp"
+            "${CL11_SRC_DIR}/core/compat.cpp"
+            "${CL11_SRC_DIR}/core/attention.cpp"
+            "${CL11_SRC_DIR}/core/ref/f16.cpp"
+            "${CL11_SRC_DIR}/core/ref/ops.cpp"
+            "${CL11_SRC_DIR}/core/ref/quant.cpp"
+            "${CL11_SRC_DIR}/core/registry.cpp"
+            "${CL11_SRC_DIR}/core/status.cpp"
+            "${CL11_SRC_DIR}/core/tensor.cpp"
+            "${CL11_SRC_DIR}/core/transport.cpp"
+            "${CL11_SRC_DIR}/backends/cpu/api.cpp")
+        target_include_directories(scrapgpu_core PUBLIC "${CL11_PUBLIC_INC}" PRIVATE "${CL11_SRC_DIR}")
+        target_link_libraries(scrapgpu_core PRIVATE scrapgpu_tensor)
+        target_compile_features(scrapgpu_core PUBLIC cxx_std_17)
+        set_target_properties(scrapgpu_core PROPERTIES
+            CXX_VISIBILITY_PRESET hidden
+            VISIBILITY_INLINES_HIDDEN ON
+            POSITION_INDEPENDENT_CODE ON)
+    endif()
+    if (NOT TARGET scrapgpu_remote)
+        add_library(scrapgpu_remote STATIC "${CL11_SRC_DIR}/backends/remote/client.cpp")
+        target_include_directories(scrapgpu_remote PRIVATE "${CL11_SRC_DIR}/backends/remote")
+        target_link_libraries(scrapgpu_remote PUBLIC scrapgpu_core)
+        target_compile_features(scrapgpu_remote PUBLIC cxx_std_17)
+        set_target_properties(scrapgpu_remote PROPERTIES
+            CXX_VISIBILITY_PRESET hidden
+            VISIBILITY_INLINES_HIDDEN ON
+            POSITION_INDEPENDENT_CODE ON)
+    endif()
+    target_compile_definitions(${TARGET_NAME} PRIVATE SGLX_WITH_REMOTE)
+    target_include_directories(${TARGET_NAME} PRIVATE "${CL11_SRC_DIR}/backends")
+    target_link_libraries(${TARGET_NAME} PRIVATE scrapgpu_remote scrapgpu_core)
+    if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        target_link_libraries(${TARGET_NAME} PRIVATE rt)
+    endif()
+    find_package(Threads REQUIRED)
+    target_link_libraries(${TARGET_NAME} PRIVATE Threads::Threads)
 endif()
 
 target_link_libraries(${TARGET_NAME} PRIVATE scrapgpu_opencl11 scrapgpu_tensor ${OpenCL_LIBRARIES})

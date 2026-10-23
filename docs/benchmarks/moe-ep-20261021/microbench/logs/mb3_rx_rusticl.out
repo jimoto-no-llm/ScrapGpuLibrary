@@ -1,0 +1,8 @@
+# moe_rt_bench mb3  args: --csv /home/eightman/moe-ep/rt-bench/logs/all.csv --devices RX 6400 --platforms rusticl
+# env RUSTICL_ENABLE=radeonsi
+# generating the layer (32 experts, Q4_0, random)...
+# device: AMD Radeon RX 6400           [AMD Radeon RX 6400 (radeonsi, navi24, LLVM 19.1.7, DRM 3.61, 6.12.107+deb13-amd64)] platform=rusticl version=OpenCL 3.0  driver=25.0.7-2+deb13u1 max_wg=1024 max_alloc=1024MiB gmem=4096MiB
+MB3   i_single_compute_only              AMD Radeon RX 6400       n=1000   median=    1402.4 p99=    1649.1 min=    1204.1 mean=    1407.3 us  achieved 17.66 GB/s (24.77 MB per layer) nmse=4.25e-14
+MB3   i_single_full_cycle                AMD Radeon RX 6400       n=1000   median=    1506.0 p99=    1786.8 min=     966.1 mean=    1508.6 us  x write + ids + kernels + out read
+MB3   CHECK single AMD Radeon RX 6400 first/last     OK nmse 4.25e-14 / 3.55e-14
+# done mb3: all OK (0 failed check(s))

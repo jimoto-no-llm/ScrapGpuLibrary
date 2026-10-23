@@ -1,0 +1,2 @@
+wx-vk sweep stopped by hand after ncmoe=8 (decreasing: VRAM overflow, 1.5 t/s at 10)
+wx-cl11 sweep stopped by hand after ncmoe=12 started (14: 1.66 t/s, VRAM overflow trend)

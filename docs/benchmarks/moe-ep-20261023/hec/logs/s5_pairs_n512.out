@@ -1,0 +1,12 @@
+   [V1 pairs, no readback] set 7.0 ms, compute 15.7 ms, get 0.0 ms
+V1 pairs, no readback              N=512 P=4096: total 19.4 ms (median 18.0)
+   [V1 pairs, read back y] set 2.9 ms, compute 14.5 ms, get 21.7 ms
+V1 pairs, read back y              N=512 P=4096: total 42.9 ms (median 43.1)
+   [V2 llama form, no readback] set 2.9 ms, compute 13.2 ms, get 0.0 ms
+V2 llama form, no readback         N=512 P=4096: total 16.2 ms (median 16.2)
+   [V2 llama form, read back y] set 2.9 ms, compute 13.3 ms, get 21.8 ms
+V2 llama form, read back y         N=512 P=4096: total 43.4 ms (median 46.1)
+   [V1 pairs + weighted sum on device] set 3.0 ms, compute 16.3 ms, get 2.8 ms
+V1 pairs + weighted sum on device  N=512 P=4096: total 23.5 ms (median 22.2)
+   [V2 + weighted sum on device] set 3.0 ms, compute 15.1 ms, get 2.8 ms
+V2 + weighted sum on device        N=512 P=4096: total 21.6 ms (median 21.0)

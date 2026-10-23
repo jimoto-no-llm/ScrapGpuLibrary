@@ -1,0 +1,86 @@
+device: GeForce GT 710 (NVIDIA, sm_35)
+PASS  buffer copy/fill
+PASS  plan buffer lifetime     plan->buffer refs, free refused, plan executed (MUL_MAT)
+PASS  tensor_copy same dev     F32 after an enqueued ADD, 2 streams, exact bytes
+PASS  tensor_copy q4_0         Q4_0 natural exact bytes, R32 rejected
+SKIP  tensor_copy cross dev    needs a second device
+SKIP  ADD                      op is not implemented by the CUDA backend
+SKIP  SUB                      op is not implemented by the CUDA backend
+SKIP  MUL                      op is not implemented by the CUDA backend
+SKIP  DIV                      op is not implemented by the CUDA backend
+SKIP  ADD strided+bcast        op is not implemented by the CUDA backend
+SKIP  MUL strided+bcast        op is not implemented by the CUDA backend
+SKIP  SCALE                    op is not implemented by the CUDA backend
+SKIP  CLAMP                    op is not implemented by the CUDA backend
+SKIP  SQR                      op is not implemented by the CUDA backend
+SKIP  SQRT                     op is not implemented by the CUDA backend
+SKIP  UNARY/SILU               op is not implemented by the CUDA backend
+SKIP  UNARY/RELU               op is not implemented by the CUDA backend
+SKIP  UNARY/NEG                op is not implemented by the CUDA backend
+SKIP  UNARY/ABS                op is not implemented by the CUDA backend
+SKIP  UNARY/SIGMOID            op is not implemented by the CUDA backend
+SKIP  UNARY/TANH               op is not implemented by the CUDA backend
+SKIP  GLU fused swiglu sw=0    op is not implemented by the CUDA backend
+SKIP  GLU fused reglu sw=0     op is not implemented by the CUDA backend
+SKIP  GLU fused swiglu sw=1    op is not implemented by the CUDA backend
+SKIP  GLU fused reglu sw=1     op is not implemented by the CUDA backend
+SKIP  GLU split swiglu         op is not implemented by the CUDA backend
+SKIP  GLU split reglu          op is not implemented by the CUDA backend
+SKIP  RMS_NORM                 op is not implemented by the CUDA backend
+SKIP  RMS_NORM_MUL             op is not implemented by the CUDA backend
+SKIP  ADD_RMS_NORM_MUL         op is not implemented by the CUDA backend
+SKIP  SOFT_MAX                 op is not implemented by the CUDA backend
+SKIP  SOFT_MAX mask f32        op is not implemented by the CUDA backend
+SKIP  SOFT_MAX mask f16        op is not implemented by the CUDA backend
+SKIP  ROPE norm f32            op is not implemented by the CUDA backend
+SKIP  ROPE norm f16            op is not implemented by the CUDA backend
+SKIP  ROPE norm f32 ff         op is not implemented by the CUDA backend
+SKIP  ROPE norm f16 ff         op is not implemented by the CUDA backend
+SKIP  ROPE neox f32            op is not implemented by the CUDA backend
+SKIP  ROPE neox f16            op is not implemented by the CUDA backend
+SKIP  ROPE neox f32 ff         op is not implemented by the CUDA backend
+SKIP  ROPE neox f16 ff         op is not implemented by the CUDA backend
+SKIP  GET_ROWS f32             op is not implemented by the CUDA backend
+SKIP  GET_ROWS f16             op is not implemented by the CUDA backend
+SKIP  GET_ROWS q4_0 r32        op is not implemented by the CUDA backend
+SKIP  GET_ROWS q8_0 r32        the CUDA backend supports the natural layout and the R32 layout of Q4_0 / Q6_K weights
+SKIP  GET_ROWS q4_k r32        the CUDA backend supports the natural layout and the R32 layout of Q4_0 / Q6_K weights
+SKIP  GET_ROWS q6_k r32        op is not implemented by the CUDA backend
+SKIP  SET_ROWS f32 i32         op is not implemented by the CUDA backend
+SKIP  SET_ROWS f16 i64         op is not implemented by the CUDA backend
+SKIP  SET_ROWS_PAIR            op is not implemented by the CUDA backend
+SKIP  CPY f32->f32             op is not implemented by the CUDA backend
+SKIP  DUP f32->f16             op is not implemented by the CUDA backend
+SKIP  CONT f16->f32            op is not implemented by the CUDA backend
+SKIP  CPY transposed           op is not implemented by the CUDA backend
+SKIP  MUL_MAT f32              MUL_MAT: the CUDA backend has kernels for Q4_0 and Q6_K weights only
+SKIP  MUL_MAT f16              MUL_MAT: the CUDA backend has kernels for Q4_0 and Q6_K weights only
+PASS  MUL_MAT q4_0 n=1         out[0] NMSE 7.450e-12 (tol 1e-06)
+PASS  MUL_MAT q4_0 n=4         out[0] NMSE 7.947e-12 (tol 1e-06)
+SKIP  MUL_MAT q8_0 n=1         the CUDA backend supports the natural layout and the R32 layout of Q4_0 / Q6_K weights
+SKIP  MUL_MAT q8_0 n=4         the CUDA backend supports the natural layout and the R32 layout of Q4_0 / Q6_K weights
+SKIP  MUL_MAT q4_k n=1         the CUDA backend supports the natural layout and the R32 layout of Q4_0 / Q6_K weights
+SKIP  MUL_MAT q4_k n=4         the CUDA backend supports the natural layout and the R32 layout of Q4_0 / Q6_K weights
+PASS  MUL_MAT q6_k n=1         out[0] NMSE 1.092e-12 (tol 1e-06)
+PASS  MUL_MAT q6_k n=4         out[0] NMSE 1.417e-12 (tol 1e-06)
+SKIP  MUL_MAT batch            MUL_MAT: the CUDA backend has kernels for Q4_0 and Q6_K weights only
+SKIP  MUL_MAT padded s0        MUL_MAT: the CUDA backend has kernels for Q4_0 and Q6_K weights only
+SKIP  MUL_MAT_MULTI n=2        op is not implemented by the CUDA backend
+SKIP  MUL_MAT_MULTI n=3        op is not implemented by the CUDA backend
+PASS  MUL_MAT_ID q4_0          out[0] NMSE 1.042e-11 (tol 1e-06)
+SKIP  MUL_MAT_ID q4_k          the CUDA backend supports the natural layout and the R32 layout of Q4_0 / Q6_K weights
+SKIP  MUL_MAT_ID f32           MUL_MAT_ID: the CUDA backend has a kernel for Q4_0 experts only
+SKIP  ADD_ID                   op is not implemented by the CUDA backend
+SKIP  SSM_CONV                 op is not implemented by the CUDA backend
+SKIP  CONCAT dim1              op is not implemented by the CUDA backend
+SKIP  CONCAT f16               op is not implemented by the CUDA backend
+SKIP  PAD                      op is not implemented by the CUDA backend
+SKIP  SUM_ROWS                 op is not implemented by the CUDA backend
+SKIP  SUM_ROWS 3d              op is not implemented by the CUDA backend
+SKIP  ARGSORT asc              op is not implemented by the CUDA backend
+SKIP  ARGSORT desc             op is not implemented by the CUDA backend
+SKIP  TOP_K k=4 desc           op is not implemented by the CUDA backend
+SKIP  CONT_MUL_MAT             op is not implemented by the CUDA backend
+SKIP  CONT_MUL_MAT V n_kv=24   op is not implemented by the CUDA backend
+SKIP  CONT_MUL_MAT V n_kv=520  op is not implemented by the CUDA backend
+8 op runs, 75 skipped

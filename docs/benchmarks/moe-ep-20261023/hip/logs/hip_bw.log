@@ -1,0 +1,6 @@
+# date: 2026-10-23_16:25:21  host: tb250  tag: hip_bw
+# temps at start:  amd48 amd33 GT 430=44 GT 730=32 GT 710=33    (max 43 C)
+# env: LD_LIBRARY_PATH=/mnt/hdd/rocm/v713/lib/python3.13/site-packages/_rocm_sdk_devel/lib:/mnt/hdd/rocm/v713/lib/python3.13/site-packages/_rocm_sdk_devel/lib/llvm/lib 
+# cmd: ./bw
+# rc=0  seconds=5
+# temps at end:  amd49 amd35 GT 430=43 GT 730=32 GT 710=33    (max 44 C)

@@ -1,0 +1,7 @@
+# bash -c grep . /sys/module/nouveau/parameters/{modeset,config,debug,runpm,noaccel} 2>&1
+grep: /sys/module/nouveau/parameters/modeset: No such file or directory
+grep: /sys/module/nouveau/parameters/config: No such file or directory
+grep: /sys/module/nouveau/parameters/debug: No such file or directory
+grep: /sys/module/nouveau/parameters/runpm: No such file or directory
+grep: /sys/module/nouveau/parameters/noaccel: No such file or directory
+# rc=2

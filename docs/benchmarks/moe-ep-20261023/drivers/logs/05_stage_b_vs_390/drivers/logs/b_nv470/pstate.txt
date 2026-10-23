@@ -1,0 +1,2 @@
+# sudo -n /usr/local/sbin/sgl-driver-switch pstate show
+# rc=0

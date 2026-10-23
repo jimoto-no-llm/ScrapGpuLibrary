@@ -1,0 +1,6 @@
+# date: 2026-10-23_13:41:35  host: tb250  tag: hip_vadd
+# temps at start:  amd52 amd34 GT 430=44 GT 730=33 GT 710=33    (max 44 C)
+# env: LD_LIBRARY_PATH=/mnt/hdd/rocm/v713/lib/python3.13/site-packages/_rocm_sdk_devel/lib:/mnt/hdd/rocm/v713/lib/python3.13/site-packages/_rocm_sdk_devel/lib/llvm/lib 
+# cmd: ./vadd
+# rc=0  seconds=6
+# temps at end:  amd52 amd35 GT 430=44 GT 730=33 GT 710=34    (max 44 C)

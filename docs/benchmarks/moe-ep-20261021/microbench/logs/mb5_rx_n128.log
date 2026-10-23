@@ -1,0 +1,6 @@
+# date: 2026-10-21_03:04:11  host: tb250  tag: mb5_rx_n128
+# temps at start:  amd35 amd55 GT 430=44 GT 730=34 GT 710=35    (max 44 C)
+# env: RUSTICL_ENABLE=radeonsi 
+# cmd: /home/eightman/moe-ep/rt-bench/moe_rt_bench mb5 --ntok 128 --iters 10 --platforms rusticl --devices RX 6400 --csv /home/eightman/moe-ep/rt-bench/logs/all.csv
+# rc=0  seconds=3
+# temps at end:  amd36 amd53 GT 430=44 GT 730=34 GT 710=36    (max 44 C)

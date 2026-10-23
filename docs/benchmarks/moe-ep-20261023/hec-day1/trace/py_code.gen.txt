@@ -1,0 +1,33 @@
+TextHelpFormatter preserve
+        whitespace, and ArgumentDefaultsHelpFormatter adds the default
+        values to the help.
+
+    - _SubParsersAction -- This is a special action that allows a parser
+        to be "dispatched" to a sub-parser based on a command.  It is not
+        typically used directly, but instead through the add_subparsers()
+        method of the ArgumentParser class.
+
+    - _HelpAction -- The action that is added to the parser when the
+        -h or --help option is encountered.
+
+    - _VersionAction -- The action that is added to the parser when the
+        -v or --version option is encountered.
+
+    - _StoreAction, _StoreConstAction, _StoreTrueAction, _StoreFalseAction,
+        _AppendAction, _AppendConstAction, _CountAction, _HelpAction,
+        _VersionAction -- These are the actions that are used to implement
+        the various action= strings.  They are generally not used directly.
+
+"""
+
+from __future__ import unicode_literals
+from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import division
+
+import sys
+import os
+import re
+import copy
+import time
+import collections

@@ -1,0 +1,41 @@
+# moe_rt_bench mb2  args: --csv /home/eightman/moe-ep/rt-bench/logs/all.csv --devices GT 730,GT 710,WX 2100 --platforms NVIDIA,rusticl
+# env RUSTICL_ENABLE=radeonsi
+# device: GeForce GT 730               [GeForce GT 730] platform=NVIDIA CUDA version=OpenCL 1.2 CUDA driver=390.157 max_wg=1024 max_alloc=245MiB gmem=981MiB
+# device: GeForce GT 710               [GeForce GT 710] platform=NVIDIA CUDA version=OpenCL 1.2 CUDA driver=390.157 max_wg=1024 max_alloc=501MiB gmem=2002MiB
+# device: AMD Radeon Pro WX 2100       [AMD Radeon Pro WX 2100 (radeonsi, polaris12, ACO, DRM 3.61, 6.12.107+deb13-amd64)] platform=rusticl version=OpenCL 3.0  driver=25.0.7-2+deb13u1 max_wg=1024 max_alloc=512MiB gmem=2048MiB
+MB2   solo_tiny_finish                   GeForce GT 730           n=10000  median=      64.3 p99=      64.9 min=      56.0 mean=      63.6 us  
+MB2   solo_tiny_finish                   GeForce GT 710           n=10000  median=      64.4 p99=      65.0 min=      56.2 mean=      64.1 us  
+MB2   solo_tiny_finish                   AMD Radeon Pro WX 2100   n=10000  median=     164.9 p99=     193.7 min=     160.9 mean=     166.4 us  
+MB2   sequential_tiny_finish             GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100 n=10000  median=     324.7 p99=     459.8 min=     299.0 mean=     336.0 us  one after the other
+MB2   parallel_1thread_tiny_finish       GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100 n=10000  median=     221.7 p99=     360.9 min=     214.2 mean=     230.0 us  submit all, then wait in order
+MB2   parallel_threads_tiny_finish       GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100 n=10000  median=     239.2 p99=     323.8 min=     197.8 mean=     233.9 us  one thread per device (wake-up included)
+MB2   SUMMARY tiny_finish: median max(solo)=164.9 sum(solo)=293.6 sequential=324.7 1thread=221.7 threads=239.2 ; 1thread/max=1.34 1thread/sum=0.76 threads/max=1.45
+MB2   CHECK results tiny_finish                      OK 
+MB2   solo_tiny_poll                     GeForce GT 730           n=10000  median=      63.5 p99=      64.6 min=      55.6 mean=      63.0 us  
+MB2   solo_tiny_poll                     GeForce GT 710           n=10000  median=      63.5 p99=      64.6 min=      55.8 mean=      63.3 us  
+MB2   solo_tiny_poll                     AMD Radeon Pro WX 2100   n=10000  median=     165.8 p99=     227.3 min=     158.5 mean=     173.2 us  
+MB2   sequential_tiny_poll               GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100 n=10000  median=     323.6 p99=     417.6 min=     300.1 mean=     329.6 us  one after the other
+MB2   parallel_1thread_tiny_poll         GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100 n=10000  median=     222.9 p99=     278.0 min=     213.5 mean=     225.7 us  submit all, then wait in order
+MB2   parallel_threads_tiny_poll         GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100 n=10000  median=     282.4 p99=    2975.0 min=     212.6 mean=     346.3 us  one thread per device (wake-up included)
+MB2   SUMMARY tiny_poll: median max(solo)=165.8 sum(solo)=292.8 sequential=323.6 1thread=222.9 threads=282.4 ; 1thread/max=1.34 1thread/sum=0.76 threads/max=1.70
+MB2   CHECK results tiny_poll                        OK 
+# GeForce GT 730: busy kernel iters=54098
+# GeForce GT 710: busy kernel iters=26213
+# AMD Radeon Pro WX 2100: busy kernel iters=6715
+MB2   solo_busy500us_finish              GeForce GT 730           n=3000   median=     526.2 p99=     755.7 min=     515.0 mean=     551.5 us  
+MB2   solo_busy500us_finish              GeForce GT 710           n=3000   median=     562.5 p99=     745.5 min=     516.0 mean=     585.8 us  
+MB2   solo_busy500us_finish              AMD Radeon Pro WX 2100   n=3000   median=     867.4 p99=    1594.8 min=     556.7 mean=     877.9 us  
+MB2   sequential_busy500us_finish        GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100 n=3000   median=    2056.1 p99=    2600.1 min=    1842.0 mean=    2110.1 us  one after the other
+MB2   parallel_1thread_busy500us_finish  GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100 n=3000   median=     693.3 p99=    1362.5 min=     580.5 mean=     823.1 us  submit all, then wait in order
+MB2   parallel_threads_busy500us_finish  GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100 n=3000   median=    1387.9 p99=    2397.0 min=     667.9 mean=    1470.5 us  one thread per device (wake-up included)
+MB2   SUMMARY busy500us_finish: median max(solo)=867.4 sum(solo)=1956.1 sequential=2056.1 1thread=693.3 threads=1387.9 ; 1thread/max=0.80 1thread/sum=0.35 threads/max=1.60
+MB2   CHECK results busy500us_finish                 OK 
+MB2   solo_busy500us_poll                GeForce GT 730           n=3000   median=     525.3 p99=     746.5 min=     514.6 mean=     548.1 us  
+MB2   solo_busy500us_poll                GeForce GT 710           n=3000   median=     561.9 p99=     745.5 min=     515.0 mean=     583.2 us  
+MB2   solo_busy500us_poll                AMD Radeon Pro WX 2100   n=3000   median=     825.7 p99=    3084.4 min=     642.2 mean=     872.0 us  
+MB2   sequential_busy500us_poll          GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100 n=3000   median=    2000.2 p99=    2379.5 min=    1750.2 mean=    2027.2 us  one after the other
+MB2   parallel_1thread_busy500us_poll    GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100 n=3000   median=     665.0 p99=    1406.9 min=     564.0 mean=     824.2 us  submit all, then wait in order
+MB2   parallel_threads_busy500us_poll    GeForce GT 730+GeForce GT 710+AMD Radeon Pro WX 2100 n=3000   median=    2013.4 p99=    6157.7 min=     619.3 mean=    2605.4 us  one thread per device (wake-up included)
+MB2   SUMMARY busy500us_poll: median max(solo)=825.7 sum(solo)=1912.9 sequential=2000.2 1thread=665.0 threads=2013.4 ; 1thread/max=0.81 1thread/sum=0.35 threads/max=2.44
+MB2   CHECK results busy500us_poll                   OK 
+# done mb2: all OK (0 failed check(s))

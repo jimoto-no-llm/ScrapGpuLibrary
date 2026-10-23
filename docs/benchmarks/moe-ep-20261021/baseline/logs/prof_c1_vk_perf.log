@@ -1,0 +1,25 @@
+# date: 2026-10-21_06:07:59  host: tb250  tag: prof_c1_vk_perf
+# temps at start:  amd46 amd46 GT 430=40 GT 730=36 GT 710=37 
+# env: GGML_VK_PERF_LOGGER=1 VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json 
+# cmd: /home/eightman/moe-ep/src/llama-build/bin/llama-bench -m /home/eightman/moe-ep/models/LFM2.5-8B-A1B-Q4_0.gguf -dev Vulkan0/Vulkan1 -ngl 99 -fa 0 -t 2 -b 128 -ub 128 -ts 5/1 -sm layer -p 0 -n 32 -r 1 -o jsonl
+load_backend: loaded RPC backend from /home/eightman/moe-ep/src/llama-build/bin/libggml-rpc.so
+ggml_vulkan: Found 2 Vulkan devices:
+ggml_vulkan: 0 = AMD Radeon RX 6400 (RADV NAVI24) (radv) | uma: 0 | fp16: 1 | bf16: 0 | fp4: 0 | warp size: 32 | shared memory: 65536 | int dot: 1 | matrix cores: none
+ggml_vulkan: 1 = AMD Radeon Pro WX 2100 (RADV POLARIS12) (radv) | uma: 0 | fp16: 0 | bf16: 0 | fp4: 0 | warp size: 64 | shared memory: 65536 | int dot: 0 | matrix cores: none
+load_backend: loaded Vulkan backend from /home/eightman/moe-ep/src/llama-build/bin/libggml-vulkan.so
+load_backend: loaded CPU backend from /home/eightman/moe-ep/src/llama-build/bin/libggml-cpu.so
+/home/eightman/moe-ep/src/llama.cpp/ggml/src/ggml-vulkan/ggml-vulkan.cpp:14270: GGML_ASSERT(ctx->compute_ctx.expired()) failed
+/home/eightman/moe-ep/src/llama-build/bin/libggml-base.so.0(+0x198a5) [0x7fd25028a8a5]
+/home/eightman/moe-ep/src/llama-build/bin/libggml-base.so.0(ggml_print_backtrace+0x1df) [0x7fd25028ac7f]
+/home/eightman/moe-ep/src/llama-build/bin/libggml-base.so.0(ggml_abort+0x11e) [0x7fd25028ae0e]
+/home/eightman/moe-ep/src/llama-build/bin/libggml-vulkan.so(+0x11e751) [0x7fd24c71e751]
+/home/eightman/moe-ep/src/llama-build/bin/libggml-base.so.0(ggml_backend_sched_graph_compute_async+0x3dc) [0x7fd2502a836c]
+/home/eightman/moe-ep/src/llama-build/bin/libllama.so.0(_ZN13llama_context13graph_computeEP11ggml_cgraphb+0xdb) [0x7fd24f605d9b]
+/home/eightman/moe-ep/src/llama-build/bin/libllama.so.0(_ZN13llama_context14process_ubatchERK12llama_ubatch14llm_graph_typeP22llama_memory_context_iR11ggml_status+0x106) [0x7fd24f609826]
+/home/eightman/moe-ep/src/llama-build/bin/libllama.so.0(_ZN13llama_context6decodeERK15llama_batch_ext+0x38a) [0x7fd24f611e3a]
+/home/eightman/moe-ep/src/llama-build/bin/libllama-bench-impl.so(_Z11llama_benchiPPc+0xfc9) [0x7fd2503a9bd9]
+/lib/x86_64-linux-gnu/libc.so.6(+0x29ca8) [0x7fd24fe35ca8]
+/lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x85) [0x7fd24fe35d65]
+/home/eightman/moe-ep/src/llama-build/bin/llama-bench(+0x11b1) [0x55e283bcd1b1]
+# rc=134  seconds=7
+# temps at end:  amd47 amd46 GT 430=41 GT 730=35 GT 710=36 

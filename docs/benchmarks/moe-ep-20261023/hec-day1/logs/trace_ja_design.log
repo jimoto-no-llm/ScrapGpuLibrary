@@ -1,0 +1,9 @@
+# date: 2026-10-23_12:07:41  host: tb250  tag: trace_ja_design
+# temps at start:  amd36 amd35 GT 430=44 GT 730=33 GT 710=34    (max 44 C)
+# env: 
+# perf: 0000:03:00.0 perf=auto 0000:06:00.0 perf=auto 
+# cmd: bin/hec_trace -m /home/eightman/moe-ep/models/Qwen3-30B-A3B-Q4_0.gguf --cpu-lib /home/eightman/moe-ep/src/llama-build/bin/libggml-cpu.so --out trace/ja_design --text corpus/ja_design.txt --n-prompt 512 --n-gen 256 --seed 1234
+prompt: 512 tokens from corpus/ja_design.txt
+wrote trace/ja_design.bin (768 tokens x 48 layers x 8)
+# rc=0  seconds=281
+# temps at end:  amd36 amd35 GT 430=44 GT 730=33 GT 710=33    (max 44 C)

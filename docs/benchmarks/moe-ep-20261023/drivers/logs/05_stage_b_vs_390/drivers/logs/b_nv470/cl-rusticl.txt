@@ -1,0 +1,3 @@
+# env OCL_ICD_VENDORS=/dev/null OCL_ICD_FILENAMES=libRusticlOpenCL.so.1 RUSTICL_ENABLE=nouveau clinfo -l
+Platform #0: rusticl
+# rc=0

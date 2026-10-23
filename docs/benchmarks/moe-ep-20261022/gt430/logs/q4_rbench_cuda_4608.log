@@ -1,0 +1,7 @@
+# date: 2026-10-23_00:24:28  host: tb250  tag: q4_rbench_cuda_4608
+# temps at start:  amd47 amd38 GT 430=45 GT 730=34 GT 710=34    (max 45 C)
+# env: SCRAPGPU_CUDA_DEVICES=GT 430 SCRAPGPU_DEVICE_SERVER=/home/eightman/moe-ep/g430/srv/scrapgpu-device-server GGML_CL11_PLATFORMS=NVIDIA GGML_CL11_DEVICES=GT 430 SCRAPGPU_REMOTE_BACKEND=cuda 
+# cmd: /home/eightman/moe-ep/g430/srv/scrapgpu_remote_bench --rows 4608 --k 2048 --iters 200
+scrapgpu-device-server: cuda, 1 device(s), socket /tmp/scrapgpu-ref5Kj/server-0.sock
+# rc=0  seconds=3
+# temps at end:  amd47 amd38 GT 430=46 GT 730=34 GT 710=34    (max 45 C)

@@ -1,0 +1,10 @@
+23:20:17 probe1 tg=51.98
+23:21:23 probe2 tg=51.82
+23:22:30 probe3 tg=51.71
+23:23:36 probe4 tg=51.83
+23:24:43 probe5 tg=51.75
+23:25:49 probe6 tg=51.80
+23:26:56 probe7 tg=51.87
+23:28:12 probe8 tg=44.18
+23:34:52 done 44-state set
+FIN

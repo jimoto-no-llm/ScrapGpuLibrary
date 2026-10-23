@@ -1,0 +1,1 @@
+cold_vs_rx_n39: {"positions":301,"kld_mean":0.002319,"kld_p99":0.022527,"kld_max":0.027052,"top1":98.339,"nmse":5.104e-03}

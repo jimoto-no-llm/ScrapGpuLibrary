@@ -1,0 +1,7 @@
+device remote:GeForce GT 430, backend cuda; 4608 rows x 2048, q6_K
+upload of 7.4 MiB: 29.7 ms
+gap 12000 us (sleep), hog 2 threads, 400 jobs
+write x                            mean 0.156  p10 0.052  p50 0.056  p90 0.065  max 33.431 ms
+op_execute (enqueue)               mean 0.073  p10 0.023  p50 0.026  p90 0.030  max 5.295 ms
+read (kernel + read)               mean 0.813  p10 0.745  p50 0.749  p90 0.756  max 4.801 ms
+job                                mean 1.041  p10 0.823  p50 0.831  p90 0.859  max 34.218 ms

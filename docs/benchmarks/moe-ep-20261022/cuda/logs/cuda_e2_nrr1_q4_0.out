@@ -1,0 +1,4 @@
+device=GeForce GT 730 backend=cuda driver=CUDA driver tuning=sm_35
+mv q4_0 k=2048 rows=65536 n=1 weight=72.0 MiB
+  throughput: best 5.295 ms  median 5.299 ms  = 14.26 / 14.25 GB/s (weights read once per column chunk)
+  latency   : best 5.295 ms  median 5.311 ms

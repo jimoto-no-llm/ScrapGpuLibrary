@@ -30,6 +30,14 @@ SCRAPGPU_API scrapgpu_status scrapgpu_remote_spawn(const char * const * env_spec
 // scrapgpu_remote_spawn, without a child process to reap.
 SCRAPGPU_API scrapgpu_status scrapgpu_remote_connect(const char * socket_path, scrapgpu_remote_t ** out);
 
+// Coalesce the calls of this connection (off by default). With batching on, scrapgpu_buffer_write and scrapgpu_op_execute return as soon as the
+// request is queued in the client; the queue goes to the server, in order and together with the next call of any other kind (a read, a stream sync,
+// an alloc, ...), as ONE round trip. A write + op_execute + blocking read then costs one round trip instead of three, which matters when the
+// host is busy (every round trip is two process wake-ups) - the SGLX GT 430 pdev does this. What changes: an error of a queued call is
+// reported by the call that carries it (the one that needs the answer), the data of a write is copied at the call (the host buffer may be reused),
+// and an op_execute that nobody follows with a call does not run. Safe to call when the connection is idle; returns INVALID_ARGUMENT on NULL.
+SCRAPGPU_API scrapgpu_status scrapgpu_remote_set_batching(scrapgpu_remote_t * remote, int enable);
+
 // Disconnect and, for a spawned server, wait for it to exit (it stops when the client disconnects).
 // The remote devices disappear from scrapgpu_get_device. Streams, buffers, plans and devices of
 // this remote must not be used after close. Safe on NULL.

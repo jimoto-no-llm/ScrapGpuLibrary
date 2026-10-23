@@ -1,0 +1,14 @@
+# date: 2026-10-21_05:34:10  host: tb250  tag: kld_gt430_ncmoe24
+# temps at start:  amd47 amd54 GT 430=40 GT 730=33 GT 710=35 
+# env: GGML_CL11_PLATFORMS=NVIDIA GGML_CL11_DEVICES=GT 430 GGML_BACKEND_PATH=/home/eightman/moe-ep/src/build-cl11/libggml-cl11.so VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json 
+# cmd: /home/eightman/moe-ep/src/llama-build/bin/llama-perplexity -m /home/eightman/moe-ep/models/LFM2.5-8B-A1B-Q4_0.gguf -f /home/eightman/moe-ep/kl/text.txt -c 512 --chunks 4 -b 128 -ub 128 -t 2 -fa off -dev CL11_0 -ngl 99 -ncmoe 24 --kl-divergence-base /home/eightman/moe-ep/kl/base.kld --kl-divergence
+cl11_ensure_program: rebuilding the kernels with smaller work-groups
+cl11_ensure_program: CL11_0: GeForce GT 430, OpenCL 1.1 CUDA, kernels built (work-group sizes: element-wise 128, row 128, mat-vec 128, mat-mat 16x16)
+0.01.717.056 W common_fit_params: failed to fit params to free device memory: n_gpu_layers already set by user to 99, abort
+0.04.873.523 W llama_kv_cache: the V embeddings have different sizes across layers and FA is not enabled - padding V cache to 512
+0.04.882.152 I cmn          init: llama threadpool init, n_threads = 2
+0.06.039.162 I 
+0.06.039.232 I system_info: n_threads = 2 (n_threads_batch = 2) / 2 | CPU : SSE3 = 1 | SSSE3 = 1 | LLAMAFILE = 1 | OPENMP = 1 | REPACK = 1 | 
+0.06.050.108 I kl_divergence: computing over 4 chunks, n_ctx=512, batch_size=128, n_seq=1
+0.41.788.556 I kl_divergence: 35.74 seconds per pass - ETA # rc=0  seconds=151
+# temps at end:  amd37 amd45 GT 430=44 GT 730=31 GT 710=33 

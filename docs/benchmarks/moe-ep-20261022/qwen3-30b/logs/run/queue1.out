@@ -1,0 +1,12 @@
+final_cpu rc=0
+sw_rx_n44 pp128=16.59 tg32=5.74
+sw_rx_n42 pp128=17.26 tg32=5.88
+sw_rx_n41 pp128=17.77 tg32=5.99
+sw_rx_n40 pp128=18.43 tg32=6.05
+sw_rx_n39 pp128=18.67 tg32=6.13
+sw_rx_n38 pp128=8.40 tg32=5.43
+sw_rx_n37 pp128=8.53 tg32=5.19
+sw_rx_n36 pp128=8.60 tg32=5.14
+sw_amd_n40 pp128=5.47 tg32=2.39
+sw_amd_n36 pp128=6.95 tg32=3.07
+sw_amd_n34 pp128=7.01 tg32=3.12

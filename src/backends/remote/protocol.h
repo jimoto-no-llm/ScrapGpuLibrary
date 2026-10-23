@@ -64,6 +64,10 @@ enum sgr_op : uint32_t {
     SGR_OP_TENSOR_UPLOAD    = 40, // req {u64 stream, tensor_desc wire, u64 size, u32 via_shm, [data]}
     SGR_OP_TENSOR_DOWNLOAD  = 41, // req {u64 stream, tensor_desc wire, u64 size};
                                   // resp {u64 shm_size_now, u32 via_shm, [data]}
+    SGR_OP_BATCH            = 50, // req {u32 n, n * {u32 op, u64 size, size bytes}} (n >= 1, no BATCH inside): the requests run in order and the
+                                  // response is the one of the last request, or the failure of the first one that failed (the rest is skipped).
+                                  // Only a client that asked for it (scrapgpu_remote_set_batching) sends it: the writes and op executions that it
+                                  // would send alone are held back and go in front of the next call that needs an answer, in one round trip.
 };
 
 // ---- little-endian put / get -------------------------------------------------

@@ -1,0 +1,1 @@
+rx_vram_base=16MiB rx_vram_peak=4044MiB rx_gtt_base=14MiB rx_gtt_peak=391MiB wx_vram_base=5MiB wx_vram_peak=591MiB wx_gtt_base=7MiB wx_gtt_peak=12MiB

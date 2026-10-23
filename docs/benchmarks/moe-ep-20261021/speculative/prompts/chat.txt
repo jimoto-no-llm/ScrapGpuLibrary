@@ -1,0 +1,3 @@
+<|im_start|>user
+Hi! I am planning a three day trip to Kyoto in November. Can you suggest an itinerary and some local food I should try?<|im_end|>
+<|im_start|>assistant

@@ -1,0 +1,13 @@
+# date: 2026-10-24_00:30:45  host: tb250  tag: drv_nvk_gt730_ops
+# temps at start:  amd34 amd31 amd32 amd33 NVIDIA-SMI has failed because it couldn't communicate with the NVIDIA driver. Make sure that the latest NVIDIA driver is installed and running.     (max  C)
+# env: GGML_VK_VISIBLE_DEVICES=0 VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nouveau_icd.json 
+# cmd: /home/eightman/moe-ep/src/llama-build/bin/test-backend-ops test -b Vulkan0 -o MUL_MAT -p type_a=q4_0
+load_backend: loaded RPC backend from /home/eightman/moe-ep/src/llama-build/bin/libggml-rpc.so
+WARNING: NVK is not a conformant Vulkan implementation, testing use only.
+WARNING: NVK is not a conformant Vulkan implementation, testing use only.
+ggml_vulkan: Found 1 Vulkan devices:
+ggml_vulkan: 0 = NVK GK208B (NVK) | uma: 0 | fp16: 0 | bf16: 0 | fp4: 0 | warp size: 32 | shared memory: 49152 | int dot: 0 | matrix cores: none
+load_backend: loaded Vulkan backend from /home/eightman/moe-ep/src/llama-build/bin/libggml-vulkan.so
+load_backend: loaded CPU backend from /home/eightman/moe-ep/src/llama-build/bin/libggml-cpu.so
+# rc=0  seconds=35
+# temps at end:  amd35 amd31 amd32 amd34 NVIDIA-SMI has failed because it couldn't communicate with the NVIDIA driver. Make sure that the latest NVIDIA driver is installed and running.     (max  C)

@@ -1,0 +1,14 @@
+# date: 2026-10-23_22:06:48  host: tb250  tag: kld3_rx_n39
+# temps at start:  amd42 amd36 GT 430=41 GT 730=33 GT 710=33    (max 42 C)
+# env: VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json 
+# perf: 0000:03:00.0 perf=manual 0000:06:00.0 perf=manual 
+# cmd: /home/eightman/moe-ep/src/llama-build/bin/llama-perplexity -m /home/eightman/moe-ep/models/Qwen3-30B-A3B-Q4_0.gguf -f /home/eightman/moe-ep/kl/text.txt -c 512 --chunks 6 -b 512 -ub 512 -t 2 -fa off -sm layer -dev Vulkan0 -ngl 99 -ncmoe 39 --kl-divergence-base /home/eightman/moe-ep/kl/base30_6.kld --kl-divergence
+0.00.623.721 W common_fit_params: failed to fit params to free device memory: n_gpu_layers already set by user to 99, abort
+0.00.856.501 W load: control-looking token: 128247 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+0.00.959.434 W llama_model_loader: tensor overrides to CPU are used with mmap enabled - consider using --load-mode none for better performance
+0.39.406.261 I cmn          init: llama threadpool init, n_threads = 2
+0.39.728.294 I 
+0.39.728.372 I system_info: n_threads = 2 (n_threads_batch = 2) / 2 | CPU : SSE3 = 1 | SSSE3 = 1 | LLAMAFILE = 1 | OPENMP = 1 | REPACK = 1 | 
+0.39.741.354 I kl_divergence: computing over 6 chunks, n_ctx=512, batch_size=512, n_seq=1
+1.09.411.505 I kl_divergence: 29.67 seconds per pass - ETA # rc=0  seconds=219
+# temps at end:  amd48 amd35 GT 430=42 GT 730=32 GT 710=32    (max 42 C)

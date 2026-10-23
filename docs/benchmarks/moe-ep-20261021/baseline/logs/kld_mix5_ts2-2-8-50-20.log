@@ -1,0 +1,20 @@
+# date: 2026-10-21_09:11:49  host: tb250  tag: kld_mix5_ts2-2-8-50-20
+# temps at start:  amd43 amd46 GT 430=45 GT 730=35 GT 710=35 
+# env: GGML_CL11_PLATFORMS=NVIDIA GGML_BACKEND_PATH=/home/eightman/moe-ep/src/build-cl11/libggml-cl11.so VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json 
+# cmd: /home/eightman/moe-ep/src/llama-build/bin/llama-perplexity -m /home/eightman/moe-ep/models/LFM2.5-8B-A1B-Q4_0.gguf -f /home/eightman/moe-ep/kl/text.txt -c 512 --chunks 4 -b 128 -ub 128 -t 2 -fa off -dev RPC0,CL11_0,CL11_1,Vulkan0,Vulkan1 -ngl 99 -ts 2,2,8,50,20 -sm layer --kl-divergence-base /home/eightman/moe-ep/kl/base.kld --kl-divergence
+cl11_filter_open_conflicts: skipping 'GeForce GT 430' (cc 2.1): it cannot be opened in the same process as 'GeForce GT 730' (clCreateContext: CL_INVALID_DEVICE); the NVIDIA driver does not mix GPU generations. Select the devices with GGML_CL11_DEVICES, or run the device in another process (the remote backend / scrapgpu-device-server, or llama.cpp RPC). GGML_CL11_NO_CONFLICT_CHECK=1 disables this check.
+0.01.829.884 W cl11_serve_dropped_over_rpc: 'GeForce GT 430' cannot share a process with the other GPUs: served by ggml-rpc-server (pid 105849, 127.0.0.1:33609) as an RPC device; run with -fa off (the RPC device reports FLASH_ATTN_EXT as supported, the CL11 server aborts on it)
+cl11_ensure_program: CL11_0: multi mat-vec (Q / K / V, FFN gate / up in one launch) enabled
+cl11_ensure_program: CL11_0: mat-mat variant: tile 64 x 64, 8 x 4 values per work-item, BK 16, unroll 16, prefetch 0, 128 work-items
+cl11_ensure_program: CL11_0: GeForce GT 730, OpenCL 1.2 CUDA, kernels built (work-group sizes: element-wise 128, row 128, mat-vec 128, mat-mat 16x16)
+cl11_ensure_program: CL11_1: multi mat-vec (Q / K / V, FFN gate / up in one launch) enabled
+cl11_ensure_program: CL11_1: mat-mat variant: tile 64 x 64, 8 x 4 values per work-item, BK 16, unroll 16, prefetch 0, 128 work-items
+cl11_ensure_program: CL11_1: GeForce GT 710, OpenCL 1.2 CUDA, kernels built (work-group sizes: element-wise 128, row 128, mat-vec 128, mat-mat 16x16)
+0.02.674.246 W common_fit_params: failed to fit params to free device memory: n_gpu_layers already set by user to 99, abort
+0.11.360.828 W llama_kv_cache: the V embeddings have different sizes across layers and FA is not enabled - padding V cache to 512
+0.11.388.153 I cmn          init: llama threadpool init, n_threads = 2
+0.11.660.581 I 
+0.11.660.669 I system_info: n_threads = 2 (n_threads_batch = 2) / 2 | CPU : SSE3 = 1 | SSSE3 = 1 | LLAMAFILE = 1 | OPENMP = 1 | REPACK = 1 | 
+0.11.673.186 I kl_divergence: computing over 4 chunks, n_ctx=512, batch_size=128, n_seq=1
+0.18.195.561 I kl_divergence: 6.52 seconds per pass - ETA # rc=0  seconds=39
+# temps at end:  amd43 amd47 GT 430=45 GT 730=35 GT 710=37 

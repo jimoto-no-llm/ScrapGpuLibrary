@@ -1,0 +1,12 @@
+ppchk1
+ppchk2
+ppchk3
+ppchk4
+ppchk5
+sw_q3rx_n40 pp128=21.04 tg32=1.74
+sw_q3rx_n39 pp128=21.55 tg32=1.78
+sw_q3rx_n38 pp128=21.92 tg32=1.83
+sw_q3rx_n37 pp128=22.33 tg32=1.88
+sw_q3rx_n36 pp128=2.76 tg32=1.90
+sw_q3amd_ts42-6_n35 pp128=7.96 tg32=1.92
+Q17DONE (stopped by hand: Q3_K_M tg ~1.8 t/s on the CPU, amd sweep skipped)

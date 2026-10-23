@@ -1,0 +1,25 @@
+# moe_rt_bench mb5  args: --csv /home/eightman/moe-ep/rt-bench/logs/all.csv --devices WX 2100,GT 730,GT 710 --iters 10 --ntok 512 --platforms NVIDIA,rusticl
+# env RUSTICL_ENABLE=radeonsi
+# generating the layer, ntok=512...
+# device: AMD Radeon Pro WX 2100       [AMD Radeon Pro WX 2100 (radeonsi, polaris12, ACO, DRM 3.61, 6.12.107+deb13-amd64)] platform=rusticl version=OpenCL 3.0  driver=25.0.7-2+deb13u1 max_wg=1024 max_alloc=512MiB gmem=2048MiB
+MB5   CHECK single AMD Radeon Pro WX 2100 n=512      OK nmse(3 tokens) 2.00e-12
+MB5   single_full_cycle_n512             AMD Radeon Pro WX 2100   n=10     median=  220977.9 p99=  222094.8 min=  217036.3 mean=  220016.5 us  ntok=512 pairs=2048 tiles=146  204.1 GFLOPS effective, 2317.0 tok/s (layer)
+# device: GeForce GT 730               [GeForce GT 730] platform=NVIDIA CUDA version=OpenCL 1.2 CUDA driver=390.157 max_wg=1024 max_alloc=245MiB gmem=981MiB
+MB5   CHECK single GeForce GT 730 n=512              OK nmse(3 tokens) 2.03e-12
+MB5   single_full_cycle_n512             GeForce GT 730           n=10     median=  661380.0 p99=  688916.1 min=  620297.6 mean=  659463.8 us  ntok=512 pairs=2048 tiles=146  68.2 GFLOPS effective, 774.1 tok/s (layer)
+# device: GeForce GT 710               [GeForce GT 710] platform=NVIDIA CUDA version=OpenCL 1.2 CUDA driver=390.157 max_wg=1024 max_alloc=501MiB gmem=2002MiB
+MB5   CHECK single GeForce GT 710 n=512              OK nmse(3 tokens) 2.03e-12
+MB5   single_full_cycle_n512             GeForce GT 710           n=10     median= 1320113.1 p99= 1369131.9 min= 1235896.5 mean= 1315667.0 us  ntok=512 pairs=2048 tiles=146  34.2 GFLOPS effective, 387.8 tok/s (layer)
+# ES split: AMD Radeon Pro WX 2100:832 rows GeForce GT 730:736 rows GeForce GT 710:224 rows 
+MB5   CHECK ES AMD Radeon Pro WX 2100+GeForce GT 730+GeForce GT 710 n=512 OK nmse(3 tokens) 1.62e-12
+MB5   ES_full_cycle_n512                 AMD Radeon Pro WX 2100+GeForce GT 730+GeForce GT 710 n=10     median=  296005.7 p99=  310899.9 min=  278059.2 mean=  295132.4 us  AMD Radeon Pro WX 2100:832 rows GeForce GT 730:736 rows GeForce GT 710:224 rows  ; 1729.7 tok/s (layer) ; max pairs/device=2048 ; host prep(last,max)=11848 us ; x+out transfer 25.2 MB total
+MB5   ES_part_alone_n512                 AMD Radeon Pro WX 2100   n=10     median=  119563.4 p99=  120520.1 min=  117985.3 mean=  119470.7 us  pairs=2048 tokens=512
+MB5   ES_part_alone_n512                 GeForce GT 730           n=10     median=  279671.3 p99=  290295.3 min=  277192.4 mean=  281264.8 us  pairs=2048 tokens=512
+MB5   ES_part_alone_n512                 GeForce GT 710           n=10     median=  184656.9 p99=  191192.2 min=  183222.3 mean=  185608.7 us  pairs=2048 tokens=512
+# EP split: AMD Radeon Pro WX 2100:15 experts GeForce GT 730:13 experts GeForce GT 710:4 experts 
+MB5   CHECK EP AMD Radeon Pro WX 2100+GeForce GT 730+GeForce GT 710 n=512 OK nmse(3 tokens) 2.01e-12
+MB5   EP_full_cycle_n512                 AMD Radeon Pro WX 2100+GeForce GT 730+GeForce GT 710 n=10     median=  289050.3 p99=  302120.1 min=  283673.7 mean=  289417.9 us  AMD Radeon Pro WX 2100:15 experts GeForce GT 730:13 experts GeForce GT 710:4 experts  ; 1771.3 tok/s (layer) ; max pairs/device=930 ; host prep(last,max)=10961 us ; x+out transfer 18.8 MB total
+MB5   EP_part_alone_n512                 AMD Radeon Pro WX 2100   n=10     median=  116233.0 p99=  119129.7 min=  114184.1 mean=  116385.5 us  pairs=930 tokens=471
+MB5   EP_part_alone_n512                 GeForce GT 730           n=10     median=  274633.3 p99=  288325.6 min=  271288.1 mean=  276798.4 us  pairs=854 tokens=459
+MB5   EP_part_alone_n512                 GeForce GT 710           n=10     median=  173124.0 p99=  184559.0 min=  161337.4 mean=  172577.0 us  pairs=264 tokens=218
+# done mb5: all OK (0 failed check(s))

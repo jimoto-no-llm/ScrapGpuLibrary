@@ -1,0 +1,25 @@
+         ggml_tensor * exp_probs_b,
+             int64_t   n_expert,
+             int64_t   n_expert_used,
+     llm_ffn_op_type   type_op,
+                bool   norm_w,
+               float   w_scale,
+         llama_expert_gating_func_type gating_op,
+                 int   il,
+         ggml_tensor * probs_in,
+         ggml_tensor * gate_up_exps,
+         ggml_tensor * gate_up_exps_b,
+         ggml_tensor * up_exps_s,
+         ggml_tensor * gate_exps_s,
+         ggml_tensor * down_exps_s,
+         ggml_tensor * selected_experts_in) const {
+    const int64_t  n_dims    = cur->ne[1];
+    const int64_t  n_hidden  = up_exps->ne[0];
+    const int64_t  n_groups  = 1;
+    const int64_t  n_threads = 1;
+
+    const bool   is_mlp = type_op == LLM_FFN_OP_MLP;
+
+    // Compute gate values
+    // gate_inp and gate_inp_b are the input and bias for the gate
+    // gate_inp is the normed input for the

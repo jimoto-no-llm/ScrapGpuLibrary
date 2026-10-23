@@ -1,0 +1,46 @@
+# date: 2026-10-23_21:46:56  host: tb250  tag: kld3_lfm_moe_rx_gt730
+# temps at start:  amd48 amd34 GT 430=43 GT 730=32 GT 710=32    (max 43 C)
+# env: GGML_SGLX_MOE=Vulkan0:auto,CL11_0:200 GGML_CL11_PLATFORMS=NVIDIA GGML_SGLX_MOE_THREADS=2 GGML_SGLX_PROFILE=1 GGML_CL11_DEVICES=GT 730,GT 710 GGML_BACKEND_PATH=/home/eightman/moe-ep/hec/plug/libggml-cl11.so GGML_SGLX_MOE_VERBOSE=1 VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json GGML_SGLX_MOE_SPIN_US=0 GGML_CL11_AUTO_RPC=0 
+# perf: 0000:03:00.0 perf=manual 0000:06:00.0 perf=manual 
+# cmd: /home/eightman/moe-ep/src/llama-build/bin/llama-perplexity -m /home/eightman/moe-ep/models/LFM2.5-8B-A1B-Q4_0.gguf -f /home/eightman/moe-ep/kl/text.txt -c 512 --chunks 4 -b 512 -ub 320 -t 2 -fa off -sm layer -dev Vulkan0,SGLX0 -ts 1/0 -ngl 99 -ot blk\.[0-9]+\.ffn_(up|gate|down)_exps\.weight=SGLX0 --poll 0 --kl-divergence-base /home/eightman/moe-ep/kl/base.kld --kl-divergence
+SGLX: mapped 4.2 GiB of experts in 0.1 s
+0.02.842.839 W llama_kv_cache: the V embeddings have different sizes across layers and FA is not enabled - padding V cache to 512
+0.02.865.351 I cmn          init: llama threadpool init, n_threads = 2
+SGLX MoE: device Vulkan0 (AMD Radeon RX 6400 (RADV NAVI24)): class 0: 430 slots + 96 ring (3107 MiB)
+ggml_backend_cl11_buft_alloc_buffer: allocating 409.50 MiB on CL11_0, more than CL_DEVICE_MAX_MEM_ALLOC_SIZE (245.33 MiB); set GGML_CL11_STRICT_ALLOC=1 to refuse such allocations
+cl11_probe_buffer: the probe of a 429391872 byte buffer failed: CL_MEM_OBJECT_ALLOCATION_FAILURE
+ggml_backend_cl11_buft_alloc_buffer: the 409.50 MiB allocation on CL11_0 is not usable: out of device memory
+0.03.020.049 E ggml_backend_buft_alloc_buffer_n_default: failed to allocate CL11_0 buffer of size 429391872
+SGLX: CL11_0: cannot allocate 200 expert slots (1228.5 MiB)
+cl11_probe_buffer: the probe of a 388104192 byte buffer failed: CL_MEM_OBJECT_ALLOCATION_FAILURE
+ggml_backend_cl11_buft_alloc_buffer: the 370.12 MiB allocation on CL11_0 is not usable: out of device memory
+0.03.136.124 E ggml_backend_buft_alloc_buffer_n_default: failed to allocate CL11_0 buffer of size 388104192
+SGLX: CL11_0: cannot allocate 180 expert slots (1110.4 MiB)
+cl11_probe_buffer: the probe of a 350945280 byte buffer failed: CL_MEM_OBJECT_ALLOCATION_FAILURE
+ggml_backend_cl11_buft_alloc_buffer: the 334.69 MiB allocation on CL11_0 is not usable: out of device memory
+0.03.241.426 E ggml_backend_buft_alloc_buffer_n_default: failed to allocate CL11_0 buffer of size 350945280
+SGLX: CL11_0: cannot allocate 162 expert slots (1004.1 MiB)
+SGLX MoE: device CL11_0 (GeForce GT 730): class 0: 145 slots + 0 ring (856 MiB)
+0.03.700.044 I 
+0.03.700.106 I system_info: n_threads = 2 (n_threads_batch = 2) / 2 | CPU : SSE3 = 1 | SSSE3 = 1 | LLAMAFILE = 1 | OPENMP = 1 | REPACK = 1 | 
+0.03.711.625 I kl_divergence: computing over 4 chunks, n_ctx=512, batch_size=512, n_seq=1
+SGLX MoE: placement 1: kept 0, uploaded 646, freed 0 in 2652 ms; the placed experts cover 100.0% of the selections seen
+cl11_ensure_program: CL11_0: multi mat-vec (Q / K / V, FFN gate / up in one launch) enabled
+cl11_ensure_program: CL11_0: mat-mat variant: tile 64 x 64, 8 x 4 values per work-item, BK 16, unroll 16, prefetch 0, 128 work-items
+cl11_ensure_program: CL11_0: GeForce GT 730, OpenCL 1.2 CUDA, kernels built (work-group sizes: element-wise 128, row 128, mat-vec 128, mat-mat 16x16)
+SGLX MoE: placement 2: kept 536, uploaded 126, freed 14 in 720 ms; the placed experts cover 100.0% of the selections seen
+0.11.778.146 I kl_divergence: 8.07 seconds per pass - ETA SGLX MoE: placement 3: kept 545, uploaded 126, freed 21 in 671 ms; the placed experts cover 100.0% of the selections seen
+SGLX MoE: placement 4: kept 561, uploaded 110, freed 14 in 415 ms; the placed experts cover 100.0% of the selections seen
+SGLX MoE: placement 5: kept 564, uploaded 107, freed 11 in 432 ms; the placed experts cover 100.0% of the selections seen
+SGLX MoE: placement 6: kept 567, uploaded 104, freed 8 in 419 ms; the placed experts cover 100.0% of the selections seen
+SGLX MoE: placement 7: kept 561, uploaded 110, freed 14 in 425 ms; the placed experts cover 100.0% of the selections seen
+SGLX MoE: placement 8: kept 566, uploaded 105, freed 9 in 425 ms; the placed experts cover 100.0% of the selections seen
+SGLX MoE profile decode: 1 blocks, mean 3.394 ms (max 3.394): gpu submit 0.000, cold cpu 3.371, gpu wait 0.000; cold 4.00 / gpu 0.00 experts per block, 0.00 gpus used
+SGLX MoE profile   Vulkan0: submit 0.000 ms, wait 0.000 ms (0 calls)
+SGLX MoE profile   CL11_0: submit 0.000 ms, wait 0.000 ms (0 calls)
+SGLX MoE profile cold decode: alloc 0.000, set 0.000, graph_compute 3.346 ms (1 calls)
+SGLX MoE profile prefill: 197 blocks, mean 57.0 ms (max 219.5), cold cpu rounds 22.3 ms, streaming 56.4 ms (5.7 experts per block); pairs: gpu 892, cold 3 per block
+SGLX MoE profile: lazy input copies 3.398 ms per graph_compute that had them (198 calls, max 19.217)
+SGLX MoE profile: 8 placements, 6160 ms in total, 2050 tokens
+# rc=0  seconds=25
+# temps at end:  amd49 amd34 GT 430=43 GT 730=34 GT 710=32    (max 43 C)

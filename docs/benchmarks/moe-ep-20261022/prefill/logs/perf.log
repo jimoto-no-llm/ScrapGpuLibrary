@@ -1,0 +1,251 @@
+[sgl-driver] 0000:03:00.0 perf=manual sclk=1: 2320Mhz * mclk=3: 1000Mhz *
+[sgl-driver] 0000:06:00.0 perf=manual sclk=5: 1147Mhz * mclk=2: 1500Mhz *
+[sgl-driver] 0000:03:00.0 perf=auto sclk=0: 0Mhz *1: 0Mhz * mclk=2: 675Mhz *
+cat: write error: Invalid argument
+[sgl-driver] 0000:06:00.0 perf=auto sclk=0: 214Mhz * mclk=0: 300Mhz *
+[sgl-driver] 0000:03:00.0 perf=manual sclk=1: 2320Mhz * mclk=3: 1000Mhz *
+[sgl-driver] 0000:06:00.0 perf=manual sclk=4: 1098Mhz * mclk=2: 1500Mhz *
+[sgl-driver] 0000:03:00.0 perf=auto sclk=0: 0Mhz *1: 0Mhz * mclk=2: 675Mhz *
+cat: write error: Invalid argument
+[sgl-driver] 0000:06:00.0 perf=auto sclk=0: 214Mhz * mclk=0: 300Mhz *
+restored
+[sgl-driver] 0000:03:00.0 perf=manual sclk=1: 2320Mhz * mclk=3: 1000Mhz *
+[sgl-driver] 0000:06:00.0 perf=manual sclk=5: 1147Mhz * mclk=2: 1500Mhz *
+[sgl-driver] 0000:03:00.0 perf=auto sclk=0: 0Mhz *1: 0Mhz * mclk=2: 675Mhz *
+cat: write error: Invalid argument
+[sgl-driver] 0000:06:00.0 perf=auto sclk=0: 214Mhz * mclk=0: 300Mhz *
+restored
+[sgl-driver] 0000:03:00.0 perf=manual sclk=1: 2320Mhz * mclk=3: 1000Mhz *
+[sgl-driver] 0000:06:00.0 perf=manual sclk=4: 1098Mhz * mclk=2: 1500Mhz *
+[sgl-driver] 0000:03:00.0 perf=auto sclk=0: 0Mhz *1: 0Mhz * mclk=2: 675Mhz *
+cat: write error: Invalid argument
+[sgl-driver] 0000:06:00.0 perf=auto sclk=0: 214Mhz * mclk=0: 300Mhz *
+restored
+[sgl-driver] 0000:03:00.0 perf=manual sclk=0: 0Mhz *1: 0Mhz * mclk=3: 1000Mhz *
+[sgl-driver] 0000:06:00.0 perf=manual sclk=1: 734Mhz * mclk=2: 1500Mhz *
+[sgl-driver] 0000:03:00.0 perf=auto sclk=0: 0Mhz *1: 0Mhz * mclk=2: 675Mhz *
+cat: write error: Invalid argument
+[sgl-driver] 0000:06:00.0 perf=auto sclk=7: 1219Mhz * mclk=2: 1500Mhz *
+restored
+[sgl-driver] 0000:03:00.0 perf=manual sclk=1: 2320Mhz * mclk=3: 1000Mhz *
+[sgl-driver] 0000:06:00.0 perf=manual sclk=4: 1098Mhz * mclk=2: 1500Mhz *
+[sgl-driver] 0000:03:00.0 perf=auto sclk=0: 0Mhz *1: 0Mhz * mclk=2: 675Mhz *
+cat: write error: Invalid argument
+[sgl-driver] 0000:06:00.0 perf=auto sclk=7: 1219Mhz * mclk=2: 1500Mhz *
+restored
+[sgl-driver] 0000:03:00.0 perf=manual sclk=1: 2320Mhz * mclk=3: 1000Mhz *
+[sgl-driver] 0000:06:00.0 perf=manual sclk=4: 1098Mhz * mclk=2: 1500Mhz *
+[sgl-driver] 0000:03:00.0 perf=auto sclk=0: 0Mhz *1: 0Mhz * mclk=2: 675Mhz *
+cat: write error: Invalid argument
+[sgl-driver] 0000:06:00.0 perf=auto sclk=0: 214Mhz * mclk=0: 300Mhz *
+restored
+[sgl-driver] 0000:03:00.0 perf=manual sclk=0: 0Mhz *1: 0Mhz * mclk=3: 1000Mhz *
+[sgl-driver] 0000:06:00.0 perf=manual sclk=1: 734Mhz * mclk=2: 1500Mhz *
+[sgl-driver] 0000:03:00.0 perf=auto sclk=0: 0Mhz *1: 0Mhz * mclk=2: 675Mhz *
+cat: write error: Invalid argument
+[sgl-driver] 0000:06:00.0 perf=auto sclk=7: 1219Mhz * mclk=2: 1500Mhz *
+restored
+[sgl-driver] 0000:03:00.0 perf=manual sclk=0: 0Mhz *1: 0Mhz * mclk=3: 1000Mhz *
+[sgl-driver] 0000:06:00.0 perf=manual sclk=1: 734Mhz * mclk=2: 1500Mhz *
+[sgl-driver] 0000:03:00.0 perf=auto sclk=0: 0Mhz *1: 0Mhz * mclk=1: 541Mhz *
+cat: write error: Invalid argument
+[sgl-driver] 0000:06:00.0 perf=auto sclk=7: 1219Mhz * mclk=2: 1500Mhz *
+restored
+[sgl-driver] 0000:03:00.0 perf=manual sclk=0: 0Mhz *1: 0Mhz * mclk=3: 1000Mhz *
+[sgl-driver] 0000:06:00.0 perf=manual sclk=1: 734Mhz * mclk=2: 1500Mhz *
+[sgl-driver] 0000:03:00.0 perf=auto sclk=0: 0Mhz *1: 0Mhz * mclk=2: 675Mhz *
+cat: write error: Invalid argument
+[sgl-driver] 0000:06:00.0 perf=auto sclk=0: 214Mhz * mclk=0: 300Mhz *
+restored
+[sgl-driver] 0000:03:00.0 perf=manual sclk=0: 0Mhz *1: 0Mhz * mclk=3: 1000Mhz *
+[sgl-driver] 0000:06:00.0 perf=manual sclk=1: 734Mhz * mclk=2: 1500Mhz *
+[sgl-driver] 0000:03:00.0 perf=auto sclk=0: 0Mhz *1: 0Mhz * mclk=1: 541Mhz *
+cat: write error: Invalid argument
+[sgl-driver] 0000:06:00.0 perf=auto sclk=0: 214Mhz * mclk=0: 300Mhz *
+restored
+[sgl-driver] 0000:03:00.0 perf=manual sclk=0: 0Mhz *1: 0Mhz * mclk=3: 1000Mhz *
+[sgl-driver] 0000:06:00.0 perf=manual sclk=1: 734Mhz * mclk=2: 1500Mhz *
+[sgl-driver] 0000:03:00.0 perf=auto sclk=0: 0Mhz *1: 0Mhz * mclk=1: 541Mhz *
+cat: write error: Invalid argument
+[sgl-driver] 0000:06:00.0 perf=auto sclk=0: 214Mhz * mclk=0: 300Mhz *
+restored
+[sgl-driver] 0000:03:00.0 perf=manual sclk=0: 0Mhz *1: 0Mhz * mclk=3: 1000Mhz *
+[sgl-driver] 0000:06:00.0 perf=manual sclk=1: 734Mhz * mclk=2: 1500Mhz *
+[sgl-driver] 0000:03:00.0 perf=auto sclk=0: 0Mhz *1: 0Mhz * mclk=0: 96Mhz *
+cat: write error: Invalid argument
+[sgl-driver] 0000:06:00.0 perf=auto sclk=0: 214Mhz * mclk=0: 300Mhz *
+restored
+[sgl-driver] 0000:03:00.0 perf=manual sclk=0: 0Mhz *1: 0Mhz * mclk=3: 1000Mhz *
+[sgl-driver] 0000:06:00.0 perf=manual sclk=1: 734Mhz * mclk=2: 1500Mhz *
+[sgl-driver] 0000:03:00.0 perf=auto sclk=0: 0Mhz *1: 0Mhz * mclk=2: 675Mhz *
+cat: write error: Invalid argument
+[sgl-driver] 0000:06:00.0 perf=auto sclk=0: 214Mhz * mclk=0: 300Mhz *
+restored
+[sgl-driver] 0000:03:00.0 perf=manual sclk=0: 0Mhz *1: 0Mhz * mclk=3: 1000Mhz *
+[sgl-driver] 0000:06:00.0 perf=manual sclk=1: 734Mhz * mclk=2: 1500Mhz *
+[sgl-driver] 0000:03:00.0 perf=auto sclk=0: 500Mhz * mclk=2: 675Mhz *
+cat: write error: Invalid argument
+[sgl-driver] 0000:06:00.0 perf=auto sclk=4: 1098Mhz * mclk=1: 625Mhz *
+restored
+[sgl-driver] 0000:03:00.0 perf=manual sclk=1: 2320Mhz * mclk=3: 1000Mhz *
+[sgl-driver] 0000:06:00.0 perf=manual sclk=6: 1183Mhz * mclk=2: 1500Mhz *
+[sgl-driver] 0000:03:00.0 perf=auto sclk=0: 0Mhz *1: 0Mhz * mclk=1: 541Mhz *
+cat: write error: Invalid argument
+[sgl-driver] 0000:06:00.0 perf=auto sclk=0: 214Mhz * mclk=0: 300Mhz *
+restored
+[sgl-driver] 0000:03:00.0 perf=manual sclk=1: 2320Mhz * mclk=3: 1000Mhz *
+[sgl-driver] 0000:06:00.0 perf=manual sclk=4: 1098Mhz * mclk=2: 1500Mhz *
+[sgl-driver] 0000:03:00.0 perf=auto sclk=0: 0Mhz *1: 0Mhz * mclk=2: 675Mhz *
+cat: write error: Invalid argument
+[sgl-driver] 0000:06:00.0 perf=auto sclk=0: 214Mhz * mclk=0: 300Mhz *
+restored
+[sgl-driver] 0000:03:00.0 perf=manual sclk=0: 0Mhz *1: 0Mhz * mclk=3: 1000Mhz *
+[sgl-driver] 0000:06:00.0 perf=manual sclk=1: 734Mhz * mclk=2: 1500Mhz *
+[sgl-driver] 0000:03:00.0 perf=auto sclk=0: 0Mhz *1: 0Mhz * mclk=2: 675Mhz *
+cat: write error: Invalid argument
+[sgl-driver] 0000:06:00.0 perf=auto sclk=0: 214Mhz * mclk=0: 300Mhz *
+restored
+[sgl-driver] 0000:03:00.0 perf=manual sclk=0: 0Mhz *1: 0Mhz * mclk=3: 1000Mhz *
+[sgl-driver] 0000:06:00.0 perf=manual sclk=1: 734Mhz * mclk=2: 1500Mhz *
+[sgl-driver] 0000:03:00.0 perf=auto sclk=0: 0Mhz *1: 0Mhz * mclk=2: 675Mhz *
+cat: write error: Invalid argument
+[sgl-driver] 0000:06:00.0 perf=auto sclk=0: 214Mhz * mclk=0: 300Mhz *
+restored
+[sgl-driver] 0000:03:00.0 perf=manual sclk=0: 0Mhz *1: 0Mhz * mclk=3: 1000Mhz *
+[sgl-driver] 0000:06:00.0 perf=manual sclk=1: 734Mhz * mclk=2: 1500Mhz *
+[sgl-driver] 0000:03:00.0 perf=auto sclk=0: 0Mhz *1: 0Mhz * mclk=2: 675Mhz *
+cat: write error: Invalid argument
+[sgl-driver] 0000:06:00.0 perf=auto sclk=0: 214Mhz * mclk=0: 300Mhz *
+restored
+[sgl-driver] 0000:03:00.0 perf=manual sclk=0: 0Mhz *1: 0Mhz * mclk=3: 1000Mhz *
+[sgl-driver] 0000:06:00.0 perf=manual sclk=5: 1147Mhz * mclk=2: 1500Mhz *
+[sgl-driver] 0000:03:00.0 perf=auto sclk=0: 0Mhz *1: 0Mhz * mclk=2: 675Mhz *
+cat: write error: Invalid argument
+[sgl-driver] 0000:06:00.0 perf=auto sclk=7: 1219Mhz * mclk=2: 1500Mhz *
+restored
+[sgl-driver] 0000:03:00.0 perf=manual sclk=1: 2320Mhz * mclk=3: 1000Mhz *
+[sgl-driver] 0000:06:00.0 perf=manual sclk=7: 1219Mhz * mclk=2: 1500Mhz *
+[sgl-driver] 0000:03:00.0 perf=auto sclk=0: 0Mhz *1: 0Mhz * mclk=1: 541Mhz *
+cat: write error: Invalid argument
+[sgl-driver] 0000:06:00.0 perf=auto sclk=7: 1219Mhz * mclk=2: 1500Mhz *
+restored
+[sgl-driver] 0000:03:00.0 perf=manual sclk=0: 0Mhz *1: 0Mhz * mclk=3: 1000Mhz *
+[sgl-driver] 0000:06:00.0 perf=manual sclk=5: 1147Mhz * mclk=2: 1500Mhz *
+[sgl-driver] 0000:03:00.0 perf=auto sclk=0: 0Mhz *1: 0Mhz * mclk=0: 96Mhz *
+cat: write error: Invalid argument
+[sgl-driver] 0000:06:00.0 perf=auto sclk=0: 214Mhz * mclk=0: 300Mhz *
+restored
+[sgl-driver] 0000:03:00.0 perf=manual sclk=1: 2320Mhz * mclk=3: 1000Mhz *
+[sgl-driver] 0000:06:00.0 perf=manual sclk=4: 1098Mhz * mclk=2: 1500Mhz *
+[sgl-driver] 0000:03:00.0 perf=auto sclk=0: 0Mhz *1: 0Mhz * mclk=1: 541Mhz *
+cat: write error: Invalid argument
+[sgl-driver] 0000:06:00.0 perf=auto sclk=6: 1183Mhz * mclk=2: 1500Mhz *
+restored
+[sgl-driver] 0000:03:00.0 perf=manual sclk=1: 2320Mhz * mclk=3: 1000Mhz *
+[sgl-driver] 0000:06:00.0 perf=manual sclk=5: 1147Mhz * mclk=2: 1500Mhz *
+[sgl-driver] 0000:03:00.0 perf=auto sclk=0: 0Mhz *1: 0Mhz * mclk=2: 675Mhz *
+cat: write error: Invalid argument
+[sgl-driver] 0000:06:00.0 perf=auto sclk=7: 1219Mhz * mclk=2: 1500Mhz *
+restored
+[sgl-driver] 0000:03:00.0 perf=manual sclk=1: 2320Mhz * mclk=3: 1000Mhz *
+[sgl-driver] 0000:06:00.0 perf=manual sclk=4: 1098Mhz * mclk=2: 1500Mhz *
+[sgl-driver] 0000:03:00.0 perf=auto sclk=0: 0Mhz *1: 0Mhz * mclk=1: 541Mhz *
+cat: write error: Invalid argument
+[sgl-driver] 0000:06:00.0 perf=auto sclk=7: 1219Mhz * mclk=2: 1500Mhz *
+restored
+[sgl-driver] 0000:03:00.0 perf=manual sclk=1: 2320Mhz * mclk=3: 1000Mhz *
+[sgl-driver] 0000:06:00.0 perf=manual sclk=4: 1098Mhz * mclk=2: 1500Mhz *
+[sgl-driver] 0000:03:00.0 perf=auto sclk=0: 0Mhz *1: 0Mhz * mclk=2: 675Mhz *
+cat: write error: Invalid argument
+[sgl-driver] 0000:06:00.0 perf=auto sclk=7: 1219Mhz * mclk=2: 1500Mhz *
+restored
+[sgl-driver] 0000:03:00.0 perf=manual sclk=1: 2320Mhz * mclk=3: 1000Mhz *
+[sgl-driver] 0000:06:00.0 perf=manual sclk=4: 1098Mhz * mclk=2: 1500Mhz *
+[sgl-driver] 0000:03:00.0 perf=auto sclk=0: 0Mhz *1: 0Mhz * mclk=2: 675Mhz *
+cat: write error: Invalid argument
+[sgl-driver] 0000:06:00.0 perf=auto sclk=6: 1183Mhz * mclk=2: 1500Mhz *
+restored
+[sgl-driver] 0000:03:00.0 perf=manual sclk=1: 2320Mhz * mclk=3: 1000Mhz *
+[sgl-driver] 0000:06:00.0 perf=manual sclk=4: 1098Mhz * mclk=2: 1500Mhz *
+[sgl-driver] 0000:03:00.0 perf=auto sclk=0: 0Mhz *1: 0Mhz * mclk=2: 675Mhz *
+cat: write error: Invalid argument
+[sgl-driver] 0000:06:00.0 perf=auto sclk=7: 1219Mhz * mclk=2: 1500Mhz *
+restored
+[sgl-driver] 0000:03:00.0 perf=manual sclk=1: 2320Mhz * mclk=3: 1000Mhz *
+[sgl-driver] 0000:06:00.0 perf=manual sclk=4: 1098Mhz * mclk=2: 1500Mhz *
+[sgl-driver] 0000:03:00.0 perf=auto sclk=0: 0Mhz *1: 0Mhz * mclk=2: 675Mhz *
+cat: write error: Invalid argument
+[sgl-driver] 0000:06:00.0 perf=auto sclk=7: 1219Mhz * mclk=2: 1500Mhz *
+restored
+[sgl-driver] 0000:03:00.0 perf=manual sclk=1: 2320Mhz * mclk=3: 1000Mhz *
+[sgl-driver] 0000:06:00.0 perf=manual sclk=5: 1147Mhz * mclk=2: 1500Mhz *
+[sgl-driver] 0000:03:00.0 perf=auto sclk=0: 0Mhz *1: 0Mhz * mclk=2: 675Mhz *
+cat: write error: Invalid argument
+[sgl-driver] 0000:06:00.0 perf=auto sclk=7: 1219Mhz * mclk=2: 1500Mhz *
+restored
+[sgl-driver] 0000:03:00.0 perf=manual sclk=1: 2320Mhz * mclk=3: 1000Mhz *
+[sgl-driver] 0000:06:00.0 perf=manual sclk=4: 1098Mhz * mclk=2: 1500Mhz *
+[sgl-driver] 0000:03:00.0 perf=auto sclk=0: 0Mhz *1: 0Mhz * mclk=2: 675Mhz *
+cat: write error: Invalid argument
+[sgl-driver] 0000:06:00.0 perf=auto sclk=7: 1219Mhz * mclk=2: 1500Mhz *
+restored
+[sgl-driver] 0000:03:00.0 perf=manual sclk=1: 2320Mhz * mclk=3: 1000Mhz *
+[sgl-driver] 0000:06:00.0 perf=manual sclk=5: 1147Mhz * mclk=2: 1500Mhz *
+[sgl-driver] 0000:03:00.0 perf=auto sclk=0: 0Mhz *1: 0Mhz * mclk=2: 675Mhz *
+cat: write error: Invalid argument
+[sgl-driver] 0000:06:00.0 perf=auto sclk=7: 1219Mhz * mclk=2: 1500Mhz *
+restored
+[sgl-driver] 0000:03:00.0 perf=manual sclk=1: 2320Mhz * mclk=3: 1000Mhz *
+[sgl-driver] 0000:06:00.0 perf=manual sclk=4: 1098Mhz * mclk=2: 1500Mhz *
+[sgl-driver] 0000:03:00.0 perf=auto sclk=0: 0Mhz *1: 0Mhz * mclk=2: 675Mhz *
+cat: write error: Invalid argument
+[sgl-driver] 0000:06:00.0 perf=auto sclk=7: 1219Mhz * mclk=2: 1500Mhz *
+restored
+[sgl-driver] 0000:03:00.0 perf=manual sclk=1: 2320Mhz * mclk=3: 1000Mhz *
+[sgl-driver] 0000:06:00.0 perf=manual sclk=5: 1147Mhz * mclk=2: 1500Mhz *
+[sgl-driver] 0000:03:00.0 perf=auto sclk=0: 0Mhz *1: 0Mhz * mclk=2: 675Mhz *
+cat: write error: Invalid argument
+[sgl-driver] 0000:06:00.0 perf=auto sclk=7: 1219Mhz * mclk=2: 1500Mhz *
+restored
+[sgl-driver] 0000:03:00.0 perf=manual sclk=1: 2320Mhz * mclk=3: 1000Mhz *
+[sgl-driver] 0000:06:00.0 perf=manual sclk=4: 1098Mhz * mclk=2: 1500Mhz *
+[sgl-driver] 0000:03:00.0 perf=auto sclk=0: 0Mhz *1: 0Mhz * mclk=2: 675Mhz *
+cat: write error: Invalid argument
+[sgl-driver] 0000:06:00.0 perf=auto sclk=7: 1219Mhz * mclk=2: 1500Mhz *
+restored
+[sgl-driver] 0000:03:00.0 perf=manual sclk=1: 2320Mhz * mclk=3: 1000Mhz *
+[sgl-driver] 0000:06:00.0 perf=manual sclk=5: 1147Mhz * mclk=2: 1500Mhz *
+[sgl-driver] 0000:03:00.0 perf=auto sclk=0: 0Mhz *1: 0Mhz * mclk=1: 541Mhz *
+cat: write error: Invalid argument
+[sgl-driver] 0000:06:00.0 perf=auto sclk=7: 1219Mhz * mclk=2: 1500Mhz *
+restored
+[sgl-driver] 0000:03:00.0 perf=manual sclk=1: 2320Mhz * mclk=3: 1000Mhz *
+[sgl-driver] 0000:06:00.0 perf=manual sclk=4: 1098Mhz * mclk=2: 1500Mhz *
+[sgl-driver] 0000:03:00.0 perf=auto sclk=0: 0Mhz *1: 0Mhz * mclk=2: 675Mhz *
+cat: write error: Invalid argument
+[sgl-driver] 0000:06:00.0 perf=auto sclk=7: 1219Mhz * mclk=2: 1500Mhz *
+restored
+[sgl-driver] 0000:03:00.0 perf=manual sclk=1: 2320Mhz * mclk=3: 1000Mhz *
+[sgl-driver] 0000:06:00.0 perf=manual sclk=5: 1147Mhz * mclk=2: 1500Mhz *
+[sgl-driver] 0000:03:00.0 perf=auto sclk=0: 0Mhz *1: 0Mhz * mclk=2: 675Mhz *
+cat: write error: Invalid argument
+[sgl-driver] 0000:06:00.0 perf=auto sclk=7: 1219Mhz * mclk=2: 1500Mhz *
+restored
+[sgl-driver] 0000:03:00.0 perf=manual sclk=1: 2320Mhz * mclk=3: 1000Mhz *
+[sgl-driver] 0000:06:00.0 perf=manual sclk=4: 1098Mhz * mclk=2: 1500Mhz *
+[sgl-driver] 0000:03:00.0 perf=auto sclk=0: 0Mhz *1: 0Mhz * mclk=1: 541Mhz *
+cat: write error: Invalid argument
+[sgl-driver] 0000:06:00.0 perf=auto sclk=7: 1219Mhz * mclk=2: 1500Mhz *
+restored
+[sgl-driver] 0000:03:00.0 perf=manual sclk=1: 2320Mhz * mclk=3: 1000Mhz *
+[sgl-driver] 0000:06:00.0 perf=manual sclk=4: 1098Mhz * mclk=2: 1500Mhz *
+[sgl-driver] 0000:03:00.0 perf=auto sclk=0: 0Mhz *1: 0Mhz * mclk=2: 675Mhz *
+cat: write error: Invalid argument
+[sgl-driver] 0000:06:00.0 perf=auto sclk=7: 1219Mhz * mclk=2: 1500Mhz *
+restored
+[sgl-driver] 0000:03:00.0 perf=manual sclk=1: 2320Mhz * mclk=3: 1000Mhz *
+[sgl-driver] 0000:06:00.0 perf=manual sclk=4: 1098Mhz * mclk=2: 1500Mhz *
+[sgl-driver] 0000:03:00.0 perf=auto sclk=0: 0Mhz *1: 0Mhz * mclk=2: 675Mhz *
+cat: write error: Invalid argument
+[sgl-driver] 0000:06:00.0 perf=auto sclk=0: 214Mhz * mclk=0: 300Mhz *
+restored

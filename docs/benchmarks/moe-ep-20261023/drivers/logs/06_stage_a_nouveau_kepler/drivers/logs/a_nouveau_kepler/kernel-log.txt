@@ -1,0 +1,2 @@
+# bash -c dmesg 2>/dev/null | grep -iE "nouveau|nvidia|NVRM" | tail -80 || journalctl -k --no-pager -n 400 2>/dev/null | grep -iE "nouveau|nvidia|NVRM" | tail -80
+# rc=0

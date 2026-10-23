@@ -1,0 +1,23 @@
+[sgl-driver] rmmod nouveau
+[sgl-driver] nvidia kernel module 390.157
+[sgl-driver] installing userspace from NVIDIA-Linux-x86_64-390.157.run
+         queryable from the system.  If X fails to find the NVIDIA X driver
+         module, please install the `pkg-config` utility and the X.Org
+         SDK/development package for your distribution and reinstall the
+         driver.
+
+[sgl-driver] libcuda.so.1 -> /usr/lib/x86_64-linux-gnu/libcuda.so.390.157
+0000:04:00.0 driver
+0000:07:00.0 driver
+0000:08:00.0 driver
+0000:03:00.0 perf=auto
+0000:06:00.0 perf=auto
+state: nv390
+0000:04:00.0 nodes: 
+0000:07:00.0 nodes: 
+0000:08:00.0 nodes: 
+userspace libcuda=390.157 marker=NVIDIA-Linux-x86_64-390.157.run kernel module=not loaded
+---
+nv390
+Failed to initialize NVML: GPU access blocked by the operating system
+lrwxrwxrwx 1 root root 18 Oct 23 23:18 /usr/lib/x86_64-linux-gnu/libcuda.so.1 -> libcuda.so.390.157

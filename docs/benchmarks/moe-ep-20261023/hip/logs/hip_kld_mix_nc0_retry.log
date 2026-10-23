@@ -1,0 +1,32 @@
+# date: 2026-10-23_16:42:19  host: tb250  tag: hip_kld_mix_nc0_retry
+# temps at start:  amd53 amd38 GT 430=43 GT 730=31 GT 710=33    (max 43 C)
+# env: LD_LIBRARY_PATH=/mnt/hdd/rocm/v713/lib/python3.13/site-packages/_rocm_sdk_devel/lib:/mnt/hdd/rocm/v713/lib/python3.13/site-packages/_rocm_sdk_devel/lib/llvm/lib VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json 
+# cmd: /home/eightman/moe-ep/hip/llama-build/bin/llama-perplexity -m /home/eightman/moe-ep/models/LFM2.5-8B-A1B-Q4_0.gguf -f /home/eightman/moe-ep/kl/text.txt -c 512 --chunks 4 -b 128 -ub 128 -t 2 -fa off -dev ROCm0,Vulkan1 -ngl 99 -ncmoe 0 -sm layer -ts 5/1 --kl-divergence-base /home/eightman/moe-ep/kl/base.kld --kl-divergence
+0.02.517.153 W common_fit_params: failed to fit params to free device memory: n_gpu_layers already set by user to 99, abort
+0.31.573.955 W llama_kv_cache: the V embeddings have different sizes across layers and FA is not enabled - padding V cache to 512
+0.33.545.869 I cmn          init: llama threadpool init, n_threads = 2
+0.35.160.654 I 
+0.35.160.726 I system_info: n_threads = 2 (n_threads_batch = 2) / 2 | ROCm : NO_VMM = 1 | FA_QUANTS = q4_0-q4_0,q8_0-q8_0,f16-f16,bf16-bf16 | CPU : SSE3 = 1 | SSSE3 = 1 | LLAMAFILE = 1 | OPENMP = 1 | REPACK = 1 | 
+0.35.175.041 I kl_divergence: computing over 4 chunks, n_ctx=512, batch_size=128, n_seq=1
+/home/eightman/moe-ep/src/llama.cpp/ggml/src/ggml-cuda/ggml-cuda.cu:109: ROCm error
+0.38.023.941 E ROCm error: CUBLAS_STATUS_INTERNAL_ERROR
+0.38.023.977 E   current device: 0, in function ggml_cuda_mul_mat_cublas_impl at /home/eightman/moe-ep/src/llama.cpp/ggml/src/ggml-cuda/ggml-cuda.cu:1612
+0.38.023.986 E   hipblasGemmBatchedEx(cublas_h, HIPBLAS_OP_T, HIPBLAS_OP_N, ne01, ne11, ne10, alpha, (const void **) (ptrs_src.get() + 0*ne23), cu_data_type_a, s01, (const void **) (ptrs_src.get() + 1*ne23), cu_data_type_b, s11, beta, ( void **) (ptrs_dst.get() + 0*ne23), cu_data_type, ldc, ne23, cu_compute_type, HIPBLAS_GEMM_DEFAULT)
+/home/eightman/moe-ep/hip/llama-build/bin/libggml-base.so.0(+0x3db78) [0x7f1174982b78]
+/home/eightman/moe-ep/hip/llama-build/bin/libggml-base.so.0(ggml_print_backtrace+0x231) [0x7f1174982b51]
+/home/eightman/moe-ep/hip/llama-build/bin/libggml-base.so.0(ggml_abort+0x109) [0x7f117499a5a9]
+/home/eightman/moe-ep/hip/llama-build/bin/libggml-hip.so(+0x2ab15d2) [0x7f116b4b15d2]
+/home/eightman/moe-ep/hip/llama-build/bin/libggml-hip.so(+0x2ac6486) [0x7f116b4c6486]
+/home/eightman/moe-ep/hip/llama-build/bin/libggml-hip.so(+0x2abddea) [0x7f116b4bddea]
+/home/eightman/moe-ep/hip/llama-build/bin/libggml-hip.so(+0x2ab7ba9) [0x7f116b4b7ba9]
+/home/eightman/moe-ep/hip/llama-build/bin/libggml-base.so.0(ggml_backend_sched_graph_compute_async+0x3c7) [0x7f11749a5767]
+/home/eightman/moe-ep/hip/llama-build/bin/libllama.so.0(_ZN13llama_context13graph_computeEP11ggml_cgraphb+0xcc) [0x7f117426263c]
+/home/eightman/moe-ep/hip/llama-build/bin/libllama.so.0(_ZN13llama_context14process_ubatchERK12llama_ubatch14llm_graph_typeP22llama_memory_context_iR11ggml_status+0x21e) [0x7f11742620fe]
+/home/eightman/moe-ep/hip/llama-build/bin/libllama.so.0(_ZN13llama_context6decodeERK15llama_batch_ext+0x897) [0x7f1174263b27]
+/home/eightman/moe-ep/hip/llama-build/bin/libllama-perplexity-impl.so(+0x11da3) [0x7f1174a34da3]
+/home/eightman/moe-ep/hip/llama-build/bin/libllama-perplexity-impl.so(_Z16llama_perplexityiPPc+0xea5) [0x7f1174a2d0a5]
+/lib/x86_64-linux-gnu/libc.so.6(+0x29ca8) [0x7f1173a35ca8]
+/lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x85) [0x7f1173a35d65]
+/home/eightman/moe-ep/hip/llama-build/bin/llama-perplexity(+0x1771) [0x5612ce251771]
+# rc=134  seconds=39
+# temps at end:  amd54 amd37 GT 430=42 GT 730=32 GT 710=33    (max 42 C)

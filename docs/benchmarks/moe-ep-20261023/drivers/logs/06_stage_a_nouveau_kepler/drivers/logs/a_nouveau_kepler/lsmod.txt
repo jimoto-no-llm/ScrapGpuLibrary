@@ -1,0 +1,16 @@
+# bash -c lsmod | grep -E "nouveau|nvidia|drm_gpuvm|ttm"
+nouveau              3055616  0
+mxm_wmi                12288  1 nouveau
+drm_gpuvm              45056  1 nouveau
+drm_exec               12288  3 drm_gpuvm,amdgpu,nouveau
+gpu_sched              65536  2 amdgpu,nouveau
+drm_display_helper    274432  3 amdgpu,i915,nouveau
+drm_ttm_helper         16384  2 amdgpu,nouveau
+ttm                   106496  4 amdgpu,drm_ttm_helper,i915,nouveau
+drm_kms_helper        253952  5 drm_display_helper,amdgpu,drm_ttm_helper,i915,nouveau
+button                 24576  1 nouveau
+i2c_algo_bit           16384  3 amdgpu,i915,nouveau
+drm                   774144  14 gpu_sched,drm_kms_helper,drm_exec,drm_gpuvm,drm_suballoc_helper,drm_display_helper,drm_buddy,amdgpu,drm_ttm_helper,i915,ttm,amdxcp,nouveau
+video                  81920  3 amdgpu,i915,nouveau
+wmi                    28672  3 video,mxm_wmi,nouveau
+# rc=0

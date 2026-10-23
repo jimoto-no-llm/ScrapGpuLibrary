@@ -1,0 +1,10 @@
+
+
+<|startoftext|><|im_start|>user
+Explain how a hash table works, including how collisions are handled and what the time complexity of lookups is.<|im_end|>
+<|im_start|>assistant
+<think>
+We need to explain how a hash table works, including collision handling and time complexity of lookups. The user didn't specify any constraints. We should produce a clear, thorough explanation. Possibly include diagram? Not needed. Provide definitions, hashing function, array of buckets, chaining vs open addressing, load factor, resizing, collision handling (separate chaining, open addressing with linear probing, double hashing, etc.), time complexities: average O(1) for insert, delete, lookup; worst-case O(n) if many collisions; with proper load factor and good hash function, expected O(1). Also mention constant factor overhead, memory usage. Provide pseudo-code maybe. Also mention that lookups are O(1) average, O(n) worst-case. Also mention that hash table can be implemented with linked lists per bucket (chaining) or with array slots (open addressing). Provide details on handling collisions: insertion
+
+
+

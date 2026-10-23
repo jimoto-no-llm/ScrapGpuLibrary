@@ -1,0 +1,39 @@
+# date: 2026-10-24_00:31:39  host: tb250  tag: drv_nvk_gt730_bench
+# temps at start:  amd34 amd31 amd32 amd33 NVIDIA-SMI has failed because it couldn't communicate with the NVIDIA driver. Make sure that the latest NVIDIA driver is installed and running.     (max  C)
+# env: GGML_VK_VISIBLE_DEVICES=0 VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nouveau_icd.json 
+# cmd: /home/eightman/moe-ep/src/llama-build/bin/llama-bench -m /home/eightman/moe-ep/models/LFM2.5-1.2B-Instruct-Q4_0.gguf -dev Vulkan0 -ngl 99 -fa 0 -t 2 -b 512 -ub 320 -r 5 -o jsonl -p 128 -n 64
+load_backend: loaded RPC backend from /home/eightman/moe-ep/src/llama-build/bin/libggml-rpc.so
+WARNING: NVK is not a conformant Vulkan implementation, testing use only.
+WARNING: NVK is not a conformant Vulkan implementation, testing use only.
+ggml_vulkan: Found 1 Vulkan devices:
+ggml_vulkan: 0 = NVK GK208B (NVK) | uma: 0 | fp16: 0 | bf16: 0 | fp4: 0 | warp size: 32 | shared memory: 49152 | int dot: 0 | matrix cores: none
+load_backend: loaded Vulkan backend from /home/eightman/moe-ep/src/llama-build/bin/libggml-vulkan.so
+load_backend: loaded CPU backend from /home/eightman/moe-ep/src/llama-build/bin/libggml-cpu.so
+ERROR: unknown nir_op f2f16
+ggml_vulkan: compute pipeline creation failed for set_rows_f32_f16_i64: vk::Device::createComputePipeline: ErrorUnknown
+/home/eightman/moe-ep/src/llama-build/bin/libggml-base.so.0(+0x198a5) [0x7f9d67ac28a5]
+/home/eightman/moe-ep/src/llama-build/bin/libggml-base.so.0(ggml_print_backtrace+0x1df) [0x7f9d67ac2c7f]
+/home/eightman/moe-ep/src/llama-build/bin/libggml-base.so.0(+0x2d929) [0x7f9d67ad6929]
+/lib/x86_64-linux-gnu/libstdc++.so.6(+0xb344a) [0x7f9d678b344a]
+/lib/x86_64-linux-gnu/libstdc++.so.6(_ZSt10unexpectedv+0x0) [0x7f9d678a15e9]
+/lib/x86_64-linux-gnu/libstdc++.so.6(+0xa1600) [0x7f9d678a1600]
+/home/eightman/moe-ep/src/llama-build/bin/libggml-vulkan.so(+0x26686) [0x7f9d63e26686]
+/home/eightman/moe-ep/src/llama-build/bin/libggml-vulkan.so(+0xc6ca8) [0x7f9d63ec6ca8]
+/home/eightman/moe-ep/src/llama-build/bin/libggml-vulkan.so(+0xd0cbc) [0x7f9d63ed0cbc]
+/home/eightman/moe-ep/src/llama-build/bin/libggml-vulkan.so(+0xebbe8) [0x7f9d63eebbe8]
+/home/eightman/moe-ep/src/llama-build/bin/libggml-vulkan.so(+0xedcf1) [0x7f9d63eedcf1]
+/home/eightman/moe-ep/src/llama-build/bin/libggml-vulkan.so(+0x11bb34) [0x7f9d63f1bb34]
+/home/eightman/moe-ep/src/llama-build/bin/libggml-vulkan.so(+0x11cb15) [0x7f9d63f1cb15]
+/home/eightman/moe-ep/src/llama-build/bin/libggml-base.so.0(ggml_backend_sched_graph_compute_async+0x3dc) [0x7f9d67ae036c]
+/home/eightman/moe-ep/src/llama-build/bin/libllama.so.0(_ZN13llama_context13graph_computeEP11ggml_cgraphb+0xdb) [0x7f9d66e05d9b]
+/home/eightman/moe-ep/src/llama-build/bin/libllama.so.0(_ZN13llama_context14process_ubatchERK12llama_ubatch14llm_graph_typeP22llama_memory_context_iR11ggml_status+0x106) [0x7f9d66e09826]
+/home/eightman/moe-ep/src/llama-build/bin/libllama.so.0(_ZN13llama_context6decodeERK15llama_batch_ext+0x38a) [0x7f9d66e11e3a]
+/home/eightman/moe-ep/src/llama-build/bin/libllama-bench-impl.so(+0x1a99b) [0x7f9d67bd199b]
+/home/eightman/moe-ep/src/llama-build/bin/libllama-bench-impl.so(_Z11llama_benchiPPc+0xec0) [0x7f9d67be1ad0]
+/lib/x86_64-linux-gnu/libc.so.6(+0x29ca8) [0x7f9d67635ca8]
+/lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x85) [0x7f9d67635d65]
+/home/eightman/moe-ep/src/llama-build/bin/llama-bench(+0x11b1) [0x56180b2041b1]
+terminate called after throwing an instance of 'vk::UnknownError'
+  what():  vk::Device::createComputePipeline: ErrorUnknown
+# rc=134  seconds=7
+# temps at end:  amd34 amd31 amd32 amd34 NVIDIA-SMI has failed because it couldn't communicate with the NVIDIA driver. Make sure that the latest NVIDIA driver is installed and running.     (max  C)

@@ -1,0 +1,4 @@
+device=GeForce GT 430 backend=cuda driver=CUDA driver tuning=sm_20
+mv q6_K k=2048 rows=128000 n=8 weight=205.1 MiB
+  throughput: best 210.751 ms  median 215.401 ms  = 1.02 / 1.00 GB/s (weights read once per column chunk)
+  latency   : best 210.798 ms  median 213.809 ms

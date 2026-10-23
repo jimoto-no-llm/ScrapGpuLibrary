@@ -1,0 +1,4 @@
+0.10 minutes
+
+chunk             PPL               ln(PPL(Q)/PPL(base))          KL Divergence              Δp RMS            Same top p
+   1      19.5494 ±    4.2218       0.03045 ±    0.01535       0.02395 ±    0.00469     2.922 ±  0.375 %    92.941 ±  1.607 %

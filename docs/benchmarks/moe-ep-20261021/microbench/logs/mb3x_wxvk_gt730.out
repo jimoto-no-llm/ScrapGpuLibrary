@@ -1,0 +1,14 @@
+# moe_rt_bench mb3x  args: --csv /home/eightman/moe-ep/rt-bench/logs/all.csv --devices GT 730 --ggml-devs Vulkan1 --lib-dir /home/eightman/moe-ep/src/llama-build/bin --platforms NVIDIA
+# env VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json
+# env GGML_LIB_DIR=/home/eightman/moe-ep/src/llama-build/bin
+# ggml devices (lib dir /home/eightman/moe-ep/src/llama-build/bin):
+#   Vulkan0 : AMD Radeon RX 6400 (RADV NAVI24) (type 1, 4060 / 4080 MiB free)
+#   Vulkan1 : AMD Radeon Pro WX 2100 (RADV POLARIS12) (type 1, 2038 / 2048 MiB free)
+#   CPU : Intel(R) Celeron(R) CPU G3930 @ 2.90GHz (type 0, 32032 / 32032 MiB free)
+# generating the layer...
+# ES split: Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12):960 rows GeForce GT 730:832 rows
+MB3X  ES_ggml+opencl_full_cycle          Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12) n=1000   median=     749.6 p99=     823.3 min=     732.3 mean=     751.7 us  ggml slice + OpenCL slices, one thread: Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12):960 rows GeForce GT 730:832 rows
+MB3X  CHECK ES result                                OK nmse 3.95e-14 / 3.40e-14
+MB3X  slice_alone_ggml_full_cycle        Vulkan1 AMD Radeon Pro WX 2100 (RADV POLARIS12) n=1000   median=     632.0 p99=     704.5 min=     590.9 mean=     630.6 us  960 rows
+MB3X  slice_alone_cl_full_cycle          GeForce GT 730           n=1000   median=     742.4 p99=     751.9 min=     731.1 mean=     742.5 us  832 rows
+# done mb3x: all OK (0 failed check(s))

@@ -1,0 +1,5 @@
+# env VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nouveau_icd.json NVK_I_WANT_A_BROKEN_VULKAN_DRIVER=1 vulkaninfo --summary
+'DISPLAY' environment variable not set... skipping surface info
+ERROR: [Loader Message] Code 0 : setup_loader_term_phys_devs:  Failed to detect any valid GPUs in the current config
+ERROR at ./vulkaninfo/./vulkaninfo.h:247:vkEnumeratePhysicalDevices failed with ERROR_INITIALIZATION_FAILED
+# rc=1

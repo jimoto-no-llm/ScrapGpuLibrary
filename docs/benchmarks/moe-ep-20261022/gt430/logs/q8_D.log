@@ -1,0 +1,52 @@
+# date: 2026-10-23_01:18:19  host: tb250  tag: q8_D
+# temps at start:  amd49 amd46 GT 430=43 GT 730=33 GT 710=34    (max 43 C)
+# env: SCRAPGPU_DEVICE_SERVER=/home/eightman/moe-ep/g430/srv2/scrapgpu-device-server GGML_SGLX_REMOTE_ENV=GGML_CL11_PLATFORMS=NVIDIA;GGML_CL11_DEVICES=GT 430;SCRAPGPU_CUDA_DEVICES=GT 430 GGML_SGLX_REMOTE_BACKEND=opencl11 GGML_CL11_PLATFORMS=NVIDIA GGML_SGLX_PROFILE=1 GGML_CL11_DEVICES=GT 730,GT 710 GGML_SGLX_SPLIT=Vulkan0:0.45,Vulkan1:0.15,CL11_0:0.2,CL11_1:0.08,REMOTE0:0.12 GGML_BACKEND_PATH=/home/eightman/moe-ep/g430/plug2/libggml-cl11.so VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json GGML_CL11_AUTO_RPC=0 
+# cmd: /home/eightman/moe-ep/src/llama-build/bin/llama-bench -m /home/eightman/moe-ep/models/LFM2.5-8B-A1B-Q4_0.gguf -dev Vulkan0/Vulkan1/SGLX0 -ngl 99 -fa 0 -t 2 -b 512 -ub 320 -r 3 -sm layer -ncmoe 0 -ts 5/1/0 -ot token_embd\.weight=SGLX0 -o jsonl -p 512 -n 128 -pg 512,128
+load_backend: loaded RPC backend from /home/eightman/moe-ep/src/llama-build/bin/libggml-rpc.so
+ggml_vulkan: Found 2 Vulkan devices:
+ggml_vulkan: 0 = AMD Radeon RX 6400 (RADV NAVI24) (radv) | uma: 0 | fp16: 1 | bf16: 0 | fp4: 0 | warp size: 32 | shared memory: 65536 | int dot: 1 | matrix cores: none
+ggml_vulkan: 1 = AMD Radeon Pro WX 2100 (RADV POLARIS12) (radv) | uma: 0 | fp16: 0 | bf16: 0 | fp4: 0 | warp size: 64 | shared memory: 65536 | int dot: 0 | matrix cores: none
+load_backend: loaded Vulkan backend from /home/eightman/moe-ep/src/llama-build/bin/libggml-vulkan.so
+load_backend: loaded CPU backend from /home/eightman/moe-ep/src/llama-build/bin/libggml-cpu.so
+load_backend: loaded CL11 backend from /home/eightman/moe-ep/g430/plug2/libggml-cl11.so
+scrapgpu-device-server: opencl11, 1 device(s), socket /tmp/scrapgpu-H40LZX/server-0.sock
+SGLX: SGLX0 splits the rows of its weights over: Vulkan0 (AMD Radeon RX 6400 (RADV NAVI24)) 0.450, Vulkan1 (AMD Radeon Pro WX 2100 (RADV POLARIS12)) 0.150, CL11_0 (GeForce GT 730) 0.200, CL11_1 (GeForce GT 710) 0.080, REMOTE0 (GeForce GT 430) 0.120
+cl11_ensure_program: CL11_0: multi mat-vec (Q / K / V, FFN gate / up in one launch) enabled
+cl11_ensure_program: CL11_0: mat-mat variant: tile 64 x 64, 8 x 4 values per work-item, BK 16, unroll 16, prefetch 0, 128 work-items
+cl11_ensure_program: CL11_0: GeForce GT 730, OpenCL 1.2 CUDA, kernels built (work-group sizes: element-wise 128, row 128, mat-vec 128, mat-mat 16x16)
+cl11_ensure_program: CL11_1: multi mat-vec (Q / K / V, FFN gate / up in one launch) enabled
+cl11_ensure_program: CL11_1: mat-mat variant: tile 64 x 64, 8 x 4 values per work-item, BK 16, unroll 16, prefetch 0, 128 work-items
+cl11_ensure_program: CL11_1: GeForce GT 710, OpenCL 1.2 CUDA, kernels built (work-group sizes: element-wise 128, row 128, mat-vec 128, mat-mat 16x16)
+SGLX: uploaded 205.1 MiB (q6_K 2048 x 128000) in 438.1 ms: Vulkan0[0..57600) Vulkan1[57600..76800) CL11_0[76800..102400) CL11_1[102400..112640) REMOTE0[112640..128000)
+cl11_ensure_program: rebuilding the kernels with smaller work-groups
+cl11_ensure_program: CL11_0: GeForce GT 430, OpenCL 1.1 CUDA, kernels built (work-group sizes: element-wise 128, row 128, mat-vec 128, mat-mat 16x16)
+SGLX profile MUL_MAT N=1: calls 128, mean 3.281 ms (max 7.766), gather 0.002, scatter 0.000;  Vulkan0: submit 0.179 ms, done at 1.725 ms (max 6.697) [graph 0, alloc 1, set 10, compute 161, get 5 us (N=1 mean of 128)]  Vulkan1: submit 0.066 ms, done at 2.926 ms (max 7.716) [graph 0, alloc 1, set 579, compute 133, get 1315 us (N=1 mean of 128)]  CL11_0: submit 0.175 ms, done at 3.077 ms (max 7.751)  CL11_1: submit 0.091 ms, done at 3.191 ms (max 7.765)  REMOTE0: submit 0.017 ms, done at 3.281 ms (max 7.766) [; opencl11 worker per job (131 jobs): write x 0.029 ms, op_execute 0.006 ms, read result (waits for the GPU) 3.919 ms, total 3.954 ms]
+SGLX profile token phases (N=1): GET_ROWS 0.007 ms; layers on the other devices (GET_ROWS end -> MUL_MAT start) 12.449 ms; after MUL_MAT (-> next GET_ROWS: logits, sampling, next graph) 0.472 ms
+SGLX profile GET_ROWS with N>1: 8 calls, mean 1.109 ms (max 1.924); graph_compute calls (any N): 269, mean 4.214 ms (max 696.154)
+SGLX profile upload: 1 weights, 438.1 ms in total
+SGLX profile MUL_MAT N=1: calls 256, mean 3.354 ms (max 7.766), gather 0.002, scatter 0.000;  Vulkan0: submit 0.218 ms, done at 1.757 ms (max 7.455) [graph 0, alloc 2, set 10, compute 199, get 5 us (N=1 mean of 256)]  Vulkan1: submit 0.074 ms, done at 3.015 ms (max 7.716) [graph 0, alloc 2, set 543, compute 129, get 1314 us (N=1 mean of 256)]  CL11_0: submit 0.154 ms, done at 3.169 ms (max 7.751)  CL11_1: submit 0.088 ms, done at 3.260 ms (max 7.765)  REMOTE0: submit 0.020 ms, done at 3.354 ms (max 7.766) [; opencl11 worker per job (259 jobs): write x 0.017 ms, op_execute 0.006 ms, read result (waits for the GPU) 3.378 ms, total 3.402 ms]
+SGLX profile token phases (N=1): GET_ROWS 0.008 ms; layers on the other devices (GET_ROWS end -> MUL_MAT start) 12.434 ms; after MUL_MAT (-> next GET_ROWS: logits, sampling, next graph) 0.387 ms
+SGLX profile GET_ROWS with N>1: 8 calls, mean 1.109 ms (max 1.924); graph_compute calls (any N): 525, mean 3.000 ms (max 696.154)
+SGLX profile upload: 1 weights, 438.1 ms in total
+SGLX profile MUL_MAT N=1: calls 384, mean 3.339 ms (max 7.766), gather 0.002, scatter 0.000;  Vulkan0: submit 0.211 ms, done at 1.773 ms (max 7.455) [graph 0, alloc 2, set 10, compute 191, get 5 us (N=1 mean of 384)]  Vulkan1: submit 0.065 ms, done at 3.042 ms (max 7.716) [graph 0, alloc 3, set 573, compute 133, get 1295 us (N=1 mean of 384)]  CL11_0: submit 0.153 ms, done at 3.171 ms (max 7.751)  CL11_1: submit 0.080 ms, done at 3.250 ms (max 7.765)  REMOTE0: submit 0.016 ms, done at 3.339 ms (max 7.766) [; opencl11 worker per job (387 jobs): write x 0.014 ms, op_execute 0.006 ms, read result (waits for the GPU) 3.174 ms, total 3.194 ms]
+SGLX profile token phases (N=1): GET_ROWS 0.008 ms; layers on the other devices (GET_ROWS end -> MUL_MAT start) 12.436 ms; after MUL_MAT (-> next GET_ROWS: logits, sampling, next graph) 0.371 ms
+SGLX profile GET_ROWS with N>1: 8 calls, mean 1.109 ms (max 1.924); graph_compute calls (any N): 781, mean 2.560 ms (max 696.154)
+SGLX profile upload: 1 weights, 438.1 ms in total
+SGLX profile MUL_MAT N=1: calls 512, mean 3.365 ms (max 9.016), gather 0.002, scatter 0.000;  Vulkan0: submit 0.215 ms, done at 1.785 ms (max 8.933) [graph 0, alloc 2, set 11, compute 195, get 6 us (N=1 mean of 512)]  Vulkan1: submit 0.061 ms, done at 3.059 ms (max 8.935) [graph 0, alloc 2, set 579, compute 141, get 1316 us (N=1 mean of 512)]  CL11_0: submit 0.173 ms, done at 3.201 ms (max 8.992)  CL11_1: submit 0.077 ms, done at 3.274 ms (max 9.015)  REMOTE0: submit 0.016 ms, done at 3.365 ms (max 9.016) [; opencl11 worker per job (515 jobs): write x 0.012 ms, op_execute 0.007 ms, read result (waits for the GPU) 3.100 ms, total 3.119 ms]
+SGLX profile token phases (N=1): GET_ROWS 0.009 ms; layers on the other devices (GET_ROWS end -> MUL_MAT start) 12.553 ms; after MUL_MAT (-> next GET_ROWS: logits, sampling, next graph) 0.364 ms
+SGLX profile GET_ROWS with N>1: 12 calls, mean 1.126 ms (max 2.075); graph_compute calls (any N): 1041, mean 2.351 ms (max 696.154)
+SGLX profile upload: 1 weights, 438.1 ms in total
+SGLX profile MUL_MAT N=1: calls 640, mean 3.331 ms (max 9.016), gather 0.002, scatter 0.000;  Vulkan0: submit 0.210 ms, done at 1.774 ms (max 8.933) [graph 0, alloc 2, set 11, compute 189, get 6 us (N=1 mean of 640)]  Vulkan1: submit 0.051 ms, done at 3.028 ms (max 8.935) [graph 0, alloc 2, set 577, compute 161, get 1286 us (N=1 mean of 640)]  CL11_0: submit 0.180 ms, done at 3.165 ms (max 8.992)  CL11_1: submit 0.075 ms, done at 3.238 ms (max 9.015)  REMOTE0: submit 0.015 ms, done at 3.330 ms (max 9.016) [; opencl11 worker per job (643 jobs): write x 0.011 ms, op_execute 0.007 ms, read result (waits for the GPU) 3.018 ms, total 3.036 ms]
+SGLX profile token phases (N=1): GET_ROWS 0.009 ms; layers on the other devices (GET_ROWS end -> MUL_MAT start) 12.627 ms; after MUL_MAT (-> next GET_ROWS: logits, sampling, next graph) 0.353 ms
+SGLX profile GET_ROWS with N>1: 14 calls, mean 1.196 ms (max 2.528); graph_compute calls (any N): 1299, mean 2.203 ms (max 696.154)
+SGLX profile upload: 1 weights, 438.1 ms in total
+SGLX profile MUL_MAT N=1: calls 768, mean 3.312 ms (max 9.016), gather 0.002, scatter 0.000;  Vulkan0: submit 0.209 ms, done at 1.780 ms (max 8.933) [graph 0, alloc 2, set 11, compute 188, get 6 us (N=1 mean of 768)]  Vulkan1: submit 0.048 ms, done at 3.010 ms (max 8.935) [graph 0, alloc 3, set 587, compute 175, get 1266 us (N=1 mean of 768)]  CL11_0: submit 0.185 ms, done at 3.148 ms (max 8.992)  CL11_1: submit 0.074 ms, done at 3.220 ms (max 9.015)  REMOTE0: submit 0.014 ms, done at 3.312 ms (max 9.016) [; opencl11 worker per job (771 jobs): write x 0.010 ms, op_execute 0.007 ms, read result (waits for the GPU) 2.963 ms, total 2.980 ms]
+SGLX profile token phases (N=1): GET_ROWS 0.009 ms; layers on the other devices (GET_ROWS end -> MUL_MAT start) 12.672 ms; after MUL_MAT (-> next GET_ROWS: logits, sampling, next graph) 0.346 ms
+SGLX profile GET_ROWS with N>1: 16 calls, mean 1.314 ms (max 3.594); graph_compute calls (any N): 1557, mean 2.107 ms (max 696.154)
+SGLX profile upload: 1 weights, 438.1 ms in total
+SGLX profile MUL_MAT N=1: calls 775, mean 3.313 ms (max 9.016), gather 0.002, scatter 0.000;  Vulkan0: submit 0.209 ms, done at 1.778 ms (max 8.933) [graph 0, alloc 2, set 11, compute 188, get 6 us (N=1 mean of 775)]  Vulkan1: submit 0.048 ms, done at 3.006 ms (max 8.935) [graph 0, alloc 3, set 585, compute 178, get 1263 us (N=1 mean of 775)]  CL11_0: submit 0.184 ms, done at 3.145 ms (max 8.992)  CL11_1: submit 0.074 ms, done at 3.217 ms (max 9.015)  REMOTE0: submit 0.014 ms, done at 3.312 ms (max 9.016) [; opencl11 worker per job (778 jobs): write x 0.010 ms, op_execute 0.007 ms, read result (waits for the GPU) 2.960 ms, total 2.978 ms]
+SGLX profile token phases (N=1): GET_ROWS 0.009 ms; layers on the other devices (GET_ROWS end -> MUL_MAT start) 12.672 ms; after MUL_MAT (-> next GET_ROWS: logits, sampling, next graph) 0.345 ms
+SGLX profile GET_ROWS with N>1: 16 calls, mean 1.314 ms (max 3.594); graph_compute calls (any N): 1572, mean 2.104 ms (max 696.154)
+SGLX profile upload: 1 weights, 438.1 ms in total
+# rc=0  seconds=41
+# temps at end:  amd53 amd49 GT 430=44 GT 730=34 GT 710=35    (max 44 C)

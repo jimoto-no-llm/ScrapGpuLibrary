@@ -1,0 +1,8 @@
+# date: 2026-10-22_00:37:13  host: tb250  tag: cuda_bw_cl11_GT430_mvtypeq4_0
+# temps at start:  amd48 amd47 GT 430=48 GT 730=36 GT 710=36    (max 48 C)
+# env: 
+# cmd: env GGML_CL11_PLATFORMS=NVIDIA GGML_CL11_DEVICES=GT 430 /home/eightman/moe-ep/cuda/b/scrapgpu_mm_bench opencl11 mv --type q4_0 --rows 65536
+cl11_ensure_program: rebuilding the kernels with smaller work-groups
+cl11_ensure_program: CL11_0: GeForce GT 430, OpenCL 1.1 CUDA, kernels built (work-group sizes: element-wise 128, row 128, mat-vec 128, mat-mat 16x16)
+# rc=0  seconds=3
+# temps at end:  amd47 amd45 GT 430=48 GT 730=36 GT 710=36    (max 48 C)

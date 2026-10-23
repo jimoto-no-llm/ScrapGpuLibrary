@@ -1,0 +1,15 @@
+# moe_rt_bench mb1  args: --csv /home/eightman/moe-ep/rt-bench/logs/all.csv --devices GT 730 --platforms NVIDIA
+# device: GeForce GT 730               platform=NVIDIA CUDA version=OpenCL 1.2 CUDA driver=390.157 max_wg=1024 max_alloc=245MiB gmem=981MiB
+MB1   rt_blocking                        GeForce GT 730           n=10000  median=      66.4 p99=      72.8 min=      65.7 mean=      66.8 us  check=OK
+MB1   rt_nonblock_finish                 GeForce GT 730           n=10000  median=      95.2 p99=      99.8 min=      94.3 mean=      96.5 us  check=OK
+MB1   rt_event_busypoll                  GeForce GT 730           n=10000  median=      95.1 p99=      99.6 min=      94.0 mean=      96.2 us  check=OK
+MB1   rt_pinned_finish                   GeForce GT 730           n=10000  median=      64.2 p99=      65.5 min=      55.5 mean=      63.8 us  check=OK
+MB1   rt_pinned_busypoll                 GeForce GT 730           n=10000  median=      63.5 p99=      64.6 min=      55.7 mean=      63.4 us  check=OK
+MB1   piece_clFinish_idle                GeForce GT 730           n=10000  median=       1.0 p99=       1.1 min=       1.0 mean=       1.0 us  
+MB1   piece_kernel_finish                GeForce GT 730           n=10000  median=      12.0 p99=      12.6 min=      11.6 mean=      12.1 us  T_k: tiny kernel + clFinish
+MB1   piece_write8k_blocking             GeForce GT 730           n=10000  median=      28.5 p99=      29.2 min=      28.2 mean=      28.6 us  
+MB1   piece_read8k_blocking              GeForce GT 730           n=10000  median=      30.6 p99=      31.2 min=      29.4 mean=      30.7 us  
+MB1   piece_write8k_pinned               GeForce GT 730           n=10000  median=      29.3 p99=      29.8 min=      28.8 mean=      29.3 us  
+MB1   piece_read8k_pinned                GeForce GT 730           n=10000  median=      29.4 p99=      30.1 min=      28.2 mean=      29.5 us  
+MB1   piece_write32B_blocking            GeForce GT 730           n=10000  median=       8.4 p99=       8.9 min=       7.8 mean=       8.4 us  
+# done mb1: all OK (0 failed check(s))
