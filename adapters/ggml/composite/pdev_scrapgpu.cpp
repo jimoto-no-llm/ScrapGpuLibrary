@@ -35,6 +35,7 @@
 #include "scrapgpu/op.h"
 #include "scrapgpu/remote.h"
 #include "scrapgpu/stream.h"
+#include "sgl_trace.h"
 #include "scrapgpu/tensor.h"
 
 #include <algorithm>
@@ -49,6 +50,10 @@
 #include <string>
 #include <thread>
 #include <vector>
+
+#ifdef __linux__
+#include <sched.h>
+#endif
 
 namespace sglx {
 namespace {
@@ -112,6 +117,7 @@ remote_set & servers() {
 
 void close_servers_atexit() {
     remote_set & s = servers();
+    sgr::trace_dump(".cli");
     if (s.remote != nullptr) {
         scrapgpu_remote_close(s.remote);
         s.remote = nullptr;
@@ -338,13 +344,16 @@ public:
         }
         q_.push_back(job{ static_cast<remote_piece *>(pp), x, N, out });
         ++outstanding_;
+        sgr::trace("p_submit");
         cv_job_.notify_one();
         return true;
     }
 
     bool wait() override {
         std::unique_lock<std::mutex> lock(mu_);
+        sgr::trace("p_wait_b");
         cv_done_.wait(lock, [this] { return outstanding_ == 0; });
+        sgr::trace("p_wait_e");
         const bool ok = !failed_;
         failed_ = false;
         return ok;
@@ -368,7 +377,32 @@ private:
         cv_done_.wait(lock, [this] { return outstanding_ == 0; });
     }
 
+    // GGML_SGLX_REMOTE_CPU=n pins the worker to cpu n, GGML_SGLX_REMOTE_SCHED=batch|idle gives it that scheduling policy (Linux, no privilege): a
+    // woken SCHED_NORMAL worker preempts the host thread that submitted the job, which then submits the other devices late
+    static void apply_worker_sched() {
+#ifdef __linux__
+        const char * cpu = getenv("GGML_SGLX_REMOTE_CPU");
+        if (cpu != nullptr && *cpu != '\0') {
+            cpu_set_t set;
+            CPU_ZERO(&set);
+            CPU_SET(atoi(cpu), &set);
+            if (sched_setaffinity(0, sizeof(set), &set) != 0) {
+                fprintf(stderr, "SGLX: GGML_SGLX_REMOTE_CPU failed\n");
+            }
+        }
+        const char * pol = getenv("GGML_SGLX_REMOTE_SCHED");
+        if (pol != nullptr && *pol != '\0') {
+            sched_param sp = {};
+            const int policy = std::string(pol) == "batch" ? SCHED_BATCH : std::string(pol) == "idle" ? SCHED_IDLE : SCHED_OTHER;
+            if (sched_setscheduler(0, policy, &sp) != 0) {
+                fprintf(stderr, "SGLX: GGML_SGLX_REMOTE_SCHED failed\n");
+            }
+        }
+#endif
+    }
+
     void run() {
+        apply_worker_sched();
         std::unique_lock<std::mutex> lock(mu_);
         for (;;) {
             cv_job_.wait(lock, [this] { return stop_ || !q_.empty(); });
@@ -378,7 +412,9 @@ private:
             job j = q_.front();
             q_.pop_front();
             lock.unlock();
+            sgr::trace("p_wake");
             const bool ok = execute(j);
+            sgr::trace("p_exec_e");
             lock.lock();
             if (!ok) {
                 failed_ = true;
@@ -465,6 +501,7 @@ private:
             fprintf(stderr, "SGLX: %s: op_execute(MUL_MAT) failed: %s\n", name_.c_str(), last_error().c_str());
             return false;
         }
+        sgr::trace("p_op_e");
         const double t_exec = ms_since(t0) - t_write;
         // blocking: the stream is in order, so this returns when the kernel is done and the result is in `out`
         if (scrapgpu_buffer_read(stream_, ob_, 0, j.out, obytes, 1) != SCRAPGPU_STATUS_OK) {

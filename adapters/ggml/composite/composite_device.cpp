@@ -15,6 +15,7 @@
 // projection) is answered from the host shadow with the dequantizing functions of ggml.
 
 #include "composite.h"
+#include "sgl_trace.h"
 
 #include "ggml-backend-impl.h"
 #include "ggml-impl.h"
@@ -129,6 +130,7 @@ struct composite {
     ggml_backend_device      dev  = {};
 
     bool profile = false;
+    bool threaded_last = false;       // GGML_SGLX_THREADED_LAST=1: the pdevs with a worker thread are submitted after the others
     bool lazy_copy = true;            // GGML_SGLX_LAZY_COPY=0 turns the lazy input copy (cpy_tensor_async) off
     bool hostbuf = false;             // GGML_SGLX_HOSTBUF=1
     bool trace = false;               // GGML_SGLX_TRACE=1 (with GGML_SGLX_PROFILE): one line per graph_compute call
@@ -800,7 +802,7 @@ bool do_mul_mat(composite * c, ggml_tensor * op) {
     std::vector<size_t> order;
     for (int pass = 0; pass < 2; ++pass) {
         for (size_t i = 0; i < rec->parts.size(); ++i) {
-            if (c->pdevs[rec->parts[i].pdev]->threaded() == (pass == 0)) {
+            if (c->pdevs[rec->parts[i].pdev]->threaded() == ((pass == 0) == !c->threaded_last)) {
                 order.push_back(i);
             }
         }
@@ -819,9 +821,15 @@ bool do_mul_mat(composite * c, ggml_tensor * op) {
             order.push_back(i);
         }
     }
+    if (N == 1) {
+        SGLX_TRACE("mm_b");
+    }
     for (size_t i : order) {
         const part & p = rec->parts[i];
         const auto ts = clock_type::now();
+        if (N == 1) {
+            SGLX_TRACE("sub_b", p.pdev);
+        }
         if (!c->pdevs[p.pdev]->submit(p.p, xp, N, outp[i])) {
             // drain what was started: the staging buffers must not be released under a running device
             for (auto & q : c->pdevs) {
@@ -830,6 +838,9 @@ bool do_mul_mat(composite * c, ggml_tensor * op) {
             return false;
         }
         t_submit[p.pdev] += ms_since(ts);
+        if (N == 1) {
+            SGLX_TRACE("sub_e", p.pdev);
+        }
         if (c->serial || measuring) {
             c->pdevs[p.pdev]->wait();
             t_done[p.pdev] = ms_since(t0);
@@ -846,6 +857,9 @@ bool do_mul_mat(composite * c, ggml_tensor * op) {
         if (used && !c->serial && !measuring) {
             ok = c->pdevs[j]->wait() && ok;
             t_done[j] = ms_since(t0);
+            if (N == 1) {
+                SGLX_TRACE("wait_e", (int64_t) j);
+            }
         }
     }
     if (!ok) {
@@ -1174,6 +1188,7 @@ void attach(ggml_backend_reg_t reg, const std::vector<std::pair<std::string, cl1
         delete c;
         return;
     }
+    c->threaded_last = getenv("GGML_SGLX_THREADED_LAST") != nullptr && atoi(getenv("GGML_SGLX_THREADED_LAST")) != 0;
     c->profile = getenv("GGML_SGLX_PROFILE") != nullptr && atoi(getenv("GGML_SGLX_PROFILE")) != 0;
     c->lazy_copy = getenv("GGML_SGLX_LAZY_COPY") == nullptr || atoi(getenv("GGML_SGLX_LAZY_COPY")) != 0;
     c->hostbuf = getenv("GGML_SGLX_HOSTBUF") != nullptr && atoi(getenv("GGML_SGLX_HOSTBUF")) != 0;
@@ -1195,6 +1210,7 @@ void attach(ggml_backend_reg_t reg, const std::vector<std::pair<std::string, cl1
     c->dev = ggml_backend_device{ /* .iface = */ dev_i, /* .reg = */ reg, /* .context = */ c };
     g_c = c;
     atexit(print_profile_atexit);
+    SGLX_TRACE_DUMP_ATEXIT();
 }
 
 size_t device_count() {

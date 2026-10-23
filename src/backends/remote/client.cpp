@@ -7,6 +7,7 @@
 // executable (SCRAPGPU_DEVICE_SERVER overrides the path).
 
 #include "protocol.h"
+#include "trace.h"
 
 #include "scrapgpu/backend.h"
 #include "scrapgpu/remote.h"
@@ -234,16 +235,19 @@ rmt_resp rmt_exchange(rmt_client * c, uint32_t op, const std::vector<uint8_t> & 
     }
     uint8_t hdr[sgr::kHdrSize];
     hdr_put(hdr, op, req.size());
+    sgr::trace("c_send_b", op);
     if (!write_all(c->fd, hdr, sizeof(hdr)) || (!req.empty() && !write_all(c->fd, req.data(), req.size()))) {
         r.status = rmt_lost(c, "remote: sending the request failed (server died?)");
         return r;
     }
+    sgr::trace("c_send_e", op);
     uint64_t size = 0;
     uint32_t code = 0;
     if (!read_all(c->fd, hdr, sizeof(hdr)) || !hdr_get(hdr, code, size)) {
         r.status = rmt_lost(c, "remote: the server closed the connection");
         return r;
     }
+    sgr::trace("c_resp_hdr", op);
     // a legitimate response carries at most the inline bulk limit plus the framing; anything
     // bigger means a corrupt or hostile peer (audit H-2)
     if (size > (uint64_t) sgr::kMaxPayload + 64 * 1024) {

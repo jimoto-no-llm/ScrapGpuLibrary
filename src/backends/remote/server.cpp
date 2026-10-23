@@ -7,6 +7,7 @@
 // checks (same-backend plan/stream, desc validation) apply unchanged in this process.
 
 #include "protocol.h"
+#include "trace.h"
 
 #include "scrapgpu/api.h"
 #include "scrapgpu/backend.h"
@@ -44,6 +45,10 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/un.h>
+#include <sys/resource.h>
+#ifdef __linux__
+#include <sched.h>
+#endif
 
 namespace {
 
@@ -277,7 +282,9 @@ bool handle(uint32_t op, sgr::cur c) {
                 g_sub_failed = false;
                 bool alive = true;
                 try {
+                    sgr::trace("s_sub_b", sub_op);
                     alive = handle(sub_op, sub);
+                    sgr::trace("s_sub_e", sub_op);
                 } catch (...) {
                     g_quiet = false;
                     throw;
@@ -718,6 +725,61 @@ int srv_register(const std::string & name) {
     return 1;
 }
 
+
+// SCRAPGPU_SERVER_SPIN_US=N: poll the socket for up to N us before sleeping in read() (the sleep and wake-up of the server thread are part of every
+// round trip; on a host whose cores are all busy the wake-up can take a time slice). 0 (default) = plain blocking read.
+long g_spin_us = 0;
+
+void spin_for_input(int fd) {
+    if (g_spin_us <= 0) {
+        return;
+    }
+    const uint64_t t0 = sgr::trace_now_ns();
+    char c;
+    while ((sgr::trace_now_ns() - t0) < (uint64_t) g_spin_us * 1000ull) {
+        const ssize_t r = recv(fd, &c, 1, MSG_PEEK | MSG_DONTWAIT);
+        if (r != -1 || (errno != EAGAIN && errno != EWOULDBLOCK)) {
+            return; // data, EOF or an error: let read() sort it out
+        }
+#if defined(__x86_64__) || defined(__i386__)
+        __builtin_ia32_pause();
+#endif
+    }
+}
+
+// SCRAPGPU_SERVER_CPU=n pins the server to cpu n (Linux); SCRAPGPU_SERVER_SCHED=batch|idle sets the scheduling policy of the process (Linux, no privilege)
+void apply_sched_env() {
+#ifdef __linux__
+    const char * cpu = std::getenv("SCRAPGPU_SERVER_CPU");
+    if (cpu != nullptr && *cpu != '\0') {
+        cpu_set_t set;
+        CPU_ZERO(&set);
+        CPU_SET(std::atoi(cpu), &set);
+        if (sched_setaffinity(0, sizeof(set), &set) != 0) {
+            std::fprintf(stderr, "scrapgpu-device-server: SCRAPGPU_SERVER_CPU: %s\n", strerror(errno));
+        }
+    }
+    const char * pol = std::getenv("SCRAPGPU_SERVER_SCHED");
+    if (pol != nullptr && *pol != '\0') {
+        sched_param sp = {};
+        const int policy = std::string(pol) == "batch" ? SCHED_BATCH : std::string(pol) == "idle" ? SCHED_IDLE : SCHED_OTHER;
+        if (sched_setscheduler(0, policy, &sp) != 0) {
+            std::fprintf(stderr, "scrapgpu-device-server: SCRAPGPU_SERVER_SCHED: %s\n", strerror(errno));
+        }
+    }
+    const char * nice_s = std::getenv("SCRAPGPU_SERVER_NICE");
+    if (nice_s != nullptr && *nice_s != '\0') {
+        if (setpriority(PRIO_PROCESS, 0, std::atoi(nice_s)) != 0) {
+            std::fprintf(stderr, "scrapgpu-device-server: SCRAPGPU_SERVER_NICE: %s\n", strerror(errno));
+        }
+    }
+#endif
+    const char * sp = std::getenv("SCRAPGPU_SERVER_SPIN_US");
+    if (sp != nullptr && *sp != '\0') {
+        g_spin_us = std::atol(sp);
+    }
+}
+
 } // namespace
 
 int main(int argc, char ** argv) {
@@ -743,6 +805,7 @@ int main(int argc, char ** argv) {
     }
 
     signal(SIGPIPE, SIG_IGN);
+    apply_sched_env();
 
     size_t pos = 0;
     int nbackends = 0;
@@ -829,9 +892,11 @@ int main(int argc, char ** argv) {
 
     for (;;) {
         uint8_t hdr[sgr::kHdrSize];
+        spin_for_input(g_client);
         if (!read_all(g_client, hdr, sizeof(hdr))) {
             break; // the client disconnected
         }
+        sgr::trace("s_hdr");
         sgr::cur hc{hdr, sgr::kHdrSize};
         uint32_t magic = 0, op = 0;
         uint64_t size = 0;
@@ -855,6 +920,7 @@ int main(int argc, char ** argv) {
         if (size > 0 && !read_all(g_client, payload.data(), (size_t) size)) {
             break;
         }
+        sgr::trace("s_payload", (int64_t) size);
         sgr::cur body{payload.empty() ? nullptr : payload.data(), payload.size()};
         bool alive = true;
         try {
@@ -863,10 +929,12 @@ int main(int argc, char ** argv) {
             // a handler ran out of memory (a response or a decoded plan): report it and keep serving
             alive = fail(SCRAPGPU_STATUS_OUT_OF_MEMORY, "remote: out of memory");
         }
+        sgr::trace("s_done", op);
         if (!alive) {
             break;
         }
     }
+    sgr::trace_dump(".srv");
 
     close(g_client);
     if (g_shm != nullptr) {

@@ -1,0 +1,17 @@
+client jobs 257 server batches 257
+segment                           mean       p10       p50       p90       max  (us)
+submit->wake                        73        20        47        60      1917
+wake->send_b                        15        12        13        21        38
+send(syscall)                      298        16        33      1848      2063
+send_b->srv_hdr(wake)              101        37        55        79      2498
+hdr->payload                        17         5        11        37        74
+payload->sub12_b                     3         1         2         3        32
+write x (12)                        75        57        70        96       179
+enqueue (31)                        47        28        32        87       350
+kernel+read (13)                  1696      1649      1683      1712      4161
+sub13_e->done                        1         1         1         2         3
+done->c_resp_hdr(wake)              -5       -35       -22        42      1573
+resp->exec_e                        16        12        14        21        38
+exec_e->host wait_e                809       551       652      1452      4337
+job total (wake->exec_e)          1969      1839      1885      2031      4346
+submit->exec_e                    2043      1874      1929      2122      4371

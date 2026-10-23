@@ -1,0 +1,9 @@
+# date: 2026-10-23_08:14:17  host: tb250  tag: q20_opencl11_g12_h2_b
+# temps at start:  amd33 amd32 GT 430=43 GT 730=32 GT 710=32    (max 43 C)
+# env: SCRAPGPU_CUDA_DEVICES=GT 430 SCRAPGPU_DEVICE_SERVER=/home/eightman/moe-ep/g430b/srv/scrapgpu-device-server GGML_CL11_PLATFORMS=NVIDIA GGML_CL11_DEVICES=GT 430 SCRAPGPU_REMOTE_BACKEND=opencl11 
+# cmd: /home/eightman/moe-ep/g430b/srv/scrapgpu_remote_bench --gap-us 12000 --hog 2 --iters 400 --batch
+scrapgpu-device-server: opencl11, 1 device(s), socket /tmp/scrapgpu-WNonEz/server-0.sock
+cl11_ensure_program: rebuilding the kernels with smaller work-groups
+cl11_ensure_program: CL11_0: GeForce GT 430, OpenCL 1.1 CUDA, kernels built (work-group sizes: element-wise 128, row 128, mat-vec 128, mat-mat 16x16)
+# rc=0  seconds=7
+# temps at end:  amd33 amd32 GT 430=43 GT 730=33 GT 710=32    (max 43 C)

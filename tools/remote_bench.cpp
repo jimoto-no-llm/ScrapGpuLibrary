@@ -5,6 +5,9 @@
 //   environment: SCRAPGPU_REMOTE_BACKEND=opencl11|cuda and the device selection of the server as for scrapgpu_remote_spawn, e.g.
 //   SCRAPGPU_DEVICE_SERVER=.../scrapgpu-device-server SCRAPGPU_REMOTE_BACKEND=cuda SCRAPGPU_CUDA_DEVICES="GT 430" scrapgpu_remote_bench
 //   (or --socket PATH for a server that is already running)
+//   --gap-us N   (instead of the pieces) a sequence of jobs with N us of sleep between them, as in token generation (about one job per token, the GPU
+//                idle in between); --hog T: T threads that spin during it (llama-bench's -t 2 threads on the 2-core host); --spin-gap: spin instead
+//                of sleeping in the gap; prints the percentiles of the job time
 //
 // Every number is the mean of --iters calls in ms (min in brackets).
 
@@ -22,8 +25,11 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <atomic>
 #include <string>
+#include <thread>
 #include <vector>
+#include <unistd.h>
 
 namespace {
 
@@ -78,12 +84,17 @@ int main(int argc, char ** argv) {
     scrapgpu_dtype dt = SCRAPGPU_DTYPE_Q6_K;
     const char * sock = nullptr;
     bool batch = false;
+    int gap_us = -1, hog = 0;
+    bool spin_gap = false;
     for (int i = 1; i < argc; ++i) {
         const std::string a = argv[i];
         if (a == "--rows" && i + 1 < argc) rows = atoll(argv[++i]);
         else if (a == "--k" && i + 1 < argc) K = atoll(argv[++i]);
         else if (a == "--iters" && i + 1 < argc) iters = atoi(argv[++i]);
         else if (a == "--batch") batch = true;
+        else if (a == "--gap-us" && i + 1 < argc) gap_us = atoi(argv[++i]);
+        else if (a == "--hog" && i + 1 < argc) hog = atoi(argv[++i]);
+        else if (a == "--spin-gap") spin_gap = true;
         else if (a == "--socket" && i + 1 < argc) sock = argv[++i];
         else if (a == "--type" && i + 1 < argc) dt = std::string(argv[++i]) == "q4_0" ? SCRAPGPU_DTYPE_Q4_0 : SCRAPGPU_DTYPE_Q6_K;
         else { fprintf(stderr, "unknown argument %s\n", a.c_str()); return 2; }
@@ -152,6 +163,37 @@ int main(int argc, char ** argv) {
         CHECK(scrapgpu_buffer_write(s, xb, 0, x.data(), x.size() * 4, 0));
         CHECK(scrapgpu_op_execute(s, &od));
         CHECK(scrapgpu_buffer_read(s, ob, 0, out.data(), out.size() * 4, 1));
+    }
+    if (gap_us >= 0) {
+        std::atomic<bool> stop{false};
+        std::vector<std::thread> hogs;
+        for (int h = 0; h < hog; ++h) {
+            hogs.emplace_back([&] { volatile uint64_t v = 0; while (!stop.load(std::memory_order_relaxed)) { for (int k = 0; k < 1000; ++k) v = v + 1; } });
+        }
+        std::vector<double> t_job, t_wr, t_ex, t_rd;
+        for (int i = 0; i < iters; ++i) {
+            const auto g0 = clk::now();
+            if (spin_gap) { while (ms_since(g0) * 1000.0 < gap_us) {} } else if (gap_us > 0) { usleep((useconds_t) gap_us); }
+            auto t = clk::now();
+            CHECK(scrapgpu_buffer_write(s, xb, 0, x.data(), x.size() * 4, 0));
+            const double a = ms_since(t);
+            CHECK(scrapgpu_op_execute(s, &od));
+            const double b = ms_since(t);
+            CHECK(scrapgpu_buffer_read(s, ob, 0, out.data(), out.size() * 4, 1));
+            const double c = ms_since(t);
+            t_wr.push_back(a); t_ex.push_back(b - a); t_rd.push_back(c - b); t_job.push_back(c);
+        }
+        stop = true;
+        for (auto & th : hogs) th.join();
+        auto pr = [&](const char * what, std::vector<double> v) {
+            std::sort(v.begin(), v.end());
+            double sum = 0; for (double d : v) sum += d;
+            printf("%-34s mean %.3f  p10 %.3f  p50 %.3f  p90 %.3f  max %.3f ms\n", what, sum / v.size(), v[v.size() / 10], v[v.size() / 2], v[v.size() * 9 / 10], v.back());
+        };
+        printf("gap %d us (%s), hog %d threads, %d jobs\n", gap_us, spin_gap ? "spin" : "sleep", hog, iters);
+        pr("write x", t_wr); pr("op_execute (enqueue)", t_ex); pr("read (kernel + read)", t_rd); pr("job", t_job);
+        scrapgpu_buffer_free(wb); scrapgpu_buffer_free(xb); scrapgpu_buffer_free(ob); scrapgpu_stream_free(s); scrapgpu_remote_close(remote);
+        return 0;
     }
     stat_t idle, wr, wr_b, ex, exsync, rd, job, kern_only;
     for (int i = 0; i < iters; ++i) {

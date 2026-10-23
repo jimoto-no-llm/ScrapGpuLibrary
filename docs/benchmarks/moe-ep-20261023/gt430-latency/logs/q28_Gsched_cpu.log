@@ -1,0 +1,27 @@
+# date: 2026-10-23_11:05:43  host: tb250  tag: q28_Gsched_cpu
+# temps at start:  amd37 amd36 GT 430=44 GT 730=34 GT 710=34    (max 44 C)
+# env: SCRAPGPU_DEVICE_SERVER=/home/eightman/moe-ep/g430b/srv/scrapgpu-device-server GGML_SGLX_REMOTE_ENV=GGML_CL11_PLATFORMS=NVIDIA;GGML_CL11_DEVICES=GT 430;SCRAPGPU_CUDA_DEVICES=GT 430 GGML_SGLX_REMOTE_BACKEND=opencl11 GGML_SGLX_REMOTE_CPU=1 GGML_CL11_PLATFORMS=NVIDIA GGML_SGLX_THREADED_LAST=1 GGML_SGLX_PROFILE=1 GGML_CL11_DEVICES=GT 730,GT 710 GGML_SGLX_SPLIT=Vulkan0:0.70,CL11_0:0.17,CL11_1:0.05,REMOTE0:0.08 GGML_BACKEND_PATH=/home/eightman/moe-ep/g430b/plug/libggml-cl11.so SCRAPGPU_SERVER_CPU=1 VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json GGML_CL11_AUTO_RPC=0 
+# cmd: /home/eightman/moe-ep/src/llama-build/bin/llama-perplexity -m /home/eightman/moe-ep/models/LFM2.5-8B-A1B-Q4_0.gguf -f /home/eightman/moe-ep/kl/text.txt -c 512 --chunks 4 -b 512 -ub 320 -t 2 -fa off -dev Vulkan0,Vulkan1,SGLX0 -ngl 99 -sm layer -ts 5/1/0 -ot token_embd\.weight=SGLX0 --kl-divergence-base /home/eightman/moe-ep/kl/base.kld --kl-divergence
+scrapgpu-device-server: opencl11, 1 device(s), socket /tmp/scrapgpu-p4gOBP/server-0.sock
+SGLX: SGLX0 splits the rows of its weights over: Vulkan0 (AMD Radeon RX 6400 (RADV NAVI24)) 0.700, CL11_0 (GeForce GT 730) 0.170, CL11_1 (GeForce GT 710) 0.050, REMOTE0 (GeForce GT 430) 0.080
+0.01.836.677 W common_fit_params: failed to fit params to free device memory: n_gpu_layers already set by user to 99, abort
+0.07.178.209 W llama_kv_cache: the V embeddings have different sizes across layers and FA is not enabled - padding V cache to 512
+0.07.409.973 I cmn          init: llama threadpool init, n_threads = 2
+cl11_ensure_program: CL11_0: multi mat-vec (Q / K / V, FFN gate / up in one launch) enabled
+cl11_ensure_program: CL11_0: mat-mat variant: tile 64 x 64, 8 x 4 values per work-item, BK 16, unroll 16, prefetch 0, 128 work-items
+cl11_ensure_program: CL11_0: GeForce GT 730, OpenCL 1.2 CUDA, kernels built (work-group sizes: element-wise 128, row 128, mat-vec 128, mat-mat 16x16)
+cl11_ensure_program: CL11_1: multi mat-vec (Q / K / V, FFN gate / up in one launch) enabled
+cl11_ensure_program: CL11_1: mat-mat variant: tile 64 x 64, 8 x 4 values per work-item, BK 16, unroll 16, prefetch 0, 128 work-items
+cl11_ensure_program: CL11_1: GeForce GT 710, OpenCL 1.2 CUDA, kernels built (work-group sizes: element-wise 128, row 128, mat-vec 128, mat-mat 16x16)
+SGLX: uploaded 205.1 MiB (q6_K 2048 x 128000) in 318.2 ms: Vulkan0[0..89600) CL11_0[89600..111360) CL11_1[111360..117760) REMOTE0[117760..128000)
+cl11_ensure_program: rebuilding the kernels with smaller work-groups
+cl11_ensure_program: CL11_0: GeForce GT 430, OpenCL 1.1 CUDA, kernels built (work-group sizes: element-wise 128, row 128, mat-vec 128, mat-mat 16x16)
+0.07.861.676 I 
+0.07.861.749 I system_info: n_threads = 2 (n_threads_batch = 2) / 2 | CPU : SSE3 = 1 | SSSE3 = 1 | LLAMAFILE = 1 | OPENMP = 1 | REPACK = 1 | 
+0.07.872.679 I kl_divergence: computing over 4 chunks, n_ctx=512, batch_size=512, n_seq=1
+0.09.404.972 I kl_divergence: 1.53 seconds per pass - ETA SGLX profile MUL_MAT N>1: calls 6, mean 109.479 ms (max 153.529), gather 1.562, scatter 7.638;  Vulkan0: submit 0.297 ms, done at 68.351 ms (max 99.965)  CL11_0: submit 0.214 ms, done at 77.682 ms (max 118.075)  CL11_1: submit 0.164 ms, done at 77.955 ms (max 118.481)  REMOTE0: submit 0.007 ms, done at 101.841 ms (max 142.053) [; opencl11 worker per job (9 jobs): write x 0.596 ms, op_execute 0.006 ms, read result (waits for the GPU) 91.058 ms, total 91.660 ms]
+SGLX profile token phases (N=1): GET_ROWS 0.000 ms; layers on the other devices (GET_ROWS end -> MUL_MAT start) 55.168 ms; after MUL_MAT (-> next GET_ROWS: logits, sampling, next graph) 0.000 ms
+SGLX profile GET_ROWS with N>1: 9 calls, mean 0.972 ms (max 2.543); graph_compute calls (any N): 18, mean 80.386 ms (max 391.057)
+SGLX profile upload: 1 weights, 318.2 ms in total
+# rc=0  seconds=15
+# temps at end:  amd38 amd38 GT 430=44 GT 730=34 GT 710=34    (max 44 C)

@@ -8,6 +8,7 @@
 
 #include "composite.h"
 #include "pdev.h"
+#include "sgl_trace.h"
 
 #include "opencl11/buffer.h"
 #include "opencl11/context.h"
@@ -188,10 +189,16 @@ public:
             fprintf(stderr, "SGLX: %s: cl11_op_mul_mat failed\n", name_.c_str());
             return false;
         }
-        err = clEnqueueReadBuffer(d_->queue, p->om, CL_FALSE, 0, obytes, p->op.ptr, 0, nullptr, nullptr);
+        cl_event done_ev = nullptr;
+        err = clEnqueueReadBuffer(d_->queue, p->om, CL_FALSE, 0, obytes, p->op.ptr, 0, nullptr, SGLX_TRACE_ON() ? &done_ev : nullptr);
         if (err != CL_SUCCESS) {
             fprintf(stderr, "SGLX: %s: clEnqueueReadBuffer failed: %s\n", name_.c_str(), cl11_err_str(err));
             return false;
+        }
+        if (done_ev != nullptr) {
+            // the time at which the device finished this job, whatever the order in which the host waits (SGL_TRACE)
+            clSetEventCallback(done_ev, CL_COMPLETE, [](cl_event, cl_int, void * tag) { SGLX_TRACE(static_cast<const char *>(tag)); }, (void *) name_.c_str());
+            clReleaseEvent(done_ev);
         }
         clFlush(d_->queue);
         p->out_host = out;
