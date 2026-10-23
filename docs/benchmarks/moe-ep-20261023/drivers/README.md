@@ -132,5 +132,8 @@ After the GT 430 was handed to nouveau (stage C, twice) and the machine went bac
 2. Mesa NVK（Kepler、25.0.7）: f16 を含む compute パイプラインが `ErrorUnknown`。ggml-vulkan の `test-backend-ops` が最小再現（op 名は `nvk_per_op.txt`）。25.2.1 以降で再現するかは未確認（25.0.7 では Kepler は未適合として扱われる）。
 3. 切替スクリプト／環境側: 前回までの `nvidia-installer` によるモジュール解除、GT 430 の nouveau 束縛と 390 への戻り（`RmInitAdapter failed (0x12:0x45:1920)`）は README の別節に記録済み。
 
-### GT 710 の pstate（再クロック）
-次項に追記（実行前にここまでコミットする）。
+
+### nouveau-kepler → nv390 の戻りで Kepler が割り込み障害（停止）
+- `nouveau-kepler` の計測後、`nv390` は rc 0 で state=`nv390`、モジュール 390.157、userspace 390.157 一致、GT 430 は `nvidia-smi -L` に出るが、**GT 730 / GT 710 が `Unable to determine the device handle … detected an issue with GPU interrupts`**（`nvidia-smi` の終了コード 11）。nouveau に掴ませた Kepler を 390 で取り戻すと GT 430 のときと同じ症状になる（GT 430 の `RmInitAdapter failed` と同系。これも再起動まで直らない見込み。推定）。
+- 指示（割り込み障害 = 再起動の兆候はすぐ止める）に従い、そこで停止。**GT 710 の `pstate set` は未実施**（`pstate show` のみ: GT 710 は `07: 405 MHz / 810 MHz`、`0f: 653-954 MHz / 1600 MHz`、GT 730 は `0f: 954 MHz / 5010 MHz`、現在は AC=07 相当）。再クロック前後の NVK 比較用に `scripts/nvkperf.sh`（`before_reclock` は取得済み: GT 710 47.1 ms、GT 730 25.2 ms）を用意してある。
+- 最後の状態: state=`nv390`、perf=auto、GT 430 のみ nvidia-smi で使える、Kepler 2 枚が割り込み障害。再起動が必要。
