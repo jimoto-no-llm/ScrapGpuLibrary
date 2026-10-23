@@ -32,3 +32,27 @@
 - 実機の状態は変化なし（390.157 のまま、`nvidia-smi -L` で 3 枚、`/sys/module/nvidia/version` = 390.157）。unload は 1 つ目のモジュールで止まり、何も外れていない。
 - 原因（推定）: lsmod 上の名前は `nvidia_drm` だが、モジュールファイルは `nvidia-legacy-390xx-drm.ko.xz` で、`modprobe -r nvidia_drm` は名前解決できない（`modinfo` で確認）。`unload_all` は `rmmod`（カーネル名）か、390 / 470 のファイル名に直す必要がある。前回の nv390 で 470 が載った経緯も、この unload が実は効いていなかった可能性がある（未確認）。
 - 停止条件（切替が failed を残す）に該当したため、これ以上の切替は行っていない。段階 C / A / B は未実施。
+
+## 再開 2: 修正版スクリプトでの往復と段階 C（2026-10-23）— 段階 C の切替で停止
+
+### nv390 往復確認: 通過
+`rmmod` 版 `unload_all` で `nv390` は成功（3 枚 nvidia、390.157、userspace 一致、`nvidia-smi -L` で 3 枚、state=`nv390`）。
+
+### 390 ベースライン（同一セッション、`bench_cl11_cards.sh NVIDIA gt730 gt430`、LFM2.5-1.2B Q4_0、`logs/03_baseline_nv390/`）
+| カード | q6_K mv | q4_0 mv | MUL_MAT_ID 32 tok (q4_0) | pp128 | tg64 |
+| --- | --- | --- | --- | --- | --- |
+| GT 730 | 28.19 GB/s | 28.05 GB/s | 4.82 GB/s | 121.35 ± 0.37 | 31.98 ± 0.01 |
+| GT 430 | 14.45 GB/s | 18.57 GB/s | 1.02 GB/s | 45.03 | 22.41 ± 0.01 |
+
+### 段階 C: `nv470-nouveau430` — 目的の状態に到達せず
+- `flock … sgl-driver-switch nv470-nouveau430` は rc 0、state=`nv470-nouveau430` を書いたが、**実際は `nvidia` モジュールが無く（lsmod に nouveau のみ）、3 枚とも未束縛、DRM ノードなし**。スクリプトは途中で `nvidia kernel module 470.256.02` を表示している（load 直後の版確認は通った）ので、ロードは成功し、その後（ユーザ空間 `.run` のインストール中か直後）に nvidia が外れたと読める。**同じ現象が `nv390` でも起きた**: 初回の再起動前 `nv390`（最初の失敗）で 470 が残っていた件、および今回の nv470-nouveau430 → nv390 で、ユーザ空間 `.run` を実際に入れた直後に `nvidia` が無い状態（`kernel module=not loaded`）になった。ユーザ空間のインストールをスキップした呼び出し（marker 一致）では起きていない。→ `nvidia-installer` 側（`--no-kernel-module` でもロード済みモジュールを外す／入れ替える挙動、または付随する `nvidia-modprobe`）の疑い。未確認（ログ非可読）。
+- 計画どおり nv390 で戻したが、1 回目は上記の理由で module 未ロード（marker 不一致のため userspace を再インストールしたため）。2 回目（userspace スキップ）で 390.157 がロードされ、GT 730 / GT 710 は束縛・`nvidia-smi -L` に表示。
+- **ただし GT 430 は `Unable to determine the device handle for GPU 0000:04:00.0: The NVIDIA kernel module detected an issue with GPU interrupts`**。その結果 `nvidia-smi`（全体）と OpenCL（CL11 plugin、GT 730 指定でも）が `SKIP: no device`（mm_bench rc=77）になる。GT 430 に nouveau を一度掴ませた後で 390 を載せ直したこと（または module 入れ替えの繰り返し）で GT 430 が割り込み異常になった疑い。**再起動で戻る見込み（推定）。再起動は利用者判断。**
+- 停止条件（nv390 で正常に戻らない）に該当。段階 A / B、`pstate`、probe_state は未実施（段階 C の probe も取れていない）。perf は auto のまま。
+
+### 現在の状態
+state=`nv390`、`/sys/module/nvidia/version`=390.157、userspace 390.157、GT 430 が割り込み異常、GT 730 / 710 は nvidia-smi 上は見えるが OpenCL 実行不可。
+
+### 次にやること（利用者の判断待ち）
+1. 再起動（ブート既定の 390 で GT 3 枚が戻るはず）。
+2. スクリプト修正案: (a) ユーザ空間 `.run` のインストール**前**にモジュールを load せず、インストールの**後**に load する順にする（installer がモジュールを外す疑いを回避）。(b) 各切替の最後で `/sys/module/nvidia/version` と各カードの束縛先を読み戻し、期待と違えば `failed` にする。(c) nv470-nouveau430 は GT 430 を nouveau に掴ませる前に、userspace を先に入れる。

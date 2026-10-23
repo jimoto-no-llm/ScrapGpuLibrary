@@ -1,0 +1,6 @@
+# date: 2026-10-23_23:21:22  host: tb250  tag: chk390_gt430
+# temps at start:  amd34 amd35 Unable to determine the device handle for GPU 0000:04:00.0: The NVIDIA kernel module detected an issue with GPU interrupts.Consult the "Common Problems" Chapter of the NVIDIA Driver README for details and steps that can be taken to resolve this issue.    (max  C)
+# env: GGML_CL11_PLATFORMS=NVIDIA GGML_CL11_DEVICES=GT 430 GGML_BACKEND_PATH=/home/eightman/moe-ep/hec/plug/libggml-cl11.so VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json GGML_CL11_AUTO_RPC=0 
+# cmd: /home/eightman/moe-ep/cuda/bB/scrapgpu_mm_bench opencl11 mv --type q4_0
+# rc=77  seconds=6
+# temps at end:  amd34 amd34 Unable to determine the device handle for GPU 0000:04:00.0: The NVIDIA kernel module detected an issue with GPU interrupts.Consult the "Common Problems" Chapter of the NVIDIA Driver README for details and steps that can be taken to resolve this issue.    (max  C)

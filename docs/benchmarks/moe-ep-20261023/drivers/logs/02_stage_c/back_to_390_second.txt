@@ -1,0 +1,25 @@
+[sgl-driver] rmmod nvidia
+[sgl-driver] nvidia kernel module 390.157
+[sgl-driver] userspace already NVIDIA-Linux-x86_64-390.157.run; skipped (--reinstall-userspace forces it)
+0000:04:00.0 nvidia
+0000:07:00.0 nvidia
+0000:08:00.0 nvidia
+nvidia_drm             61440  0
+nvidia_modeset       1347584  1 nvidia_drm
+nvidia_uvm           1126400  0
+nvidia              19914752  2 nvidia_uvm,nvidia_modeset
+0000:03:00.0 perf=auto
+0000:06:00.0 perf=auto
+state: nv390
+NVRM version: NVIDIA UNIX x86_64 Kernel Module  390.157  Wed Oct 12 09:19:07 UTC 2022
+0000:04:00.0 nodes: card2 renderD130 
+0000:07:00.0 nodes: card3 renderD131 
+0000:08:00.0 nodes: card4 renderD132 
+userspace libcuda=390.157 marker=NVIDIA-Linux-x86_64-390.157.run kernel module=390.157
+---
+nv390
+390.157
+Unable to determine the device handle for gpu 0000:04:00.0: The NVIDIA kernel module detected an issue with GPU interrupts.Consult the "Common Problems" Chapter of the NVIDIA Driver README for
+details and steps that can be taken to resolve this issue.
+GPU 1: GeForce GT 730 (UUID: GPU-ee0fd47b-353a-8b37-c112-20c39a39d5c6)
+GPU 2: GeForce GT 710 (UUID: GPU-a5ca8e6e-934c-dc07-33a1-2bf9642fdd47)
