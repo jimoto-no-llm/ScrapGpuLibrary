@@ -1155,7 +1155,7 @@ ggml_backend_t dev_init_backend(ggml_backend_dev_t dev, const char *) {
         /* .guid    = */ backend_guid(),
         /* .iface   = */ backend_i,
         /* .device  = */ dev,
-        /* .context = */ new backend_ctx{ c },
+        /* .context = */ new backend_ctx{ c, {} },
     };
 }
 

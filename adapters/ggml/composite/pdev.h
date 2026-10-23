@@ -103,6 +103,9 @@ public:
     virtual bool moe_submit(moe_slots * s, const float * x, int64_t N_x, const int32_t * pair_slot, const int32_t * pair_tok, int n_pairs, float * out) {
         (void) s; (void) x; (void) N_x; (void) pair_slot; (void) pair_tok; (void) n_pairs; (void) out; return false;
     }
+    // how long the last moe_submit job took on the device itself (ms; submit start to the end of its work), -1 if the pdev does not know
+    virtual double moe_last_ms() { return -1.0; }
+
     // Prefill with the routing weights and the sum over the experts of a token done on the device (only the [n_embd, N_x] sums come back; the pair outputs would be 8 times as
     // much). `ids[k + n_used * t]` is the slot of the k-th expert of token t on this device, or moe_zero_slot() when the pair is not for this device; `w` is its routing weight
     // (0 for the pairs that are not for this device). The experts `ex[0..n_ex)` are copied from host memory into the slots ring_first + i first (n_ex <= the ring; the

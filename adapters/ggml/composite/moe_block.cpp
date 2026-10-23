@@ -97,6 +97,10 @@ struct dev_rec {
     std::string           name;
     long                  want_main = -1;   // slots for the main class: -1 = as many as fit
     long                  want_other = 0;   // slots for each other class
+    bool                  gated = false;    // medium device: used in a layer only if the cpu would take longer (see run_decode)
+    double                lat_ms = 3.0;     // its latency for one job (EMA)
+    uint64_t              gate_tick = 0;
+    uint64_t              gate_skipped = 0, gate_used = 0;
     std::vector<dev_cls>  cls;
     std::vector<float>    out;              // result staging [n_embd, 16]
     std::vector<int32_t>  ps, pt;           // pair arrays handed to moe_submit (must outlive the call)
@@ -137,7 +141,7 @@ struct state {
     ggml_backend_buffer_type_t buft = nullptr;
     hooks                     h{};
     // configuration
-    struct spec_t { std::string name; long main = -1; long other = 0; };
+    struct spec_t { std::string name; long main = -1; long other = 0; bool gated = false; };
     std::vector<spec_t>       specs;
     int                       n_threads = 2;
     bool                      use_kern = true;      // GGML_SGLX_MOE_CPUKERN=0: use a ggml graph for the cold experts of a token (OpenMP: see moe_cpu.h)
@@ -147,6 +151,7 @@ struct state {
     bool                      profile = false;
     long                      reserve_mib = 320;   // device memory left free when the slot count is automatic
     int                       plan_min_tokens = 16;
+    double                    min_mass = 0.0;       // GGML_SGLX_MOE_MIN_MASS: a device after the first keeps the experts of a layer only if they cover this fraction of the layer's selections
     int                       ring_main = 96;      // GGML_SGLX_MOE_RING: ring slots of the main class on the first device (0 = no streaming)
     int                       stream_tau = 3;
     bool                      fused_prefill = true;  // GGML_SGLX_MOE_FUSED=0: pair outputs to the host and the weighted sum there (the first implementation)      // experts with more than this many pairs in a prefill ubatch are streamed, the others run on the cpu
@@ -172,6 +177,7 @@ struct state {
     bool                      kern_ok = false;
     int                       kern_spin_us = 3000;
     std::vector<std::vector<std::unique_ptr<cpu_graph>>> cold; // [class][n-1]
+    std::vector<double>       cold_ms;              // per class: time of one cold expert on the cpu (EMA, ms)
 
     // statistics and placement
     double                    scale = 1.0;           // weight of the next selection (grows by 2^(1/halflife) per token)
@@ -223,6 +229,10 @@ bool parse_env(state & st) {
             continue;
         }
         state::spec_t sp;
+        if (!item.empty() && item.back() == '!') {   // "RPC0:300!": a medium device that is used in a layer only when the cpu would take longer than the device's latency
+            sp.gated = true;
+            item.pop_back();
+        }
         size_t c1 = item.find(':');
         sp.name = item.substr(0, c1);
         if (c1 != std::string::npos) {
@@ -239,6 +249,9 @@ bool parse_env(state & st) {
     auto envi = [](const char * n, long dflt) { const char * v = getenv(n); return v != nullptr && *v != '\0' ? atol(v) : dflt; };
     st.n_threads = (int) envi("GGML_SGLX_MOE_THREADS", 2);
     st.poll = (int) envi("GGML_SGLX_MOE_POLL", 50);
+    if (getenv("GGML_SGLX_MOE_MIN_MASS") != nullptr) {
+        st.min_mass = atof(getenv("GGML_SGLX_MOE_MIN_MASS"));
+    }
     st.use_kern = envi("GGML_SGLX_MOE_CPUKERN", 1) != 0;
     st.kern_spin_us = (int) envi("GGML_SGLX_MOE_SPIN_US", 3000);
     st.halflife = (double) envi("GGML_SGLX_MOE_HALFLIFE", 4096);
@@ -321,6 +334,13 @@ void complete_layer(state & st, int idx) {
 }
 
 void sync_classes(state & st) {
+    if (st.cold_ms.size() < st.classes.size()) {
+        const size_t old = st.cold_ms.size();
+        st.cold_ms.resize(st.classes.size());
+        for (size_t i = old; i < st.classes.size(); ++i) {
+            st.cold_ms[i] = 0.7 * st.classes[i].cpu_cost;    // the first guess: a Q4_0 expert takes 0.28 ms on two threads, 0.55 on one
+        }
+    }
     for (auto & d : st.devs) {
         if (d.cls.size() < st.classes.size()) {
             d.cls.resize(st.classes.size());
@@ -396,7 +416,6 @@ void ensure_cpu(state & st) {
             // a threadpool of our own: without one every graph_compute starts and joins its threads (about 10 ms on the TB250)
             using tp_new_t = ggml_threadpool_t (*)(const ggml_threadpool_params *);
             using tp_set_t = void (*)(ggml_backend_t, ggml_threadpool_t);
-            using tp_def_t = ggml_threadpool_params (*)(int);
             auto tp_new = (tp_new_t) ggml_backend_reg_get_proc_address(creg, "ggml_threadpool_new");
             auto tp_set = (tp_set_t) ggml_backend_reg_get_proc_address(creg, "ggml_backend_cpu_set_threadpool");
             if (st.use_kern) {
@@ -444,10 +463,12 @@ void init_devices(state & st, int nu) {
         dr.name = sp.name;
         dr.want_main = sp.main;
         dr.want_other = sp.other;
+        dr.gated = sp.gated;
         dr.cls.resize(st.classes.size());
         size_t freeb = 0, totalb = 0;
         const bool have_mem = p->memory(&freeb, &totalb);
-        long budget = have_mem ? (long) (freeb >> 20) - st.reserve_mib : 0; // MiB left for slots
+        // MiB left for slots: the first device keeps room for the compute buffers of llama.cpp's own later contexts and for the prefill graph, the others less
+        long budget = have_mem ? (long) (freeb >> 20) - (st.devs.empty() ? st.reserve_mib : std::min<long>(st.reserve_mib, 96)) : 0;
         std::string line;
         for (size_t c = 0; c < st.classes.size(); ++c) {
             const cls_rec & cr = st.classes[c];
@@ -495,7 +516,7 @@ void init_devices(state & st, int nu) {
             dr.cls[c].s = s;
             dr.cls[c].n_slots = (int) n;
             dr.cls[c].n_ring = (int) ring;
-            dr.cls[c].owner.assign((size_t) n, -1);
+            dr.cls[c].owner.assign((size_t) (n + ring), -1);   // the ring slots hold experts during a generation too (evict_ring)
             budget -= (long) ((double) (n + ring) * (double) slot_bytes / 1048576.0);
             char buf[160];
             snprintf(buf, sizeof(buf), " class %zu: %ld slots + %ld ring (%.0f MiB)", c, n, ring, (double) (n + ring) * (double) slot_bytes / 1048576.0);
@@ -543,22 +564,62 @@ void plan(state & st) {
     std::vector<std::vector<int>> room(nd, std::vector<int>(nc, 0));
     for (size_t j = 0; j < nd; ++j) {
         for (size_t c = 0; c < nc; ++c) {
-            room[j][c] = st.devs[j].cls[c].n_slots;
+            room[j][c] = st.devs[j].cls[c].n_slots + st.devs[j].cls[c].n_ring;   // decode may use the ring as cache
         }
     }
-    // wanted[l][e] = device
+    // wanted[l][e] = device. A device other than the first costs the host a fixed time in every layer where it is used (a submit, a thread hand-over, a wait): a (device, layer)
+    // group of experts that covers less than min_mass of the selections of its layer is not worth it; its slots go to the next candidates (a few rounds).
     std::vector<std::vector<int16_t>> want(st.layers.size());
+    std::vector<std::vector<char>> allowed(nd, std::vector<char>(st.layers.size(), 1));
+    std::vector<double> layer_mass(st.layers.size(), 0.0);
     for (size_t l = 0; l < st.layers.size(); ++l) {
-        want[l].assign((size_t) st.layers[l].n_expert, -1);
+        for (double f : st.layers[l].freq) {
+            layer_mass[l] += f;
+        }
     }
-    for (const cand & c : cands) {
-        const int cl = st.layers[(size_t) c.layer].cls;
+    for (int round = 0; round < 4; ++round) {
         for (size_t j = 0; j < nd; ++j) {
-            if (room[j][(size_t) cl] > 0) {
-                room[j][(size_t) cl]--;
-                want[(size_t) c.layer][(size_t) c.e] = (int16_t) j;
-                break;
+            for (size_t c = 0; c < nc; ++c) {
+                room[j][c] = st.devs[j].cls[c].n_slots + st.devs[j].cls[c].n_ring;
             }
+        }
+        for (size_t l = 0; l < st.layers.size(); ++l) {
+            want[l].assign((size_t) st.layers[l].n_expert, -1);
+        }
+        for (const cand & c : cands) {
+            const int cl = st.layers[(size_t) c.layer].cls;
+            for (size_t j = 0; j < nd; ++j) {
+                if (allowed[j][(size_t) c.layer] && room[j][(size_t) cl] > 0) {
+                    room[j][(size_t) cl]--;
+                    want[(size_t) c.layer][(size_t) c.e] = (int16_t) j;
+                    break;
+                }
+            }
+        }
+        if (st.min_mass <= 0.0 || nd < 2) {
+            break;
+        }
+        bool changed = false;
+        for (size_t j = 1; j < nd; ++j) {
+            std::vector<double> mass(st.layers.size(), 0.0);
+            std::vector<int> cnt(st.layers.size(), 0);
+            for (size_t l = 0; l < st.layers.size(); ++l) {
+                for (int e = 0; e < (int) st.layers[l].n_expert; ++e) {
+                    if (want[l][(size_t) e] == (int16_t) j) {
+                        mass[l] += st.layers[l].freq[(size_t) e];
+                        ++cnt[l];
+                    }
+                }
+            }
+            for (size_t l = 0; l < st.layers.size(); ++l) {
+                if (cnt[l] > 0 && allowed[j][l] && layer_mass[l] > 0.0 && mass[l] / layer_mass[l] < st.min_mass) {
+                    allowed[j][l] = 0;
+                    changed = true;
+                }
+            }
+        }
+        if (!changed) {
+            break;
         }
     }
     // free the slots whose expert moves away, then fill
@@ -566,7 +627,7 @@ void plan(state & st) {
     for (size_t j = 0; j < nd; ++j) {
         for (size_t c = 0; c < nc; ++c) {
             dev_cls & dc = st.devs[j].cls[c];
-            for (int s = 0; s < dc.n_slots; ++s) {
+            for (int s = 0; s < dc.n_slots + dc.n_ring; ++s) {
                 const int32_t o = dc.owner[(size_t) s];
                 if (o < 0) {
                     continue;
@@ -594,10 +655,10 @@ void plan(state & st) {
         }
         dev_cls & dc = st.devs[(size_t) j].cls[(size_t) L.cls];
         int & nf = next_free[(size_t) j][(size_t) L.cls];
-        while (nf < dc.n_slots && dc.owner[(size_t) nf] >= 0) {
+        while (nf < dc.n_slots + dc.n_ring && dc.owner[(size_t) nf] >= 0) {
             ++nf;
         }
-        if (nf >= dc.n_slots) {
+        if (nf >= dc.n_slots + dc.n_ring) {
             continue; // cannot happen: the room was counted
         }
         dc.owner[(size_t) nf] = (int32_t) (c.layer * (int32_t) st.n_expert_max + c.e);
@@ -667,6 +728,25 @@ void count(state & st, layer_rec & L, const int32_t * ids, int nu, int N) {
     }
 }
 
+// A prompt (more than one token) is going to use the ring of the streaming device: the experts that a generation kept in the ring slots go back to the host
+void evict_ring(state & st) {
+    for (auto & d : st.devs) {
+        for (size_t c = 0; c < d.cls.size(); ++c) {
+            dev_cls & dc = d.cls[c];
+            for (int s = dc.n_slots; s < dc.n_slots + dc.n_ring; ++s) {
+                const int32_t o = dc.owner[(size_t) s];
+                if (o < 0) {
+                    continue;
+                }
+                const int l = (int) (o / (int32_t) st.n_expert_max), e = (int) (o % (int32_t) st.n_expert_max);
+                st.layers[(size_t) l].dev[(size_t) e] = -1;
+                st.layers[(size_t) l].slot[(size_t) e] = -1;
+                dc.owner[(size_t) s] = -1;
+            }
+        }
+    }
+}
+
 // a new pass over the layers begins (the layer number did not increase): decay, and the placement decisions
 void begin_pass(state & st, int N) {
     ++st.passes;
@@ -727,10 +807,12 @@ bool cold_decode(state & st, const layer_rec & L, const float * x, const int32_t
         const auto tk = clk::now();
         const bool ok = st.kern.run(L.gate->type, L.up->type, L.down->type, L.up->ne[0], L.up->ne[1], (const char *) L.gate->data, L.gate->nb[2],
                                     (const char *) L.up->data, L.up->nb[2], (const char *) L.down->data, L.down->nb[2], x, eids, n, out);
-        if (ok && st.profile) {
-            st.t_cold_compute.add(ms_since(tk));
-        }
         if (ok) {
+            const double per = ms_since(tk) / (double) n;
+            st.cold_ms[(size_t) L.cls] = 0.95 * st.cold_ms[(size_t) L.cls] + 0.05 * per;
+            if (st.profile) {
+                st.t_cold_compute.add(ms_since(tk));
+            }
             return true;
         }
     }
@@ -1002,7 +1084,7 @@ bool run_decode(state & st, layer_rec & L, const block & b, const int32_t * ids,
     for (size_t j = 0; j < nd; ++j) {
         st.devs[j].ps.clear();
     }
-    std::vector<std::vector<int>> kslot(nd);
+    std::vector<std::vector<int>> kslot(nd), kexp(nd);
     for (int k = 0; k < nu; ++k) {
         const int e = ids[k];
         if (e < 0 || e >= L.n_expert) {
@@ -1012,6 +1094,7 @@ bool run_decode(state & st, layer_rec & L, const block & b, const int32_t * ids,
         if (j >= 0) {
             st.devs[(size_t) j].ps.push_back(L.slot[(size_t) e]);
             kslot[(size_t) j].push_back(k);
+            kexp[(size_t) j].push_back(e);
         } else if (n_cold < 16) {
             cold_k[n_cold] = k;
             cold_e[n_cold] = e;
@@ -1019,6 +1102,27 @@ bool run_decode(state & st, layer_rec & L, const block & b, const int32_t * ids,
         } else {
             return false;
         }
+    }
+    // a medium device is used only when the cpu would be busy for longer than the device needs (it would otherwise lengthen the layer)
+    for (size_t j = 0; j < nd; ++j) {
+        dev_rec & dr = st.devs[j];
+        if (!dr.gated || dr.ps.empty()) {
+            continue;
+        }
+        const double est_cpu = (double) dr.ps.size() * st.cold_ms[(size_t) L.cls];
+        const bool explore = (++dr.gate_tick % 64) == 0;    // refresh the latency estimate now and then
+        if (est_cpu > dr.lat_ms || explore) {
+            ++dr.gate_used;
+            continue;
+        }
+        ++dr.gate_skipped;
+        for (size_t i = 0; i < kslot[j].size() && n_cold < 16; ++i) {
+            cold_k[n_cold] = kslot[j][i];
+            cold_e[n_cold] = kexp[j][i];
+            ++n_cold;
+        }
+        dr.ps.clear();
+        kslot[j].clear();
     }
     int used = 0;
     // GPUs first (they work while the cpu does the cold experts), the slowest first is not needed: one host thread submits all
@@ -1064,6 +1168,14 @@ bool run_decode(state & st, layer_rec & L, const block & b, const int32_t * ids,
         st.devs[j].t_wait.add(ms_since(t1));
     }
     const double t_wait = ms_since(tw);
+    for (size_t j : submitted) {
+        if (st.devs[j].gated) {
+            const double l = st.devs[j].p->moe_last_ms();
+            if (l > 0.0) {
+                st.devs[j].lat_ms = 0.9 * st.devs[j].lat_ms + 0.1 * l;
+            }
+        }
+    }
     if (!ok) {
         return false;
     }
@@ -1573,6 +1685,9 @@ bool run_block(state & st, ggml_cgraph * g, int i, block & b) {
         st.pass_started = true;
         begin_pass(st, N);
         st.pass_n = N;
+        if (N > 1) {
+            evict_ring(st);
+        }
         if (N >= 8) {
             st.replan_pending = true;     // a prompt was processed: place the experts it used (at the end of the pass, or at the first decode)
         }
@@ -1775,7 +1890,7 @@ bool exec(ggml_cgraph * g, int i) {
 }
 
 ggml_backend_buffer_t alloc_pinned(size_t size) {
-    if (S == nullptr || S->specs.empty() || getenv("GGML_SGLX_MOE_PINNED") != nullptr && atoi(getenv("GGML_SGLX_MOE_PINNED")) == 0) {
+    if (S == nullptr || S->specs.empty() || (getenv("GGML_SGLX_MOE_PINNED") != nullptr && atoi(getenv("GGML_SGLX_MOE_PINNED")) == 0)) {
         return nullptr;
     }
     ggml_backend_dev_t d = find_ggml_device(S->specs[0].name.c_str());
@@ -1808,6 +1923,10 @@ void print_profile() {
         }
     }
     for (const auto & d : st.devs) {
+        if (d.gated) {
+            fprintf(stderr, "SGLX MoE profile   %s (gated): used in %llu layers, skipped in %llu, latency EMA %.2f ms\n", d.name.c_str(), (unsigned long long) d.gate_used,
+                    (unsigned long long) d.gate_skipped, d.lat_ms);
+        }
         const std::string ds = d.p->stats();
         if (!ds.empty()) {
             fprintf(stderr, "SGLX MoE profile   %s %s\n", d.name.c_str(), ds.c_str());

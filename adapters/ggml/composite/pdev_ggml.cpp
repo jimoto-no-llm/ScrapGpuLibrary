@@ -210,8 +210,10 @@ public:
                     cv_.wait(lk, [&] { return job_.pending; });
                     job_t j = job_;
                     lk.unlock();
+                    const auto tj0 = clk::now();
                     bool ok = j.fn ? j.fn() : submit_impl(j.p, j.x, j.N, j.out);
                     ok = wait_impl() && ok;
+                    last_job_ms_ = std::chrono::duration<double, std::milli>(clk::now() - tj0).count();
                     lk.lock();
                     ok_ = ok;
                     job_.pending = false;
@@ -356,8 +358,13 @@ public:
     }
 
     bool wait_impl() {
+        const auto tw0 = clk::now();
         if (be_ != nullptr) {
             ggml_backend_synchronize(be_);
+        }
+        if (!moe_pending_.empty() && moe_pending_[0]->out_pairs > 0 && moe_pending_[0]->out_pairs <= 8) {
+            dec_us_[4] += std::chrono::duration<double, std::micro>(clk::now() - tw0).count();
+            ++dec_w_;
         }
         for (ggml_piece * p : pending_) {
             memcpy(p->out_host, p->ho.ptr, p->out_bytes);
@@ -480,6 +487,8 @@ public:
         moe_pending_.erase(std::remove(moe_pending_.begin(), moe_pending_.end(), static_cast<ggml_moe_slots *>(s)), moe_pending_.end());
         delete static_cast<ggml_moe_slots *>(s);
     }
+
+    double moe_last_ms() override { return last_job_ms_; }
 
     int moe_zero_slot(moe_slots * s) override {
         return static_cast<ggml_moe_slots *>(s)->n_slots;
@@ -901,6 +910,12 @@ public:
     }
 
     std::string stats() override {
+        if (dec_n_ != 0 && st_calls_ == 0) {
+            char b[300];
+            snprintf(b, sizeof(b), "decode submit: alloc %.0f, sets %.0f, compute_async %.0f, get_async %.0f us; synchronize %.0f us (%llu calls)", dec_us_[0] / (double) dec_n_, dec_us_[1] / (double) dec_n_,
+                     dec_us_[2] / (double) dec_n_, dec_us_[3] / (double) dec_n_, dec_w_ != 0 ? dec_us_[4] / (double) dec_w_ : 0.0, (unsigned long long) dec_n_);
+            return b;
+        }
         if (st_calls_ != 0) {
             char b[300];
             snprintf(b, sizeof(b), "stream: %llu calls, %.1f ms each (%.1f groups, %.1f experts, %.0f pairs): main waits for the upload %.1f, computes %.1f, stages %.1f; DMA thread %.1f ms",
@@ -1030,23 +1045,32 @@ private:
                 tokv[i] = real ? pair_tok[i] : 0;
             }
         }
+        const auto tq0 = clk::now();
         ggml_gallocr_t ga = one ? m->galloc_dec : m->galloc_pair;
         if (!ggml_gallocr_alloc_graph(ga, g->gf)) {
             fprintf(stderr, "SGLX: %s: cannot allocate the MoE compute buffer\n", name_.c_str());
             return false;
         }
+        const auto tq1 = clk::now();
         ggml_backend_tensor_set_async(be_, g->x, in, 0, xb);
         if (!one) {
             ggml_backend_tensor_set_async(be_, g->tok, tokv, 0, ib);
         }
         ggml_backend_tensor_set_async(be_, g->ids, idsv, 0, ib);
+        const auto tq2 = clk::now();
         const ggml_status st = ggml_backend_graph_compute_async(be_, g->gf);
         if (st != GGML_STATUS_SUCCESS) {
             fprintf(stderr, "SGLX: %s: MoE graph_compute failed (%d)\n", name_.c_str(), (int) st);
             return false;
         }
+        const auto tq3 = clk::now();
         const size_t obytes = (size_t) K * (size_t) n_pairs * sizeof(float);
         ggml_backend_tensor_get_async(be_, g->y, os, 0, obytes);
+        if (one) {
+            const auto tq4 = clk::now();
+            auto d = [](clk::time_point a, clk::time_point b) { return std::chrono::duration<double, std::micro>(b - a).count(); };
+            dec_us_[0] += d(tq0, tq1); dec_us_[1] += d(tq1, tq2); dec_us_[2] += d(tq2, tq3); dec_us_[3] += d(tq3, tq4); ++dec_n_;
+        }
         m->out_host = out;
         m->out_bytes = obytes;
         m->out_pairs = n_pairs;
@@ -1120,6 +1144,9 @@ private:
     uint64_t tn_ = 0;
     uint64_t calls_ = 0;
     // moe_stream (ms): the whole call, waiting for the upload, computing, staging in the main thread, the DMA thread (blocking transfers), groups and experts
+    double   last_job_ms_ = -1.0;
+    double   dec_us_[5] = { 0, 0, 0, 0, 0 };   // decode (one token) calls: alloc, sets, graph_compute_async, get_async, synchronize
+    uint64_t dec_n_ = 0, dec_w_ = 0;
     double   st_total_ = 0, st_wait_ = 0, st_comp_ = 0, st_stage_ = 0, st_dma_ = 0;
     uint64_t st_calls_ = 0, st_groups_ = 0, st_experts_ = 0, st_pairs_ = 0;
 };
