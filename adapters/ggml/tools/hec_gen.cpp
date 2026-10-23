@@ -20,6 +20,7 @@
 //   L = ~/moe-ep/src/llama.cpp, B = ~/moe-ep/src/llama-build/bin.   (The GGML_BACKEND_PATH plugin, e.g. libggml-cl11.so, is honoured by ggml_backend_load_all.)
 //
 // HEC_BACKEND_DIR=<dir with libggml-vulkan.so, libggml-cpu.so ..> loads the backends from there (the default is the directory of this executable).
+// `--poll N` is the polling level of the ggml thread pool of llama's own CPU backend (llama-bench: 50; use 0 when SGLX0 computes on the CPU, see the comment in the code).
 // Devices: `-dev Vulkan0/Vulkan1` (or `none` for CPU only). Experts: `-ncmoe N` (the experts of the first N layers stay on the CPU, as in llama-bench) and
 // `-ot REGEX=DEVICE` (any number of times). `-ts a/b/..` tensor split. `-sm layer|none`.
 
@@ -144,7 +145,7 @@ int main(int argc, char ** argv) {
     std::string model, dev_arg, ts_arg, bench, text, sm = "layer", dump;
     int n_tokens = 0, n_prefill = 0;
     std::vector<std::string> ots;
-    int ngl = 99, ncmoe = 0, n_thr = 2, n_ub = 512, reps = 3, moe_cache_mib = 0, n_prompt = 128, n_gen = 128, seed = 1234, top_k = 0;
+    int poll = 50, n_ctx_arg = 0, ngl = 99, ncmoe = 0, n_thr = 2, n_ub = 512, reps = 3, moe_cache_mib = 0, n_prompt = 128, n_gen = 128, seed = 1234, top_k = 0;
     float temp = 0.0f;
     bool fa = false;
     for (int i = 1; i < argc; i++) {
@@ -159,6 +160,8 @@ int main(int argc, char ** argv) {
         else if (a == "-sm") sm = nx();
         else if (a == "-t") n_thr = atoi(nx().c_str());
         else if (a == "-ub" || a == "-b") n_ub = atoi(nx().c_str());
+        else if (a == "-c") n_ctx_arg = atoi(nx().c_str());
+        else if (a == "--poll") poll = atoi(nx().c_str());
         else if (a == "-fa") fa = atoi(nx().c_str()) != 0;
         else if (a == "-r" || a == "--reps") reps = atoi(nx().c_str());
         else if (a == "--moe-cache-mib") moe_cache_mib = atoi(nx().c_str());
@@ -241,15 +244,17 @@ int main(int argc, char ** argv) {
     auto * tp_new  = (decltype(ggml_threadpool_new) *) ggml_backend_reg_get_proc_address(cpu_reg, "ggml_threadpool_new");
     auto * tp_free = (decltype(ggml_threadpool_free) *) ggml_backend_reg_get_proc_address(cpu_reg, "ggml_threadpool_free");
 
-    auto make_ctx = [&](llama_context *& ctx, ggml_threadpool *& tp) {
+    // the context size is what the run needs, as llama-bench does (n_prompt + n_gen): the KV cache lives in the VRAM that the expert slots compete for
+    auto make_ctx = [&](llama_context *& ctx, ggml_threadpool *& tp, int n_need) {
         llama_context_params cp = llama_context_default_params();
-        cp.n_ctx = std::max(2048, n_ub + 256);
+        cp.n_ctx = n_ctx_arg > 0 ? n_ctx_arg : std::max(n_need, 1);
         cp.n_batch = n_ub; cp.n_ubatch = n_ub; cp.n_threads = n_thr; cp.n_threads_batch = n_thr;
         cp.flash_attn_type = fa ? LLAMA_FLASH_ATTN_TYPE_ENABLED : LLAMA_FLASH_ATTN_TYPE_DISABLED;
         cp.moe_cache_size = (size_t) moe_cache_mib * 1024 * 1024;
         ctx = llama_init_from_model(lm, cp);
         if (!ctx) { fprintf(stderr, "context creation failed\n"); exit(1); }
         ggml_threadpool_params tpp = ggml_threadpool_params_default(n_thr);
+        tpp.poll = (uint32_t) poll;   // llama-bench default 50: after every graph the helper thread spins for ~0.3 s, which takes a core from anything else (SGLX0)
         tp = tp_new(&tpp);
         llama_attach_threadpool(ctx, tp, nullptr);
     };
@@ -273,7 +278,7 @@ int main(int argc, char ** argv) {
         n_tokens = (int) tk.size();
         if (n_prefill <= 0 || n_prefill >= n_tokens) n_prefill = std::max(1, n_tokens / 2);
         llama_context * ctx; ggml_threadpool * tp;
-        make_ctx(ctx, tp);
+        make_ctx(ctx, tp, n_tokens);
         llama_memory_clear(llama_get_memory(ctx), false);
         std::vector<float> all;
         int n_pos = 0;
@@ -319,7 +324,7 @@ int main(int argc, char ** argv) {
             else if (t.rfind("pg", 0) == 0) { pp = atoi(t.c_str() + 2); const char * c = strchr(t.c_str(), ':'); tg = c ? atoi(c + 1) : 0; }
             else { fprintf(stderr, "bad test %s\n", t.c_str()); return 2; }
             llama_context * ctx; ggml_threadpool * tp;
-            make_ctx(ctx, tp);
+            make_ctx(ctx, tp, pp + tg);
             bench_ctx b{ ctx, vocab, n_vocab, n_ub };
             llama_memory_clear(llama_get_memory(ctx), false);
             if (pp > 0 && !test_prompt(b, pp)) return 1;      // warm-up, as llama-bench
@@ -357,7 +362,7 @@ int main(int argc, char ** argv) {
         if (nt < n_prompt) { fprintf(stderr, "text has only %d tokens (< %d)\n", nt, n_prompt); n_prompt = nt; }
         tk.resize(n_prompt);
         llama_context * ctx; ggml_threadpool * tp;
-        make_ctx(ctx, tp);
+        make_ctx(ctx, tp, n_prompt + n_gen);
         llama_sampler * smpl = llama_sampler_chain_init(llama_sampler_chain_default_params());
         if (temp > 0.0f) {
             if (top_k > 0) llama_sampler_chain_add(smpl, llama_sampler_init_top_k(top_k));

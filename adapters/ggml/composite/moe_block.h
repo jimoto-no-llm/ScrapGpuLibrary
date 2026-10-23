@@ -42,7 +42,8 @@ bool handles(const ggml_tensor * node);
 // runs node `i` of the graph (a MoE block is run as a whole at its first MUL_MAT_ID; the other nodes of the block are then skipped). false = failed.
 bool exec(ggml_cgraph * g, int i);
 
-// GGML_SGLX_PROFILE
+// GGML_SGLX_PROFILE: the time that graph_compute spent on the lazy input copies (synchronizing the producing device and reading x, ids, weights)
+void note_input_copy_ms(double ms);
 void print_profile();
 
 } // namespace moe

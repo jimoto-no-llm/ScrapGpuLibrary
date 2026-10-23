@@ -958,7 +958,9 @@ enum ggml_status backend_graph_compute(ggml_backend_t backend, ggml_cgraph * cgr
     }
     {
         // the copies of inputs that a node of this graph reads (see backend_ctx::pending)
+        const auto t_pc0 = clock_type::now();
         backend_ctx * bx = (backend_ctx *) backend->context;
+        const bool had_pending = !bx->pending.empty();
         for (const auto & pc : bx->pending) {
             bool used = false;
             for (int i = 0; i < cgraph->n_nodes && !used; ++i) {
@@ -977,6 +979,9 @@ enum ggml_status backend_graph_compute(ggml_backend_t backend, ggml_cgraph * cgr
             }
         }
         bx->pending.clear();
+        if (c->profile && moe::enabled() && had_pending) {
+            moe::note_input_copy_ms(ms_since(t_pc0));
+        }
     }
     const auto t_gc0 = clock_type::now();
     struct gc_timer {

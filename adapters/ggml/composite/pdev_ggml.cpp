@@ -522,32 +522,9 @@ public:
         int staged = 0, uploaded = 0, computed = 0;
         bool failed = false;
         auto fail = [&] { std::lock_guard<std::mutex> lk(mu); failed = true; cvs.notify_all(); };
-        const bool pinned = m->stg_buf[0] != nullptr;
-        std::thread t_copy([&] {
-            for (int i = 0; i < groups; ++i) {
-                {
-                    std::unique_lock<std::mutex> lk(mu);
-                    cvs.wait(lk, [&] { return failed || i - uploaded < 3; });
-                    if (failed) { return; }
-                }
-                char * dst = m->stg_ptr[i % 3];
-                const int e0 = i * C, e1 = std::min(n_exp, e0 + C);
-                size_t off = 0;
-                for (int k = 0; k < 3; ++k) {
-                    const size_t b = k == 0 ? bg : (k == 1 ? bu : bd);
-                    off = (size_t) C * (k == 0 ? 0 : (k == 1 ? bg : bg + bu));
-                    for (int e = e0; e < e1; ++e) {
-                        const void * src = k == 0 ? ex[e].gate : (k == 1 ? ex[e].up : ex[e].down);
-                        memcpy(dst + off + (size_t) (e - e0) * b, src, b);
-                    }
-                }
-                {
-                    std::lock_guard<std::mutex> lk(mu);
-                    staged = i + 1;
-                }
-                cvs.notify_all();
-            }
-        });
+        // The DMA thread copies a staged group into its half of the ring with the blocking tensor_set (ggml-vulkan sleeps in waitForFences there; the
+        // asynchronous path would spin on a core for the whole transfer, and the host has two). The main thread stages the groups ahead of the DMA (memcpy from the
+        // mmap into pinned memory) and computes the groups that arrived, so the three overlap.
         std::thread t_dma([&] {
             for (int i = 0; i < groups; ++i) {
                 {
@@ -564,15 +541,8 @@ public:
                 size_t off = 0;
                 for (int k = 0; k < 3; ++k) {
                     const size_t slot0 = (size_t) ring_first + (size_t) half * (size_t) C;
-                    if (pinned) {
-                        ggml_backend_tensor_set_async(m->ub, ts[k], src + off, slot0 * bs[k], n * bs[k]);
-                    } else {
-                        ggml_backend_tensor_set(ts[k], src + off, slot0 * bs[k], n * bs[k]);
-                    }
+                    ggml_backend_tensor_set(ts[k], src + off, slot0 * bs[k], n * bs[k]);
                     off += (size_t) C * bs[k];
-                }
-                if (pinned) {
-                    ggml_backend_synchronize(m->ub);
                 }
                 {
                     std::lock_guard<std::mutex> lk(mu);
@@ -581,10 +551,34 @@ public:
                 cvs.notify_all();
             }
         });
+        auto stage_group = [&](int i) {
+            char * dst = m->stg_ptr[i % 3];
+            const int e0 = i * C, e1 = std::min(n_exp, e0 + C);
+            for (int k = 0; k < 3; ++k) {
+                const size_t b = k == 0 ? bg : (k == 1 ? bu : bd);
+                const size_t off = (size_t) C * (k == 0 ? 0 : (k == 1 ? bg : bg + bu));
+                for (int e = e0; e < e1; ++e) {
+                    const void * src = k == 0 ? ex[e].gate : (k == 1 ? ex[e].up : ex[e].down);
+                    memcpy(dst + off + (size_t) (e - e0) * b, src, b);
+                }
+            }
+            {
+                std::lock_guard<std::mutex> lk(mu);
+                staged = i + 1;
+            }
+            cvs.notify_all();
+        };
         bool ok = true;
         std::vector<int32_t> ps, pt;
         std::vector<float> tmp;
         for (int i = 0; i < groups && ok; ++i) {
+            // stage ahead: a staging area is free once its group has been uploaded
+            for (;;) {
+                int st_n, up_n;
+                { std::lock_guard<std::mutex> lk(mu); st_n = staged; up_n = uploaded; }
+                if (st_n >= groups || st_n - up_n >= 3) { break; }
+                stage_group(st_n);
+            }
             {
                 std::unique_lock<std::mutex> lk(mu);
                 cvs.wait(lk, [&] { return failed || uploaded > i; });
@@ -602,7 +596,14 @@ public:
                     pt[(size_t) q] = pair_tok[pi];
                 }
                 tmp.resize((size_t) K * (size_t) n);
-                ok = moe_submit_impl(m, x, N_x, ps.data(), pt.data(), n, tmp.data()) && wait_impl();
+                ok = moe_submit_impl(m, x, N_x, ps.data(), pt.data(), n, tmp.data());
+                // while the device computes, stage the next group
+                if (ok) {
+                    int st_n, up_n;
+                    { std::lock_guard<std::mutex> lk(mu); st_n = staged; up_n = uploaded; }
+                    if (st_n < groups && st_n - up_n < 3) { stage_group(st_n); }
+                    ok = wait_impl();
+                }
                 if (ok) {
                     for (int q = 0; q < n; ++q) {
                         memcpy(out + (size_t) order[(size_t) (p + q)] * (size_t) K, tmp.data() + (size_t) q * (size_t) K, (size_t) K * sizeof(float));
@@ -617,7 +618,6 @@ public:
             cvs.notify_all();
         }
         if (!ok) { fail(); }
-        t_copy.join();
         t_dma.join();
         return ok;
     }

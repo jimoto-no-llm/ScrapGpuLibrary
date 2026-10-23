@@ -12,6 +12,7 @@
 //   * runs any other MoE node (a MUL_MAT_ID that is not part of a recognised block, ...) with ggml-cpu on the mmap'd weights: slow but correct.
 
 #include "moe_block.h"
+#include "moe_cpu.h"
 #include "pdev.h"
 
 #include "ggml-alloc.h"
@@ -29,6 +30,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <thread>
 #include <unordered_set>
 #include <vector>
 
@@ -129,6 +131,8 @@ struct state {
     struct spec_t { std::string name; long main = -1; long other = 0; };
     std::vector<spec_t>       specs;
     int                       n_threads = 2;
+    bool                      use_kern = true;      // GGML_SGLX_MOE_CPUKERN=0: use a ggml graph for the cold experts of a token (OpenMP: see moe_cpu.h)
+    int                       poll = 50;           // GGML_SGLX_MOE_POLL: how long the cpu threads spin for the next graph (0..100), as llama-bench -poll
     double                    halflife = 4096.0;   // tokens
     bool                      freeze = false;
     bool                      profile = false;
@@ -152,6 +156,9 @@ struct state {
 
     // cpu
     ggml_backend_t            cpu = nullptr;
+    cpu_kernel                kern;                 // decode on the cold experts without a ggml graph (moe_cpu.cpp)
+    bool                      kern_ok = false;
+    int                       kern_spin_us = 500;
     std::vector<std::vector<std::unique_ptr<cpu_graph>>> cold; // [class][n-1]
 
     // statistics and placement
@@ -170,6 +177,8 @@ struct state {
     // profile
     acc                       t_dec, t_dec_cold, t_dec_gpu_sub, t_dec_gpu_wait, t_dec_host;
     acc                       t_pre, t_pre_cold, t_pre_stream;
+    acc                       t_copy;               // lazy input copies per graph_compute call
+    acc                       t_cold_alloc, t_cold_set, t_cold_compute;  // inside cold_decode
     double                    n_stream_experts = 0;
     double                    n_pairs_gpu = 0, n_pairs_cold = 0;       // decode
     double                    n_pre_gpu = 0, n_pre_cold = 0;           // prefill
@@ -217,6 +226,9 @@ bool parse_env(state & st) {
     }
     auto envi = [](const char * n, long dflt) { const char * v = getenv(n); return v != nullptr && *v != '\0' ? atol(v) : dflt; };
     st.n_threads = (int) envi("GGML_SGLX_MOE_THREADS", 2);
+    st.poll = (int) envi("GGML_SGLX_MOE_POLL", 50);
+    st.use_kern = envi("GGML_SGLX_MOE_CPUKERN", 1) != 0;
+    st.kern_spin_us = (int) envi("GGML_SGLX_MOE_SPIN_US", 500);
     st.halflife = (double) envi("GGML_SGLX_MOE_HALFLIFE", 4096);
     st.freeze = envi("GGML_SGLX_MOE_FREEZE", 0) != 0;
     st.profile = envi("GGML_SGLX_PROFILE", 0) != 0;
@@ -435,10 +447,36 @@ void init_devices(state & st) {
     if (cd != nullptr) {
         st.cpu = ggml_backend_dev_init(cd, nullptr);
         if (st.cpu != nullptr) {
+            ggml_backend_reg_t creg = ggml_backend_dev_backend_reg(cd);
             using fn_t = void (*)(ggml_backend_t, int);
-            auto fn = (fn_t) ggml_backend_reg_get_proc_address(ggml_backend_dev_backend_reg(cd), "ggml_backend_set_n_threads");
+            auto fn = (fn_t) ggml_backend_reg_get_proc_address(creg, "ggml_backend_set_n_threads");
             if (fn != nullptr) {
                 fn(st.cpu, st.n_threads);
+            }
+            // a threadpool of our own: without one every graph_compute starts and joins its threads (about 10 ms on the TB250)
+            using tp_new_t = ggml_threadpool_t (*)(const ggml_threadpool_params *);
+            using tp_set_t = void (*)(ggml_backend_t, ggml_threadpool_t);
+            using tp_def_t = ggml_threadpool_params (*)(int);
+            auto tp_new = (tp_new_t) ggml_backend_reg_get_proc_address(creg, "ggml_threadpool_new");
+            auto tp_set = (tp_set_t) ggml_backend_reg_get_proc_address(creg, "ggml_backend_cpu_set_threadpool");
+            if (st.use_kern) {
+                st.kern_ok = st.kern.init(creg, std::max(0, st.n_threads - 1), st.kern_spin_us);
+                if (!st.kern_ok) {
+                    MOE_LOG("the ggml-cpu kernels are not reachable: the cold experts run as a ggml graph\n");
+                }
+            }
+            if (tp_new != nullptr && tp_set != nullptr && st.n_threads > 1) {
+                ggml_threadpool_params tpp;
+                memset(&tpp, 0, sizeof(tpp));
+                tpp.n_threads = st.n_threads;
+                tpp.prio = GGML_SCHED_PRIO_NORMAL;
+                tpp.poll = st.poll;
+                tpp.strict_cpu = false;
+                tpp.paused = false;
+                ggml_threadpool_t tp = tp_new(&tpp);
+                if (tp != nullptr) {
+                    tp_set(st.cpu, tp);
+                }
             }
         }
     }
@@ -524,6 +562,8 @@ void plan(state & st) {
         }
     }
     std::vector<std::vector<int>> next_free(nd, std::vector<int>(nc, 0));
+    struct up_job { int layer, e, slot, cls; };
+    std::vector<std::vector<up_job>> jobs(nd);
     for (const cand & c : cands) {
         layer_rec & L = st.layers[(size_t) c.layer];
         const int16_t j = want[(size_t) c.layer][(size_t) c.e];
@@ -538,14 +578,43 @@ void plan(state & st) {
         if (nf >= dc.n_slots) {
             continue; // cannot happen: the room was counted
         }
-        if (!st.devs[(size_t) j].p->moe_upload(dc.s, nf, expert_ptr(L, 'g', c.e), expert_ptr(L, 'u', c.e), expert_ptr(L, 'd', c.e))) {
-            MOE_LOG("upload to %s failed\n", st.devs[(size_t) j].name.c_str());
-            continue;
-        }
         dc.owner[(size_t) nf] = (int32_t) (c.layer * (int32_t) st.n_expert_max + c.e);
         L.dev[(size_t) c.e] = j;
         L.slot[(size_t) c.e] = nf;
+        jobs[(size_t) j].push_back({ c.layer, c.e, nf, L.cls });
         ++n_up;
+    }
+    // the uploads of different devices run at the same time (each is a blocking copy over its own PCIe link)
+    std::vector<std::thread> th;
+    std::vector<char> failed(nd, 0);
+    for (size_t j = 0; j < nd; ++j) {
+        if (jobs[j].empty()) {
+            continue;
+        }
+        th.emplace_back([&st, &jobs, &failed, j] {
+            for (const up_job & u : jobs[j]) {
+                layer_rec & L = st.layers[(size_t) u.layer];
+                dev_cls & dc = st.devs[j].cls[(size_t) u.cls];
+                if (!st.devs[j].p->moe_upload(dc.s, u.slot, expert_ptr(L, 'g', u.e), expert_ptr(L, 'u', u.e), expert_ptr(L, 'd', u.e))) {
+                    failed[j] = 1;
+                    return;
+                }
+            }
+        });
+    }
+    for (auto & t : th) {
+        t.join();
+    }
+    for (size_t j = 0; j < nd; ++j) {
+        if (failed[j]) {
+            MOE_LOG("upload to %s failed: its experts are computed on the cpu\n", st.devs[j].name.c_str());
+            for (const up_job & u : jobs[j]) {
+                layer_rec & L = st.layers[(size_t) u.layer];
+                L.dev[(size_t) u.e] = -1;
+                L.slot[(size_t) u.e] = -1;
+                st.devs[j].cls[(size_t) u.cls].owner[(size_t) u.slot] = -1;
+            }
+        }
     }
     ++st.plans;
     st.tokens_since_plan = 0;
@@ -632,22 +701,42 @@ cpu_graph * cold_graph(state & st, int cls, int n) {
 
 // the n cold experts `eids` for one token column x: out[:, i] (unweighted)
 bool cold_decode(state & st, const layer_rec & L, const float * x, const int32_t * eids, int n, float * out) {
+    if (st.kern_ok && st.kern.supports(L.gate->type, L.up->type, L.down->type)) {
+        const auto tk = clk::now();
+        const bool ok = st.kern.run(L.gate->type, L.up->type, L.down->type, L.up->ne[0], L.up->ne[1], (const char *) L.gate->data, L.gate->nb[2],
+                                    (const char *) L.up->data, L.up->nb[2], (const char *) L.down->data, L.down->nb[2], x, eids, n, out);
+        if (ok && st.profile) {
+            st.t_cold_compute.add(ms_since(tk));
+        }
+        if (ok) {
+            return true;
+        }
+    }
     cpu_graph * g = cold_graph(st, L.cls, n);
     if (g == nullptr) {
         return false;
     }
+    const auto t0 = clk::now();
     g->wu->data = L.up->data;
     g->wg->data = L.gate->data;
     g->wd->data = L.down->data;
     if (!ggml_gallocr_alloc_graph(g->ga, g->gf)) {
         return false;
     }
+    const auto t1 = clk::now();
     ggml_backend_tensor_set(g->x, x, 0, (size_t) L.up->ne[0] * sizeof(float));
     ggml_backend_tensor_set(g->ids, eids, 0, (size_t) n * sizeof(int32_t));
+    const auto t2 = clk::now();
     if (ggml_backend_graph_compute(st.cpu, g->gf) != GGML_STATUS_SUCCESS) {
         return false;
     }
+    const auto t3 = clk::now();
     ggml_backend_tensor_get(g->y, out, 0, (size_t) L.up->ne[0] * (size_t) n * sizeof(float));
+    if (st.profile) {
+        st.t_cold_alloc.add(std::chrono::duration<double, std::milli>(t1 - t0).count());
+        st.t_cold_set.add(std::chrono::duration<double, std::milli>(t2 - t1).count());
+        st.t_cold_compute.add(std::chrono::duration<double, std::milli>(t3 - t2).count());
+    }
     return true;
 }
 
@@ -1298,6 +1387,12 @@ bool exec(ggml_cgraph * g, int i) {
     }
 }
 
+void note_input_copy_ms(double ms) {
+    if (S != nullptr && S->profile && ms > 0.0) {
+        S->t_copy.add(ms);
+    }
+}
+
 void print_profile() {
     if (S == nullptr || !S->profile) {
         return;
@@ -1313,10 +1408,17 @@ void print_profile() {
                     (unsigned long long) d.t_submit.n);
         }
     }
+    if (st.t_cold_compute.n != 0) {
+        fprintf(stderr, "SGLX MoE profile cold decode: alloc %.3f, set %.3f, graph_compute %.3f ms (%llu calls)\n", st.t_cold_alloc.mean(), st.t_cold_set.mean(),
+                st.t_cold_compute.mean(), (unsigned long long) st.t_cold_compute.n);
+    }
     if (st.t_pre.n != 0) {
         fprintf(stderr, "SGLX MoE profile prefill: %llu blocks, mean %.1f ms (max %.1f), cold cpu rounds %.1f ms, streaming %.1f ms (%.1f experts per block); pairs: gpu %.0f, cold %.0f "
                         "per block\n", (unsigned long long) st.t_pre.n, st.t_pre.mean(), st.t_pre.mx, st.t_pre_cold.mean(), st.t_pre_stream.mean(),
                 st.n_stream_experts / (double) st.t_pre.n, st.n_pre_gpu / (double) st.t_pre.n, st.n_pre_cold / (double) st.t_pre.n);
+    }
+    if (st.t_copy.n != 0) {
+        fprintf(stderr, "SGLX MoE profile: lazy input copies %.3f ms per graph_compute that had them (%llu calls, max %.3f)\n", st.t_copy.mean(), (unsigned long long) st.t_copy.n, st.t_copy.mx);
     }
     fprintf(stderr, "SGLX MoE profile: %d placements, %.0f ms in total, %lld tokens\n", st.plans, st.plan_ms, (long long) st.tokens_seen);
 }
