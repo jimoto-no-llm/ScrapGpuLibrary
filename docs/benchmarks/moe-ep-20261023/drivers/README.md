@@ -24,3 +24,11 @@
 - 再起動するか、`sudo sgl-driver-switch nv390` をもう一度実行して 390 に戻すか（今回はそれ以上触っていない）。戻らなければ再起動（ブート既定は 390）。
 - `nv390` が 470 を載せる原因を調べるため、`sudo journalctl -k`／`dmesg` の `nvidia` 行を共有してほしい（この権限では読めない）。
 - 上記の `status` の ERR trap 修正を許可するなら、`tools/tb250/sgl-driver-switch` を直して再 install する。
+
+## 再開 1: 再起動後の nv390 往復確認（2026-10-23）— 失敗、停止
+
+- 再起動後の `status`: 390.157、userspace・モジュール一致、GT 3 枚とも `nvidia-smi` に表示。修正版スクリプト install 済み。
+- `flock … sudo -n sgl-driver-switch nv390` の出力: `rmmod nvidia_drm` → `modprobe: FATAL: Module nvidia_drm not found.` → `FAILED at line 82 (rc=1)`、状態ファイルは `failed(1) at line 82: modprobe -r "$m"`。
+- 実機の状態は変化なし（390.157 のまま、`nvidia-smi -L` で 3 枚、`/sys/module/nvidia/version` = 390.157）。unload は 1 つ目のモジュールで止まり、何も外れていない。
+- 原因（推定）: lsmod 上の名前は `nvidia_drm` だが、モジュールファイルは `nvidia-legacy-390xx-drm.ko.xz` で、`modprobe -r nvidia_drm` は名前解決できない（`modinfo` で確認）。`unload_all` は `rmmod`（カーネル名）か、390 / 470 のファイル名に直す必要がある。前回の nv390 で 470 が載った経緯も、この unload が実は効いていなかった可能性がある（未確認）。
+- 停止条件（切替が failed を残す）に該当したため、これ以上の切替は行っていない。段階 C / A / B は未実施。
