@@ -120,6 +120,12 @@ struct ggml_moe_slots : moe_slots {
     float * out_host = nullptr;
     size_t  out_bytes = 0;
     int     out_pairs = 0;
+    // streaming (moe_stream): three staging areas for a group of experts, and the backend that does the DMA
+    ggml_backend_buffer_t stg_buf[3] = { nullptr, nullptr, nullptr };
+    char *                stg_ptr[3] = { nullptr, nullptr, nullptr };
+    std::vector<char>     stg_plain[3];
+    size_t                stg_cap = 0;
+    ggml_backend_t        ub = nullptr;
 
     ~ggml_moe_slots() override {
         for (auto & g_ : graphs) {
@@ -136,6 +142,14 @@ struct ggml_moe_slots : moe_slots {
         }
         if (hout.buf != nullptr) {
             ggml_backend_buffer_free(hout.buf);
+        }
+        for (auto * b : stg_buf) {
+            if (b != nullptr) {
+                ggml_backend_buffer_free(b);
+            }
+        }
+        if (ub != nullptr) {
+            ggml_backend_free(ub);
         }
         if (buf != nullptr) {
             ggml_backend_buffer_free(buf);
@@ -443,6 +457,169 @@ public:
         ggml_backend_tensor_set(m->u, up,   (size_t) slot * m->u->nb[2], m->u->nb[2]);
         ggml_backend_tensor_set(m->d, down, (size_t) slot * m->d->nb[2], m->d->nb[2]);
         return true;
+    }
+
+
+    bool moe_stream(moe_slots * s, int ring_first, int ring_n, const moe_src * ex, int n_exp, const float * x, int64_t N_x, const int32_t * pair_exp,
+                    const int32_t * pair_tok, int n_pairs, float * out) override {
+        auto * m = static_cast<ggml_moe_slots *>(s);
+        if (n_exp <= 0 || n_pairs <= 0) {
+            return true;
+        }
+        if (ring_n < 2 || ring_first < 0 || ring_first + ring_n > m->n_slots || N_x > 1024) {
+            return false;
+        }
+        const int64_t K = m->sh.n_embd;
+        const int C = ring_n / 2;                                  // experts per group; two groups in the ring
+        const int groups = (n_exp + C - 1) / C;
+        const size_t bg = m->g->nb[2], bu = m->u->nb[2], bd = m->d->nb[2];
+        const size_t cap = (size_t) C * (bg + bu + bd);
+        if (cap > m->stg_cap) {
+            for (int i = 0; i < 3; ++i) {
+                if (m->stg_buf[i] != nullptr) {
+                    ggml_backend_buffer_free(m->stg_buf[i]);
+                    m->stg_buf[i] = nullptr;
+                }
+                m->stg_ptr[i] = nullptr;
+                if (host_buft_ != nullptr) {
+                    m->stg_buf[i] = ggml_backend_buft_alloc_buffer(host_buft_, cap);
+                    if (m->stg_buf[i] != nullptr) {
+                        m->stg_ptr[i] = (char *) ggml_backend_buffer_get_base(m->stg_buf[i]);
+                    }
+                }
+                if (m->stg_ptr[i] == nullptr) {
+                    m->stg_plain[i].resize(cap + 64);
+                    m->stg_ptr[i] = m->stg_plain[i].data();
+                }
+            }
+            m->stg_cap = cap;
+        }
+        if (m->ub == nullptr) {
+            m->ub = ggml_backend_dev_init(dev_, nullptr);
+            if (m->ub == nullptr) {
+                return false;
+            }
+        }
+        // the pairs grouped by expert
+        std::vector<int> start((size_t) n_exp + 1, 0), order((size_t) n_pairs);
+        for (int i = 0; i < n_pairs; ++i) {
+            if (pair_exp[i] < 0 || pair_exp[i] >= n_exp) {
+                return false;
+            }
+            ++start[(size_t) pair_exp[i] + 1];
+        }
+        for (int e = 0; e < n_exp; ++e) {
+            start[(size_t) e + 1] += start[(size_t) e];
+        }
+        {
+            std::vector<int> fill(start.begin(), start.end() - 1);
+            for (int i = 0; i < n_pairs; ++i) {
+                order[(size_t) fill[(size_t) pair_exp[i]]++] = i;
+            }
+        }
+        std::mutex mu;
+        std::condition_variable cvs;
+        int staged = 0, uploaded = 0, computed = 0;
+        bool failed = false;
+        auto fail = [&] { std::lock_guard<std::mutex> lk(mu); failed = true; cvs.notify_all(); };
+        const bool pinned = m->stg_buf[0] != nullptr;
+        std::thread t_copy([&] {
+            for (int i = 0; i < groups; ++i) {
+                {
+                    std::unique_lock<std::mutex> lk(mu);
+                    cvs.wait(lk, [&] { return failed || i - uploaded < 3; });
+                    if (failed) { return; }
+                }
+                char * dst = m->stg_ptr[i % 3];
+                const int e0 = i * C, e1 = std::min(n_exp, e0 + C);
+                size_t off = 0;
+                for (int k = 0; k < 3; ++k) {
+                    const size_t b = k == 0 ? bg : (k == 1 ? bu : bd);
+                    off = (size_t) C * (k == 0 ? 0 : (k == 1 ? bg : bg + bu));
+                    for (int e = e0; e < e1; ++e) {
+                        const void * src = k == 0 ? ex[e].gate : (k == 1 ? ex[e].up : ex[e].down);
+                        memcpy(dst + off + (size_t) (e - e0) * b, src, b);
+                    }
+                }
+                {
+                    std::lock_guard<std::mutex> lk(mu);
+                    staged = i + 1;
+                }
+                cvs.notify_all();
+            }
+        });
+        std::thread t_dma([&] {
+            for (int i = 0; i < groups; ++i) {
+                {
+                    std::unique_lock<std::mutex> lk(mu);
+                    cvs.wait(lk, [&] { return failed || (staged > i && computed >= i - 1); });
+                    if (failed) { return; }
+                }
+                const char * src = m->stg_ptr[i % 3];
+                const int half = i & 1;
+                const int e0 = i * C, e1 = std::min(n_exp, e0 + C);
+                const size_t n = (size_t) (e1 - e0);
+                ggml_tensor * ts[3] = { m->g, m->u, m->d };
+                const size_t bs[3] = { bg, bu, bd };
+                size_t off = 0;
+                for (int k = 0; k < 3; ++k) {
+                    const size_t slot0 = (size_t) ring_first + (size_t) half * (size_t) C;
+                    if (pinned) {
+                        ggml_backend_tensor_set_async(m->ub, ts[k], src + off, slot0 * bs[k], n * bs[k]);
+                    } else {
+                        ggml_backend_tensor_set(ts[k], src + off, slot0 * bs[k], n * bs[k]);
+                    }
+                    off += (size_t) C * bs[k];
+                }
+                if (pinned) {
+                    ggml_backend_synchronize(m->ub);
+                }
+                {
+                    std::lock_guard<std::mutex> lk(mu);
+                    uploaded = i + 1;
+                }
+                cvs.notify_all();
+            }
+        });
+        bool ok = true;
+        std::vector<int32_t> ps, pt;
+        std::vector<float> tmp;
+        for (int i = 0; i < groups && ok; ++i) {
+            {
+                std::unique_lock<std::mutex> lk(mu);
+                cvs.wait(lk, [&] { return failed || uploaded > i; });
+                if (failed) { ok = false; break; }
+            }
+            const int e0 = i * C, e1 = std::min(n_exp, e0 + C);
+            const int p0 = start[(size_t) e0], p1 = start[(size_t) e1];
+            for (int p = p0; p < p1 && ok; p += 1024) {
+                const int n = std::min(1024, p1 - p);
+                ps.resize((size_t) n);
+                pt.resize((size_t) n);
+                for (int q = 0; q < n; ++q) {
+                    const int pi = order[(size_t) (p + q)];
+                    ps[(size_t) q] = ring_first + (i & 1) * C + (pair_exp[pi] - e0);
+                    pt[(size_t) q] = pair_tok[pi];
+                }
+                tmp.resize((size_t) K * (size_t) n);
+                ok = moe_submit_impl(m, x, N_x, ps.data(), pt.data(), n, tmp.data()) && wait_impl();
+                if (ok) {
+                    for (int q = 0; q < n; ++q) {
+                        memcpy(out + (size_t) order[(size_t) (p + q)] * (size_t) K, tmp.data() + (size_t) q * (size_t) K, (size_t) K * sizeof(float));
+                    }
+                }
+            }
+            {
+                std::lock_guard<std::mutex> lk(mu);
+                computed = i + 1;
+                if (!ok) { failed = true; }
+            }
+            cvs.notify_all();
+        }
+        if (!ok) { fail(); }
+        t_copy.join();
+        t_dma.join();
+        return ok;
     }
 
     bool moe_submit(moe_slots * s, const float * x, int64_t N_x, const int32_t * pair_slot, const int32_t * pair_tok, int n_pairs, float * out) override {

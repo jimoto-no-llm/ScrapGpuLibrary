@@ -56,7 +56,17 @@ struct cls_rec {
     moe_shape sh;
     size_t    b_gate = 0, b_up = 0, b_down = 0; // bytes of one expert's matrices
     int       n_layers = 0;
+    double    cpu_cost = 1.0;                   // time of one expert on the cpu relative to a Q4_0 one (the value of a slot is frequency * cpu_cost)
 };
+
+// ggml-cpu without AVX: a Q4_1 down projection is 2.2 times slower than Q4_0 (tb250, docs/benchmarks/moe-ep-20261023/hec-day1), the K-quants are slower still
+double cpu_cost_of(ggml_type t) {
+    switch (t) {
+        case GGML_TYPE_Q4_0: case GGML_TYPE_Q8_0: return 1.0;
+        case GGML_TYPE_Q4_1: case GGML_TYPE_Q5_0: return 2.2;
+        default:                                  return 3.0;
+    }
+}
 
 struct layer_rec {
     int           il = -1;
@@ -73,7 +83,8 @@ struct layer_rec {
 
 struct dev_cls {
     moe_slots *          s = nullptr;
-    int                  n_slots = 0;
+    int                  n_slots = 0;     // slots for placed experts: 0 .. n_slots-1
+    int                  n_ring = 0;      // streaming ring (prefill): the slots n_slots .. n_slots+n_ring-1
     std::vector<int32_t> owner;  // slot -> layer_index * n_expert_max + expert, -1 = free
 };
 
@@ -123,6 +134,8 @@ struct state {
     bool                      profile = false;
     long                      reserve_mib = 256;   // device memory left free when the slot count is automatic
     int                       plan_min_tokens = 16;
+    int                       ring_main = 24;      // GGML_SGLX_MOE_RING: ring slots of the main class on the first device (0 = no streaming)
+    int                       stream_tau = 2;      // experts with more than this many pairs in a prefill ubatch are streamed, the others run on the cpu
     int                       order = 0;            // 0: submit the GPUs, then the CPU, then wait; 1: CPU first
     int                       max_gpus_per_layer = 0; // 0 = no limit (not used yet)
 
@@ -156,8 +169,10 @@ struct state {
 
     // profile
     acc                       t_dec, t_dec_cold, t_dec_gpu_sub, t_dec_gpu_wait, t_dec_host;
-    acc                       t_pre, t_pre_cold;
-    double                    n_pairs_gpu = 0, n_pairs_cold = 0;
+    acc                       t_pre, t_pre_cold, t_pre_stream;
+    double                    n_stream_experts = 0;
+    double                    n_pairs_gpu = 0, n_pairs_cold = 0;       // decode
+    double                    n_pre_gpu = 0, n_pre_cold = 0;           // prefill
     uint64_t                  dec_blocks = 0;
     double                    gpu_used_sum = 0;
     double                    plan_ms = 0;
@@ -208,6 +223,8 @@ bool parse_env(state & st) {
     st.reserve_mib = envi("GGML_SGLX_MOE_RESERVE_MIB", 256);
     st.plan_min_tokens = (int) envi("GGML_SGLX_MOE_PLAN_TOKENS", 16);
     st.order = (int) envi("GGML_SGLX_MOE_ORDER", 0);
+    st.ring_main = (int) envi("GGML_SGLX_MOE_RING", 24);
+    st.stream_tau = (int) envi("GGML_SGLX_MOE_STREAM_TAU", 2);
     return true;
 }
 
@@ -225,6 +242,7 @@ int class_of(state & st, const moe_shape & sh, const ggml_tensor * g, const ggml
     c.b_gate = g->nb[2];
     c.b_up = u->nb[2];
     c.b_down = d->nb[2];
+    c.cpu_cost = (cpu_cost_of(sh.t_gate) + cpu_cost_of(sh.t_up) + cpu_cost_of(sh.t_down)) / 3.0;
     st.classes.push_back(c);
     return (int) st.classes.size() - 1;
 }
@@ -373,24 +391,26 @@ void init_devices(state & st) {
                 continue;
             }
             const long cap = (long) cr.n_layers * (long) st.n_expert_max;
+            // the streaming ring lives on the first device only
+            const long ring = (st.devs.empty() && st.ring_main >= 2) ? ((int) c == mc ? st.ring_main : std::max(4, st.ring_main / 3)) & ~1L : 0;
             if (want < 0) {
-                want = std::max<long>(0, (long) ((double) budget * 1048576.0 / (double) slot_bytes));
+                want = std::max<long>(0, (long) ((double) budget * 1048576.0 / (double) slot_bytes) - ring);
             }
             want = std::min(want, cap);
-            if (want <= 0) {
+            if (want <= 0 && ring <= 0) {
                 continue;
             }
             // allocate; on failure try fewer slots
             moe_slots * s = nullptr;
             long n = want;
-            while (n > 0) {
-                s = p->moe_create(cr.sh, (int) n);
-                if (s != nullptr) {
+            while (true) {
+                s = p->moe_create(cr.sh, (int) (n + ring));
+                if (s != nullptr || n <= 0) {
                     break;
                 }
                 n = n * 9 / 10;
                 if (n < 8) {
-                    break;
+                    n = 0;
                 }
             }
             if (s == nullptr) {
@@ -399,10 +419,11 @@ void init_devices(state & st) {
             }
             dr.cls[c].s = s;
             dr.cls[c].n_slots = (int) n;
+            dr.cls[c].n_ring = (int) ring;
             dr.cls[c].owner.assign((size_t) n, -1);
-            budget -= (long) ((double) n * (double) slot_bytes / 1048576.0);
-            char buf[120];
-            snprintf(buf, sizeof(buf), " class %zu: %ld slots (%.0f MiB)", c, n, (double) n * (double) slot_bytes / 1048576.0);
+            budget -= (long) ((double) (n + ring) * (double) slot_bytes / 1048576.0);
+            char buf[160];
+            snprintf(buf, sizeof(buf), " class %zu: %ld slots + %ld ring (%.0f MiB)", c, n, ring, (double) (n + ring) * (double) slot_bytes / 1048576.0);
             line += buf;
         }
         MOE_LOG("device %s (%s):%s\n", dr.name.c_str(), p->description().c_str(), line.empty() ? " no slots" : line.c_str());
@@ -452,7 +473,7 @@ void plan(state & st) {
         }
         for (int e = 0; e < (int) L.n_expert; ++e) {
             if (L.freq[(size_t) e] > 0.0) {
-                cands.push_back({ L.freq[(size_t) e], (int) l, e });
+                cands.push_back({ L.freq[(size_t) e] * st.classes[(size_t) L.cls].cpu_cost, (int) l, e });
             }
         }
     }
@@ -916,6 +937,14 @@ bool run_prefill(state & st, layer_rec & L, const block & b, const int32_t * ids
     float * y = (float *) b.down->data;
     const size_t nd = st.devs.size();
     const int NB = 1024; // tokens per block (the pdev graphs take at most 1024 columns and 1024 pairs)
+    // the device that streams the experts that are in no slot through its ring: the first one that has a ring for this class
+    int sdev = -1;
+    for (size_t j = 0; j < nd; ++j) {
+        if (st.devs[j].cls[(size_t) L.cls].s != nullptr && st.devs[j].cls[(size_t) L.cls].n_ring >= 2) {
+            sdev = (int) j;
+            break;
+        }
+    }
     for (int t0b = 0; t0b < N; t0b += NB) {
         const int nt = std::min(NB, N - t0b);
         // x columns of the block, contiguous
@@ -931,7 +960,7 @@ bool run_prefill(state & st, layer_rec & L, const block & b, const int32_t * ids
         }
         struct work { std::vector<int32_t> slot, tok, k; };
         std::vector<work> w(nd);
-        std::vector<int32_t> c_e, c_tok, c_k;
+        std::vector<int32_t> c_e, c_tok, c_k;     // pairs on experts that are in no slot
         for (int t = 0; t < nt; ++t) {
             for (int k = 0; k < nu; ++k) {
                 const int e = ids[(size_t) (t0b + t) * (size_t) nu + (size_t) k];
@@ -953,10 +982,38 @@ bool run_prefill(state & st, layer_rec & L, const block & b, const int32_t * ids
         auto put = [&](int t, int k, const float * src) {
             memcpy(y + (size_t) k * (size_t) K + (size_t) (t0b + t) * (size_t) nu * (size_t) K, src, (size_t) K * sizeof(float));
         };
-        // rounds of at most 1024 pairs per device
+        // split the unplaced pairs: experts with more than stream_tau pairs go through the ring, the rest to the cpu
+        std::vector<int32_t> s_exp_id, s_pair_exp, s_pair_tok, s_pair_k;   // streamed experts, and their pairs (index into s_exp_id)
+        std::vector<int32_t> u_e, u_tok, u_k;                              // pairs for the cpu
+        if (sdev >= 0 && !c_e.empty()) {
+            std::vector<int> cnt((size_t) L.n_expert, 0), idx((size_t) L.n_expert, -1);
+            for (int32_t e : c_e) {
+                ++cnt[(size_t) e];
+            }
+            for (int e = 0; e < (int) L.n_expert; ++e) {
+                if (cnt[(size_t) e] > st.stream_tau) {
+                    idx[(size_t) e] = (int) s_exp_id.size();
+                    s_exp_id.push_back(e);
+                }
+            }
+            for (size_t i = 0; i < c_e.size(); ++i) {
+                const int ix = idx[(size_t) c_e[i]];
+                if (ix >= 0) {
+                    s_pair_exp.push_back(ix);
+                    s_pair_tok.push_back(c_tok[i]);
+                    s_pair_k.push_back(c_k[i]);
+                } else {
+                    u_e.push_back(c_e[i]);
+                    u_tok.push_back(c_tok[i]);
+                    u_k.push_back(c_k[i]);
+                }
+            }
+        } else {
+            u_e = c_e; u_tok = c_tok; u_k = c_k;
+        }
+        // rounds of at most 1024 pairs per device; the cpu takes the rest in the same rounds
         std::vector<size_t> pos(nd, 0);
         std::vector<std::vector<float>> outs(nd);
-        bool first = true;
         size_t cold_pos = 0;
         for (;;) {
             std::vector<size_t> sub;
@@ -974,14 +1031,13 @@ bool run_prefill(state & st, layer_rec & L, const block & b, const int32_t * ids
                 cnt[j] = n;
                 sub.push_back(j);
             }
-            // the cpu: the cold pairs, in the same rounds
             size_t cold_n = 0;
             std::vector<float> cout_;
-            if (cold_pos < c_e.size()) {
-                cold_n = std::min<size_t>(c_e.size() - cold_pos, 1024);
+            if (cold_pos < u_e.size()) {
+                cold_n = std::min<size_t>(u_e.size() - cold_pos, 1024);
                 cout_.resize((size_t) K * cold_n);
                 const auto tc = clk::now();
-                if (!cold_pairs(st, L, xs, nt, c_e.data() + cold_pos, c_tok.data() + cold_pos, (int64_t) cold_n, cout_.data())) {
+                if (!cold_pairs(st, L, xs, nt, u_e.data() + cold_pos, u_tok.data() + cold_pos, (int64_t) cold_n, cout_.data())) {
                     return false;
                 }
                 if (st.profile) {
@@ -1000,19 +1056,42 @@ bool run_prefill(state & st, layer_rec & L, const block & b, const int32_t * ids
                     put(w[j].tok[pos[j] + i], w[j].k[pos[j] + i], outs[j].data() + i * (size_t) K);
                 }
                 pos[j] += cnt[j];
-                st.n_pairs_gpu += (double) cnt[j];
+                st.n_pre_gpu += (double) cnt[j];
             }
             for (size_t i = 0; i < cold_n; ++i) {
-                put(c_tok[cold_pos + i], c_k[cold_pos + i], cout_.data() + i * (size_t) K);
+                put(u_tok[cold_pos + i], u_k[cold_pos + i], cout_.data() + i * (size_t) K);
             }
             cold_pos += cold_n;
-            st.n_pairs_cold += (double) cold_n;
-            first = false;
+            st.n_pre_cold += (double) cold_n;
             if (sub.empty() && cold_n == 0) {
                 break;
             }
         }
-        (void) first;
+        // the streamed experts
+        if (!s_exp_id.empty()) {
+            dev_rec & dr = st.devs[(size_t) sdev];
+            dev_cls & dc = dr.cls[(size_t) L.cls];
+            std::vector<moe_src> src(s_exp_id.size());
+            for (size_t i = 0; i < s_exp_id.size(); ++i) {
+                src[i].gate = expert_ptr(L, 'g', s_exp_id[i]);
+                src[i].up = expert_ptr(L, 'u', s_exp_id[i]);
+                src[i].down = expert_ptr(L, 'd', s_exp_id[i]);
+            }
+            std::vector<float> sout((size_t) K * s_pair_exp.size());
+            const auto ts = clk::now();
+            if (!dr.p->moe_stream(dc.s, dc.n_slots, dc.n_ring, src.data(), (int) src.size(), xs, nt, s_pair_exp.data(), s_pair_tok.data(), (int) s_pair_exp.size(), sout.data())) {
+                MOE_LOG("streaming through %s failed\n", dr.name.c_str());
+                return false;
+            }
+            if (st.profile) {
+                st.t_pre_stream.add(ms_since(ts));
+                st.n_stream_experts += (double) s_exp_id.size();
+            }
+            for (size_t i = 0; i < s_pair_exp.size(); ++i) {
+                put(s_pair_tok[i], s_pair_k[i], sout.data() + i * (size_t) K);
+            }
+            st.n_pre_gpu += (double) s_pair_exp.size();
+        }
     }
     if (st.profile) {
         st.t_pre.add(ms_since(t0));
@@ -1235,8 +1314,9 @@ void print_profile() {
         }
     }
     if (st.t_pre.n != 0) {
-        fprintf(stderr, "SGLX MoE profile prefill: %llu blocks, mean %.1f ms (max %.1f), cold cpu rounds %.1f ms\n", (unsigned long long) st.t_pre.n, st.t_pre.mean(),
-                st.t_pre.mx, st.t_pre_cold.mean());
+        fprintf(stderr, "SGLX MoE profile prefill: %llu blocks, mean %.1f ms (max %.1f), cold cpu rounds %.1f ms, streaming %.1f ms (%.1f experts per block); pairs: gpu %.0f, cold %.0f "
+                        "per block\n", (unsigned long long) st.t_pre.n, st.t_pre.mean(), st.t_pre.mx, st.t_pre_cold.mean(), st.t_pre_stream.mean(),
+                st.n_stream_experts / (double) st.t_pre.n, st.n_pre_gpu / (double) st.t_pre.n, st.n_pre_cold / (double) st.t_pre.n);
     }
     fprintf(stderr, "SGLX MoE profile: %d placements, %.0f ms in total, %lld tokens\n", st.plans, st.plan_ms, (long long) st.tokens_seen);
 }

@@ -8,6 +8,10 @@
 //                           itself (greedy, or --temp T --top-k K with a fixed --seed). The time of llama_decode is reported separately from the time
 //                           of the sampler, and the generated text is printed, so that two runs can be compared.
 //
+//   `--dump FILE --n-tokens M --n-prefill P` : correctness. The logits after token P-1 and after each of the next tokens, which are fed one at a time (the
+//                           decode path, N = 1; the prefill path with N = P), written to FILE (float32). Tokens: random with --seed, or from --text FILE.
+//   `--compare A B`       : mean KL divergence (A || B), its 99th percentile, the top-1 agreement and the NMSE of the logits of two such files.
+//
 // Output: one JSON object per line on stdout, e.g.
 //   {"test":"pp512","avg_ts":18.3,"stddev_ts":0.1,"samples_ts":[..]}
 //   {"test":"text:foo.txt","n_prompt":120,"pp_ts":33.1,"n_gen":128,"tg_ts":9.8,"tg_total_ts":9.6,"gen":"..."}
@@ -97,8 +101,48 @@ static bool test_gen(bench_ctx & b, int n_gen) {
     return true;
 }
 
+// two logits files: KL(A || B)
+static int compare_logits(const char * fa, const char * fb) {
+    auto rd = [](const char * f, std::vector<float> & v, int32_t & npos, int32_t & nv) {
+        FILE * fp = fopen(f, "rb");
+        if (!fp) { fprintf(stderr, "cannot open %s\n", f); return false; }
+        int32_t h[4];
+        if (fread(h, 4, 4, fp) != 4 || h[0] != 0x4c4f4731) { fprintf(stderr, "%s: not a logits file\n", f); fclose(fp); return false; }
+        npos = h[1]; nv = h[2];
+        v.resize((size_t) npos * (size_t) nv);
+        const bool ok = fread(v.data(), 4, v.size(), fp) == v.size();
+        fclose(fp);
+        return ok;
+    };
+    std::vector<float> a, b;
+    int32_t na, nva, nb, nvb;
+    if (!rd(fa, a, na, nva) || !rd(fb, b, nb, nvb) || na != nb || nva != nvb) { fprintf(stderr, "files do not match\n"); return 1; }
+    std::vector<double> kl;
+    int top1 = 0;
+    double num = 0, den = 0;
+    for (int p = 0; p < na; p++) {
+        const float * x = &a[(size_t) p * nva]; const float * y = &b[(size_t) p * nva];
+        double mx = -1e30, my = -1e30; int ax = 0, ay = 0;
+        for (int i = 0; i < nva; i++) { if (x[i] > mx) { mx = x[i]; ax = i; } if (y[i] > my) { my = y[i]; ay = i; } }
+        double sx = 0, sy = 0;
+        for (int i = 0; i < nva; i++) { sx += exp((double) x[i] - mx); sy += exp((double) y[i] - my); }
+        const double lx = log(sx) + mx, ly = log(sy) + my;
+        double d = 0;
+        for (int i = 0; i < nva; i++) { const double lpx = x[i] - lx, lpy = y[i] - ly; d += exp(lpx) * (lpx - lpy); num += ((double) x[i] - y[i]) * ((double) x[i] - y[i]); den += (double) x[i] * x[i]; }
+        kl.push_back(d);
+        top1 += ax == ay;
+    }
+    std::vector<double> sorted = kl;
+    std::sort(sorted.begin(), sorted.end());
+    double mean = 0; for (double v : kl) mean += v; mean /= kl.size();
+    printf("{\"positions\":%d,\"kld_mean\":%.6f,\"kld_p99\":%.6f,\"kld_max\":%.6f,\"top1\":%.3f,\"nmse\":%.3e}\n", na, mean, sorted[(size_t) (0.99 * (sorted.size() - 1))], sorted.back(), 100.0 * top1 / na, den > 0 ? num / den : 0.0);
+    return 0;
+}
+
 int main(int argc, char ** argv) {
-    std::string model, dev_arg, ts_arg, bench, text, sm = "layer";
+    if (argc >= 4 && std::string(argv[1]) == "--compare") return compare_logits(argv[2], argv[3]);
+    std::string model, dev_arg, ts_arg, bench, text, sm = "layer", dump;
+    int n_tokens = 0, n_prefill = 0;
     std::vector<std::string> ots;
     int ngl = 99, ncmoe = 0, n_thr = 2, n_ub = 512, reps = 3, moe_cache_mib = 0, n_prompt = 128, n_gen = 128, seed = 1234, top_k = 0;
     float temp = 0.0f;
@@ -119,6 +163,9 @@ int main(int argc, char ** argv) {
         else if (a == "-r" || a == "--reps") reps = atoi(nx().c_str());
         else if (a == "--moe-cache-mib") moe_cache_mib = atoi(nx().c_str());
         else if (a == "--bench") bench = nx();
+        else if (a == "--dump") dump = nx();
+        else if (a == "--n-tokens") n_tokens = atoi(nx().c_str());
+        else if (a == "--n-prefill") n_prefill = atoi(nx().c_str());
         else if (a == "--text") text = nx();
         else if (a == "--n-prompt") n_prompt = atoi(nx().c_str());
         else if (a == "--n-gen") n_gen = atoi(nx().c_str());
@@ -127,7 +174,7 @@ int main(int argc, char ** argv) {
         else if (a == "--top-k") top_k = atoi(nx().c_str());
         else { fprintf(stderr, "unknown arg %s\n", a.c_str()); return 2; }
     }
-    if (model.empty() || (bench.empty() && text.empty())) {
+    if (model.empty() || (bench.empty() && text.empty() && dump.empty())) {
         fprintf(stderr, "usage: hec_gen -m MODEL [-dev A/B|none] [-ngl N] [-ncmoe N] [-ot RE=DEV].. [-ts a/b] [-t N] [-ub N] [-r REPS] [--moe-cache-mib N]\n"
                         "               (--bench pp512,tg128,pg512:128 | --text FILE --n-prompt N --n-gen M [--seed S] [--temp T --top-k K])\n");
         return 2;
@@ -206,6 +253,61 @@ int main(int argc, char ** argv) {
         tp = tp_new(&tpp);
         llama_attach_threadpool(ctx, tp, nullptr);
     };
+
+    if (!dump.empty()) {
+        // teacher forcing: the tokens are given; prefill n_prefill of them in one batch (N = n_prefill), then one token at a time
+        std::vector<llama_token> tk;
+        if (!text.empty()) {
+            std::ifstream f(text, std::ios::binary);
+            std::stringstream ss; ss << f.rdbuf();
+            const std::string txt = ss.str();
+            tk.resize(txt.size() + 16);
+            int nt = llama_tokenize(vocab, txt.c_str(), (int) txt.size(), tk.data(), (int) tk.size(), llama_vocab_get_add_bos(vocab), true);
+            if (nt < 0) { fprintf(stderr, "tokenize: need %d\n", -nt); return 1; }
+            tk.resize(nt);
+        } else {
+            std::srand((unsigned) seed);
+            for (int i = 0; i < n_tokens; i++) tk.push_back(std::rand() % n_vocab);
+        }
+        if ((int) tk.size() > n_tokens && n_tokens > 0) tk.resize(n_tokens);
+        n_tokens = (int) tk.size();
+        if (n_prefill <= 0 || n_prefill >= n_tokens) n_prefill = std::max(1, n_tokens / 2);
+        llama_context * ctx; ggml_threadpool * tp;
+        make_ctx(ctx, tp);
+        llama_memory_clear(llama_get_memory(ctx), false);
+        std::vector<float> all;
+        int n_pos = 0;
+        auto grab = [&](int idx) {
+            const float * lg = llama_get_logits_ith(ctx, idx);
+            if (!lg) { fprintf(stderr, "no logits\n"); exit(1); }
+            all.insert(all.end(), lg, lg + n_vocab);
+            n_pos++;
+        };
+        for (int o = 0; o < n_prefill; o += n_ub) {
+            const int n = std::min(n_ub, n_prefill - o);
+            llama_batch b = llama_batch_init(n, 0, 1);
+            for (int i = 0; i < n; i++) { b.token[i] = tk[o + i]; b.pos[i] = o + i; b.n_seq_id[i] = 1; b.seq_id[i][0] = 0; b.logits[i] = (o + i == n_prefill - 1); }
+            b.n_tokens = n;
+            if (llama_decode(ctx, b) != 0) { fprintf(stderr, "decode failed\n"); return 1; }
+            if (o + n == n_prefill) grab(n - 1);
+            llama_batch_free(b);
+        }
+        for (int i = n_prefill; i < n_tokens; i++) {
+            llama_batch b = llama_batch_get_one(&tk[i], 1);
+            if (llama_decode(ctx, b) != 0) { fprintf(stderr, "decode failed\n"); return 1; }
+            grab(0);
+        }
+        FILE * fp = fopen(dump.c_str(), "wb");
+        int32_t h[4] = { 0x4c4f4731, n_pos, n_vocab, 0 };
+        fwrite(h, 4, 4, fp);
+        fwrite(all.data(), 4, all.size(), fp);
+        fclose(fp);
+        fprintf(stderr, "hec_gen: wrote %d positions x %d logits to %s\n", n_pos, n_vocab, dump.c_str());
+        llama_free(ctx);
+        tp_free(tp);
+        llama_model_free(lm);
+        return 0;
+    }
 
     if (!bench.empty()) {
         std::srand(1); // glibc default seed; llama-bench never calls srand

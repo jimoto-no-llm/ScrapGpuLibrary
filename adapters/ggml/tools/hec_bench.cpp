@@ -431,7 +431,158 @@ static int run_spin(int argc, char ** argv) {
     return 0;
 }
 
+// stream  MB-H5  how fast can experts be moved from the mmap of the model into the slots of a Vulkan device (the prefill streaming of the design):
+//   A  one ggml_backend_tensor_set per matrix of an expert, straight from the mmap (pageable memory)
+//   B  the chunk of C experts memcpy'd into pinned staging (the device's host buffer type), 3 tensor_set_async + synchronize
+//   C  B with the memcpy of the next chunk on a producer thread while the main thread waits for the DMA of the current one
+//   D  the layer's expert tensors imported as a Vulkan buffer (ggml_backend_dev_buffer_from_host_ptr), device-side copy into the slots
+static int run_stream(int argc, char ** argv) {
+    const std::string model = arg(argc, argv, "--model", "");
+    const std::string vk_lib = arg(argc, argv, "--vk-lib", "");
+    const std::string cpu_lib = arg(argc, argv, "--cpu-lib", "");
+    const std::string dname = arg(argc, argv, "--vk-dev", "Vulkan0");
+    const int C = atoi(arg(argc, argv, "--chunk", "12").c_str());
+    const int iters = atoi(arg(argc, argv, "--iters", "12").c_str());
+    const std::string modes = arg(argc, argv, "--modes", "ABCD");
+    if (model.empty()) { fprintf(stderr, "--model\n"); return 2; }
+    if (!cpu_lib.empty()) ggml_backend_load(cpu_lib.c_str());
+    if (!vk_lib.empty()) ggml_backend_load(vk_lib.c_str());
+    ggml_backend_dev_t dev = ggml_backend_dev_by_name(dname.c_str());
+    if (!dev) { fprintf(stderr, "no device %s\n", dname.c_str()); return 1; }
+    ggml_backend_t be = ggml_backend_dev_init(dev, nullptr);
+    model_map m;
+    if (!load_model(model.c_str(), m)) return 1;
+    const int L0 = 10;  // a Q4_0 layer
+    const int R = 2 * C;
+    ggml_init_params ip = { ggml_tensor_overhead() * 8 + 1024, nullptr, true };
+    ggml_context * ctx = ggml_init(ip);
+    ggml_tensor * W[3];
+    W[0] = ggml_new_tensor_3d(ctx, m.ty[0][L0], m.n_embd, m.n_ff, R);
+    W[1] = ggml_new_tensor_3d(ctx, m.ty[1][L0], m.n_embd, m.n_ff, R);
+    W[2] = ggml_new_tensor_3d(ctx, m.ty[2][L0], m.n_ff, m.n_embd, R);
+    ggml_backend_buffer_t wb = ggml_backend_alloc_ctx_tensors(ctx, be);
+    if (!wb) { fprintf(stderr, "ring allocation failed\n"); return 1; }
+    const size_t eb[3] = { m.eb[0][L0], m.eb[1][L0], m.eb[2][L0] };
+    const double expert_mb = (eb[0] + eb[1] + eb[2]) / 1e6;
+    std::mt19937 rng(5);
+    auto pick = [&](int layer, std::vector<int> & ex) {
+        ex.clear();
+        while ((int) ex.size() < C) { int e = rng() % m.n_expert; if (std::find(ex.begin(), ex.end(), e) == ex.end()) ex.push_back(e); }
+        (void) layer;
+    };
+    auto src = [&](int k, int layer, int e) { return (const char *) m.base + m.off[k][layer] + (size_t) e * m.eb[k][layer]; };
+    printf("chunk %d experts (%.2f MB each), %d chunks per mode\n", C, expert_mb, iters);
+    // warm the page cache for the layers that are touched (the first access of an mmap page is a disk read)
+    std::vector<int> layers;
+    for (int i = 0; i < iters; i++) layers.push_back(6 + (int) (rng() % 40));
+    for (int l : layers) for (int k = 0; k < 3; k++) { volatile char c = 0; for (size_t o = 0; o < (size_t) m.eb[k][l] * m.n_expert; o += 4096) c += src(k, l, 0)[o]; (void) c; }
+    auto report = [&](const char * name, double us_total, int n_exp) {
+        printf("%-28s %8.1f ms for %d experts: %.2f ms/expert, %.2f GB/s\n", name, us_total / 1000, n_exp, us_total / 1000 / n_exp, (double) n_exp * expert_mb / 1000 / (us_total / 1e6));
+    };
+    std::vector<int> ex;
+    if (modes.find('A') != std::string::npos) {
+        double t0 = now_us();
+        for (int it = 0; it < iters; it++) {
+            pick(layers[it], ex);
+            for (int i = 0; i < C; i++) for (int k = 0; k < 3; k++) ggml_backend_tensor_set(W[k], src(k, layers[it], ex[i]), (size_t) i * W[k]->nb[2], W[k]->nb[2]);
+        }
+        report("A per-expert sync set", now_us() - t0, iters * C);
+    }
+    ggml_backend_buffer_type_t hbt = ggml_backend_dev_host_buffer_type(dev);
+    ggml_backend_buffer_t stg[3] = { nullptr, nullptr, nullptr };
+    char * sp[3] = { nullptr, nullptr, nullptr };
+    size_t sz = (size_t) C * (eb[0] + eb[1] + eb[2]);
+    if (hbt) { for (int i = 0; i < 3; i++) { stg[i] = ggml_backend_buft_alloc_buffer(hbt, sz); if (stg[i]) sp[i] = (char *) ggml_backend_buffer_get_base(stg[i]); } }
+    auto stage_chunk = [&](char * dst, int layer, const std::vector<int> & e) {
+        size_t off = 0;
+        for (int k = 0; k < 3; k++) { for (int i = 0; i < C; i++) { memcpy(dst + off, src(k, layer, e[i]), eb[k]); off += eb[k]; } }
+    };
+    auto dma_chunk = [&](const char * st, int half) {
+        size_t off = 0;
+        for (int k = 0; k < 3; k++) { ggml_backend_tensor_set_async(be, W[k], st + off, (size_t) half * C * W[k]->nb[2], (size_t) C * W[k]->nb[2]); off += (size_t) C * eb[k]; }
+    };
+    if (modes.find('B') != std::string::npos && sp[0]) {
+        double t0 = now_us(), tm = 0;
+        for (int it = 0; it < iters; it++) {
+            pick(layers[it], ex);
+            double a = now_us();
+            stage_chunk(sp[0], layers[it], ex);
+            tm += now_us() - a;
+            dma_chunk(sp[0], 0);
+            ggml_backend_synchronize(be);
+        }
+        double tt = now_us() - t0;
+        report("B staged, sync per chunk", tt, iters * C);
+        printf("   of which memcpy %.1f ms (%.2f GB/s)\n", tm / 1000, (double) iters * C * expert_mb / 1000 / (tm / 1e6));
+    }
+    if (modes.find('C') != std::string::npos && sp[0]) {
+        // producer thread fills staging buffers 0..2 in turn; the main thread DMAs them (sync) as soon as they are ready
+        std::mutex mu; std::condition_variable cv;
+        int produced = 0, consumed = 0;
+        std::vector<std::vector<int>> chunks(iters);
+        for (int it = 0; it < iters; it++) pick(layers[it], chunks[it]);
+        double t0 = now_us();
+        std::thread prod([&] {
+            for (int it = 0; it < iters; it++) {
+                { std::unique_lock<std::mutex> lk(mu); cv.wait(lk, [&] { return it - consumed < 3; }); }
+                stage_chunk(sp[it % 3], layers[it], chunks[it]);
+                { std::lock_guard<std::mutex> lk(mu); produced = it + 1; }
+                cv.notify_all();
+            }
+        });
+        for (int it = 0; it < iters; it++) {
+            { std::unique_lock<std::mutex> lk(mu); cv.wait(lk, [&] { return produced > it; }); }
+            dma_chunk(sp[it % 3], it & 1);
+            ggml_backend_synchronize(be);
+            { std::lock_guard<std::mutex> lk(mu); consumed = it + 1; }
+            cv.notify_all();
+        }
+        prod.join();
+        report("C two-thread pipeline", now_us() - t0, iters * C);
+    }
+    if (modes.find('D') != std::string::npos) {
+        // import one layer's three tensors as Vulkan buffers and copy the chunk's experts device side
+        double t0 = now_us();
+        int n_exp = 0;
+        for (int it = 0; it < std::min(iters, 4); it++) {
+            const int layer = layers[it];
+            pick(layer, ex);
+            ggml_backend_buffer_t ib[3]; ggml_context * ictx = ggml_init(ip); ggml_tensor * IT[3];
+            bool ok = true;
+            for (int k = 0; k < 3 && ok; k++) {
+                const size_t tot = m.eb[k][layer] * (size_t) m.n_expert;
+                const uintptr_t a0 = ((uintptr_t) m.base + m.off[k][layer]) & ~(uintptr_t) 4095;
+                const uintptr_t a1 = (((uintptr_t) m.base + m.off[k][layer] + tot) + 4095) & ~(uintptr_t) 4095;
+                double ti = now_us();
+                ib[k] = ggml_backend_dev_buffer_from_host_ptr(dev, (void *) a0, a1 - a0, 0);
+                if (!ib[k]) { printf("D import %d failed\n", k); ok = false; break; }
+                IT[k] = ggml_new_tensor_3d(ictx, m.ty[k][layer], k == 2 ? m.n_ff : m.n_embd, k == 2 ? m.n_embd : m.n_ff, m.n_expert);
+                ggml_backend_tensor_alloc(ib[k], IT[k], (char *) m.base + m.off[k][layer]);
+                if (it == 0) printf("   import %d: %.1f ms for %.0f MB\n", k, (now_us() - ti) / 1000, (a1 - a0) / 1e6);
+            }
+            if (!ok) break;
+            double tc = now_us();
+            for (int i = 0; i < C; i++) for (int k = 0; k < 3; k++) {
+                ggml_init_params vp = { ggml_tensor_overhead() * 4, nullptr, true };
+                ggml_context * vc = ggml_init(vp);
+                ggml_tensor * sv = ggml_view_3d(vc, IT[k], IT[k]->ne[0], IT[k]->ne[1], 1, IT[k]->nb[1], IT[k]->nb[2], (size_t) ex[i] * IT[k]->nb[2]);
+                ggml_tensor * dv = ggml_view_3d(vc, W[k], W[k]->ne[0], W[k]->ne[1], 1, W[k]->nb[1], W[k]->nb[2], (size_t) i * W[k]->nb[2]);
+                ggml_backend_view_init(sv); ggml_backend_view_init(dv);
+                ggml_backend_tensor_copy(sv, dv);
+                ggml_free(vc);
+            }
+            if (it == 0) printf("   copy of %d experts: %.1f ms\n", C, (now_us() - tc) / 1000);
+            n_exp += C;
+            for (int k = 0; k < 3; k++) ggml_backend_buffer_free(ib[k]);
+            ggml_free(ictx);
+        }
+        report("D import + device copy", now_us() - t0, n_exp);
+    }
+    return 0;
+}
+
 int main(int argc, char ** argv) {
+    if (argc >= 2 && !strcmp(argv[1], "stream")) return run_stream(argc, argv);
     if (argc < 2) { fprintf(stderr, "usage: hec_bench cpu1|conc --model GGUF --cpu-lib LIB [--threads N --iters N ...]\n"); return 2; }
     if (!strcmp(argv[1], "cpu1")) return run_cpu1(argc, argv);
     if (!strcmp(argv[1], "conc")) return run_conc(argc, argv);

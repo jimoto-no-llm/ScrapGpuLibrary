@@ -42,6 +42,13 @@ struct moe_slots {
     virtual ~moe_slots() = default;
 };
 
+// where the three matrices of one expert are in host memory (the mmap of the model file)
+struct moe_src {
+    const void * gate = nullptr;
+    const void * up = nullptr;
+    const void * down = nullptr;
+};
+
 // the rows of one weight that live on one pdev (plus the activation scratch it needs), opaque for the composite
 struct piece {
     virtual ~piece() = default;
@@ -95,6 +102,14 @@ public:
     // and out must stay valid until wait() returned).
     virtual bool moe_submit(moe_slots * s, const float * x, int64_t N_x, const int32_t * pair_slot, const int32_t * pair_tok, int n_pairs, float * out) {
         (void) s; (void) x; (void) N_x; (void) pair_slot; (void) pair_tok; (void) n_pairs; (void) out; return false;
+    }
+    // Prefill streaming: the experts `ex[0..n_exp)` are copied from host memory into the slots [ring_first, ring_first + ring_n) a few at a time (the copy of
+    // the next group overlaps the computation of the current one) and the pairs are computed there: pair i is the expert ex[pair_exp[i]] on the column
+    // pair_tok[i] of x ([n_embd, N_x], N_x <= 1024); out is [n_embd, n_pairs] in pair order. Blocking. The slots of the ring are not used by anything else.
+    virtual bool moe_stream(moe_slots * s, int ring_first, int ring_n, const moe_src * ex, int n_exp, const float * x, int64_t N_x, const int32_t * pair_exp,
+                            const int32_t * pair_tok, int n_pairs, float * out) {
+        (void) s; (void) ring_first; (void) ring_n; (void) ex; (void) n_exp; (void) x; (void) N_x; (void) pair_exp; (void) pair_tok; (void) n_pairs; (void) out;
+        return false;
     }
 };
 
