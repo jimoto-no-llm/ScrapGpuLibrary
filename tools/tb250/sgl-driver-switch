@@ -214,15 +214,22 @@ case "${1:-}" in
         override nouveau "${ALL[@]}"
         load_nouveau
         expect_bound nouveau "${ALL[@]}" ;;
+    nouveau-kepler)
+        # GT 730 / GT 710 on nouveau, GT 430 left unbound: GT 430 under nouveau failed to probe twice and
+        # left GPU interrupt faults under 390 until a reboot (docs/benchmarks/moe-ep-20261023/drivers).
+        busy_check; unload_all
+        override nouveau "${KEPLER[@]}"; override none "$GT430"
+        load_nouveau
+        expect_bound nouveau "${KEPLER[@]}" ;;
     nv470-nouveau430)
         busy_check; unload_all; userspace "$RUN470"
         override nvidia "${KEPLER[@]}"; override nouveau "$GT430"
         load_nouveau; load_nv 470; nvidia-modprobe -u -c=0 || true
         expect_bound nvidia "${KEPLER[@]}"; expect_bound nouveau "$GT430" ;;
-    *) echo "usage: $0 <status|nv390|nv470|nouveau|nv470-nouveau430|perf|pstate> [--reinstall-userspace]" >&2; exit 2 ;;
+    *) echo "usage: $0 <status|nv390|nv470|nouveau|nouveau-kepler|nv470-nouveau430|perf|pstate> [--reinstall-userspace]" >&2; exit 2 ;;
 esac
 echo "$1" > "$STATE"
 case "$1" in
-    nouveau|nv470-nouveau430) log "nouveau state: use VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nouveau_icd.json (the nvidia ICD in /etc/vulkan/icd.d crashes without a matching module), NVK_I_WANT_A_BROKEN_VULKAN_DRIVER=1 on Mesa < 25.2.1, RUSTICL_ENABLE=nouveau" ;;
+    nouveau|nouveau-kepler|nv470-nouveau430) log "nouveau state: use VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nouveau_icd.json (the nvidia ICD in /etc/vulkan/icd.d crashes without a matching module), NVK_I_WANT_A_BROKEN_VULKAN_DRIVER=1 on Mesa < 25.2.1, RUSTICL_ENABLE=nouveau" ;;
 esac
 status
