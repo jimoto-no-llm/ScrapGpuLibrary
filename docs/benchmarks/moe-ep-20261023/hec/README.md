@@ -73,3 +73,8 @@ hec_gen / llama-bench / llama-completion -m Qwen3-30B-A3B-Q4_0.gguf -dev Vulkan0
 7. **sched の入力コピーが層ごとに 3 回の同期読み出し**（x、ids、重み）で 1.23 ms/層。SGLX0 の計算バッファを GPU 0 の pinned メモリに置くと、3 つを 1 回の非同期 submit にでき、0.33 ms/層。
 8. **Metal の `mul_mat_id` は 1 つの expert に多くの token が集まると間違う**（Mac で見つけた。prefill の「このデバイスに無い組」を 1 つの 0 埋めスロットに集めたとき）。0 埋めスロットを 8 個にして組を分散させて回避した（Vulkan では問題ない）。
 9. **ggml-vulkan は小さなグラフの submit を synchronize まで遅らせる**。`ggml_backend_event_record` で投入を前倒しできるか（`GGML_SGLX_MOE_EVENT`、`logs/s10_*`）。
+10. **WX 2100 を足すと decode が大きく遅くなる**（`logs/s8_*`、tg128: RX のみ 13.1〜13.8 → RX+WX 3.36、RX+GT 730+WX+GT 710 4.21。GT 730 だけ足した構成は 14.63）。原因は**仮説**で、切り分けの計測はしていない。
+    - (a) WX は別プロセスではなく同じプロセスの 2 本目の Vulkan デバイスで、decode のたびに専用ワーカースレッドへ job を渡し（submit、フェンス待ち、読み戻し）、層ごとに待つ。tb250 の CPU は 2 コアで、ワーカー、呼び出しスレッド、コールドの CPU ヘルパー、llama のスレッドが取り合う。RX の 1 層あたりの遅延（GPU 待ち 0.17 ms）が 0.2 ms 増えるだけで、48 層で約 10 ms/token になる。
+    - (b) 2 GB の WX にスロットを置くと RX の `moe_reserve` とは別に ggml のグラフ用バッファを確保し、PCIe の帯域と upload の待ちが増える。
+    - (c) RADV の 2 本目のデバイスで、小さなグラフの submit が synchronize まで遅れる（9. の件）。層ごとに 1 回ずつ、遅延が直列に足される。
+    検証案: `GGML_SGLX_MOE_VERBOSE=1` の層ごとの待ち時間の内訳を WX だけ有り／無しで比べる、WX を `NAME:slots!`（遅延が CPU の見込み時間を超えるときだけ使うゲート付き）で入れる、`GGML_SGLX_MOE_MIN_MASS` で WX の担当を狭める。ゲート付きや MIN_MASS で入れた場合の計測は未実施。

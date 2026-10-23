@@ -1,6 +1,8 @@
 # ホットエキスパートキャッシュ（Qwen3-30B-A3B、tb250）設計書
 
-状態: 設計（未実装）。ブランチ `feat/moe-expert-parallel`。作成 2026-10-23。read-only の調査だけで書いた。ビルド、tb250 での実測、SSH はしていない。
+状態: **実装済み（2026-10-23、実測は `docs/benchmarks/moe-ep-20261023/hec/README.md`）**。以下の本文は実装前の設計のまま残してあり、数値は【推定】。実測との差は上記 README の「実測で分かったこと」を優先する。主な差: (1) コールドの CPU 計算は ggml のグラフではなく自前の mat-vec（2 コア CPU で ggml の OpenMP が 10 ms/呼び出し）、(2) prefill は ring に流してペア単位で計算せず、RX の 1 グラフで重みと和まで計算する、(3) 最速の構成は RX + GT 730（WX 2100 を足すと decode が大きく遅くなった）、(4) CUDA の pdev は作らず CL11 を使った。
+
+ブランチ `feat/moe-expert-parallel`。作成 2026-10-23。設計時は read-only の調査だけで書いた。
 表記: **【実測】** はリポジトリ内の既存の測定値（出典付き）、**【推定】** はこの文書の見積もり、**【不明】** は未測定・未確認で、段階 0 で測るもの。
 
 前提文書: `docs/plans/MOE_COMPOSITE_DEVICE.md`（以下「親設計」。SGLX0、pdev、方式 E/F、§8.1 合格条件）、`docs/benchmarks/moe-ep-20261022/qwen3-30b/README.md`（以下「30B 基準」）。
