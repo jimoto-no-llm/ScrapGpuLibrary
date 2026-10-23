@@ -1063,6 +1063,19 @@ private:
             fprintf(stderr, "SGLX: %s: MoE graph_compute failed (%d)\n", name_.c_str(), (int) st);
             return false;
         }
+        // ggml-vulkan keeps the commands of a small graph in its context until the next synchronize: recording an event submits them now, so that the device works while the
+        // host does the cold experts (GGML_SGLX_MOE_EVENT=0 leaves it out)
+        if (one && use_event_) {
+            if (ev_ == nullptr) {
+                ev_ = ggml_backend_event_new(dev_);
+                if (ev_ == nullptr) {
+                    use_event_ = false;
+                }
+            }
+            if (ev_ != nullptr) {
+                ggml_backend_event_record(ev_, be_);
+            }
+        }
         const auto tq3 = clk::now();
         const size_t obytes = (size_t) K * (size_t) n_pairs * sizeof(float);
         ggml_backend_tensor_get_async(be_, g->y, os, 0, obytes);
@@ -1145,6 +1158,8 @@ private:
     uint64_t calls_ = 0;
     // moe_stream (ms): the whole call, waiting for the upload, computing, staging in the main thread, the DMA thread (blocking transfers), groups and experts
     double   last_job_ms_ = -1.0;
+    bool     use_event_ = getenv("GGML_SGLX_MOE_EVENT") == nullptr || atoi(getenv("GGML_SGLX_MOE_EVENT")) != 0;
+    ggml_backend_event_t ev_ = nullptr;
     double   dec_us_[5] = { 0, 0, 0, 0, 0 };   // decode (one token) calls: alloc, sets, graph_compute_async, get_async, synchronize
     uint64_t dec_n_ = 0, dec_w_ = 0;
     double   st_total_ = 0, st_wait_ = 0, st_comp_ = 0, st_stage_ = 0, st_dma_ = 0;

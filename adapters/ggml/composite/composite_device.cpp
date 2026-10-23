@@ -324,6 +324,7 @@ void print_profile_atexit() {
     if (g_c != nullptr) {
         print_profile(g_c);
         moe::print_profile();
+        moe::shutdown();
     }
 }
 

@@ -45,6 +45,9 @@ bool exec(ggml_cgraph * g, int i);
 // a buffer of pinned host memory from the host buffer type of the first MoE device (nullptr if there is none)
 ggml_backend_buffer_t alloc_pinned(size_t size);
 
+// at exit: the slot arrays go back to their devices (some backends assert that no buffer is alive when their device is torn down)
+void shutdown();
+
 // GGML_SGLX_PROFILE: the time that graph_compute spent on the lazy input copies (synchronizing the producing device and reading x, ids, weights)
 void note_input_copy_ms(double ms);
 void print_profile();

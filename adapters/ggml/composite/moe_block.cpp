@@ -151,6 +151,9 @@ struct state {
     bool                      profile = false;
     long                      reserve_mib = 320;   // device memory left free when the slot count is automatic
     int                       plan_min_tokens = 16;
+    std::string               stats_in, stats_out;  // GGML_SGLX_MOE_STATS_IN / _OUT: a prior for the frequencies (from an earlier run), and where to write them at exit
+    double                    prior_tokens = 64.0;  // GGML_SGLX_MOE_PRIOR_TOKENS: the weight of the prior, in tokens of selections
+    bool                      prior_applied = false;
     double                    min_mass = 0.0;       // GGML_SGLX_MOE_MIN_MASS: a device after the first keeps the experts of a layer only if they cover this fraction of the layer's selections
     int                       ring_main = 96;      // GGML_SGLX_MOE_RING: ring slots of the main class on the first device (0 = no streaming)
     int                       stream_tau = 3;
@@ -165,6 +168,7 @@ struct state {
     std::map<int, int>        layer_by_il;
     int64_t                   n_expert_max = 0;
     int                       max_il = -1;            // the last layer with experts
+    int                       nu_seen = 8;            // experts per token
 
     // devices
     bool                      devs_inited = false;
@@ -175,7 +179,7 @@ struct state {
     ggml_backend_t            cpu = nullptr;
     cpu_kernel                kern;                 // decode on the cold experts without a ggml graph (moe_cpu.cpp)
     bool                      kern_ok = false;
-    int                       kern_spin_us = 3000;
+    int                       kern_spin_us = 0;
     std::vector<std::vector<std::unique_ptr<cpu_graph>>> cold; // [class][n-1]
     std::vector<double>       cold_ms;              // per class: time of one cold expert on the cpu (EMA, ms)
 
@@ -249,11 +253,14 @@ bool parse_env(state & st) {
     auto envi = [](const char * n, long dflt) { const char * v = getenv(n); return v != nullptr && *v != '\0' ? atol(v) : dflt; };
     st.n_threads = (int) envi("GGML_SGLX_MOE_THREADS", 2);
     st.poll = (int) envi("GGML_SGLX_MOE_POLL", 50);
+    if (getenv("GGML_SGLX_MOE_STATS_IN") != nullptr) { st.stats_in = getenv("GGML_SGLX_MOE_STATS_IN"); }
+    if (getenv("GGML_SGLX_MOE_STATS_OUT") != nullptr) { st.stats_out = getenv("GGML_SGLX_MOE_STATS_OUT"); }
+    st.prior_tokens = (double) envi("GGML_SGLX_MOE_PRIOR_TOKENS", 64);
     if (getenv("GGML_SGLX_MOE_MIN_MASS") != nullptr) {
         st.min_mass = atof(getenv("GGML_SGLX_MOE_MIN_MASS"));
     }
     st.use_kern = envi("GGML_SGLX_MOE_CPUKERN", 1) != 0;
-    st.kern_spin_us = (int) envi("GGML_SGLX_MOE_SPIN_US", 3000);
+    st.kern_spin_us = (int) envi("GGML_SGLX_MOE_SPIN_US", 0);
     st.halflife = (double) envi("GGML_SGLX_MOE_HALFLIFE", 4096);
     st.freeze = envi("GGML_SGLX_MOE_FREEZE", 0) != 0;
     st.profile = envi("GGML_SGLX_PROFILE", 0) != 0;
@@ -303,6 +310,7 @@ bool parse_name(const char * name, int & il, char & kind) {
 }
 
 void sync_classes(state & st);
+void apply_prior(state & st, int nu);
 
 // finish a layer record when its three tensors are known
 void complete_layer(state & st, int idx) {
@@ -545,6 +553,7 @@ void plan(state & st) {
         return;
     }
     sync_classes(st);
+    apply_prior(st, st.nu_seen);
     struct cand { double f; int layer; int e; };
     std::vector<cand> cands;
     for (size_t l = 0; l < st.layers.size(); ++l) {
@@ -726,6 +735,57 @@ void count(state & st, layer_rec & L, const int32_t * ids, int nu, int N) {
             }
         }
     }
+}
+
+
+// frequencies from an earlier run ("layer expert share" lines, the shares of a layer add up to 1): added once, before the first placement, as `prior_tokens` tokens of selections
+void apply_prior(state & st, int nu) {
+    if (st.prior_applied || st.stats_in.empty()) {
+        return;
+    }
+    st.prior_applied = true;
+    FILE * f = fopen(st.stats_in.c_str(), "r");
+    if (f == nullptr) {
+        MOE_LOG("cannot read %s\n", st.stats_in.c_str());
+        return;
+    }
+    int il, e;
+    double v;
+    size_t n = 0;
+    while (fscanf(f, "%d %d %lf", &il, &e, &v) == 3) {
+        auto it = st.layer_by_il.find(il);
+        if (it == st.layer_by_il.end()) {
+            continue;
+        }
+        layer_rec & L = st.layers[(size_t) it->second];
+        if (e >= 0 && e < L.n_expert) {
+            L.freq[(size_t) e] += v * st.prior_tokens * (double) nu * st.scale;
+            ++n;
+        }
+    }
+    fclose(f);
+    MOE_LOG("prior from %s: %zu values, worth %.0f tokens\n", st.stats_in.c_str(), n, st.prior_tokens);
+}
+
+void write_stats(state & st) {
+    if (st.stats_out.empty()) {
+        return;
+    }
+    FILE * f = fopen(st.stats_out.c_str(), "w");
+    if (f == nullptr) {
+        return;
+    }
+    for (const auto & L : st.layers) {
+        if (L.cls < 0) {
+            continue;
+        }
+        double sum = 0;
+        for (double v : L.freq) { sum += v; }
+        for (int e = 0; e < (int) L.n_expert; ++e) {
+            fprintf(f, "%d %d %.6g\n", L.il, e, sum > 0 ? L.freq[(size_t) e] / sum : 0.0);
+        }
+    }
+    fclose(f);
 }
 
 // A prompt (more than one token) is going to use the ring of the streaming device: the experts that a generation kept in the ring slots go back to the host
@@ -1840,6 +1900,9 @@ bool exec(ggml_cgraph * g, int i) {
     state & st = *S;
     ggml_tensor * node = g->nodes[i];
     ensure_cpu(st);
+    if (node->op == GGML_OP_MUL_MAT_ID && node->src[2] != nullptr) {
+        st.nu_seen = (int) node->src[2]->ne[0];
+    }
     if (!st.devs_inited && node->op == GGML_OP_MUL_MAT_ID && node->src[2] != nullptr) {
         init_devices(st, (int) node->src[2]->ne[0]);
     }
@@ -1889,6 +1952,24 @@ bool exec(ggml_cgraph * g, int i) {
     }
 }
 
+void shutdown() {
+    if (S == nullptr) {
+        return;
+    }
+    for (auto & d : S->devs) {
+        for (auto & c : d.cls) {
+            if (c.s != nullptr) {
+                d.p->moe_free(c.s);
+                c.s = nullptr;
+            }
+        }
+    }
+    // the placement tables point at freed slots now: nothing runs after this
+    for (auto & L : S->layers) {
+        std::fill(L.dev.begin(), L.dev.end(), (int16_t) -1);
+    }
+}
+
 ggml_backend_buffer_t alloc_pinned(size_t size) {
     if (S == nullptr || S->specs.empty() || (getenv("GGML_SGLX_MOE_PINNED") != nullptr && atoi(getenv("GGML_SGLX_MOE_PINNED")) == 0)) {
         return nullptr;
@@ -1908,6 +1989,9 @@ void note_input_copy_ms(double ms) {
 }
 
 void print_profile() {
+    if (S != nullptr) {
+        write_stats(*S);
+    }
     if (S == nullptr || !S->profile) {
         return;
     }

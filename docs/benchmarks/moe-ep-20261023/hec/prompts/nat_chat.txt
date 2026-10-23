@@ -1,0 +1,2 @@
+Question: I have a PC with a small 4 GB graphics card and 32 GB of RAM. Can I run a 30 billion parameter mixture-of-experts model on it, and what should I expect for speed?
+Answer:
