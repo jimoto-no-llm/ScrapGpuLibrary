@@ -37,6 +37,7 @@ enum cl11_kernel_id {
     K_RMS_NORM,
     K_RMS_NORM_MUL,
     K_ADD_RMS_NORM_MUL,
+    K_NORM,
     K_SOFT_MAX,
     K_ROPE_F32, K_ROPE_F16,
     K_GET_ROWS,

@@ -1,0 +1,7 @@
+# combo wx2100-vk+gt730+gt710+gt430_bb_L512  members: wx2100-vk:Q8_0:512:1 gt730:Q8_0:512:1 gt710:Q8_0:512:1 gt430:Q8_0:512:1  duration 30s  start 1793631999  temp at start 47 C  2026-11-03_00:05:09
+wx2100-vk Q8_0 WINDOW L=512 B=1 start=1793631999.004 dur=30.07 embeddings=75 emb_per_s=2.494 load_ms=1518
+gt730 Q8_0 WINDOW L=512 B=1 start=1793631999.000 dur=30.51 embeddings=37 emb_per_s=1.213 load_ms=2681
+gt710 Q8_0 WINDOW L=512 B=1 start=1793631999.000 dur=30.13 embeddings=18 emb_per_s=0.597 load_ms=2435
+gt430 Q8_0 WINDOW L=512 B=1 start=1793631999.004 dur=32.04 embeddings=15 emb_per_s=0.468 load_ms=2346
+SUM emb_per_s=4.772  start_spread_s=0.00
+# temp at end 49 C

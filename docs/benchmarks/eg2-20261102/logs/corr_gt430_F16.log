@@ -1,0 +1,10 @@
+# date: 2026-11-02_18:11:14  host: tb250  tag: corr_gt430_F16
+# temps at start:  amd29 amd29 GT 430=49 GT 730=28 GT 710=27    (max 49 C)
+# env: GGML_CL11_PLATFORMS=NVIDIA EG2_BACKEND_DIR=/home/eightman/moe-ep/eg2/llama-build/bin GGML_CL11_DEVICES=GT 430 GGML_BACKEND_PATH=/home/eightman/moe-ep/eg2/build-cl11/libggml-cl11.so VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json GGML_CL11_AUTO_RPC=0 EG2_RUN_INNER=1 
+# cmd: /home/eightman/moe-ep/eg2/bin/eg2bench -m /home/eightman/moe-ep/eg2/models/eg2-F16.gguf -ngl 99 --dev CL11_0 -t 2 --max-tokens 1500 --dump /home/eightman/moe-ep/eg2/task/texts_corr.txt /home/eightman/moe-ep/eg2/dumps/gt430_F16_corr.bin
+..................................................
+cl11_ensure_program: rebuilding the kernels with smaller work-groups
+cl11_ensure_program: CL11_0: GeForce GT 430, OpenCL 1.1 CUDA, kernels built (work-group sizes: element-wise 128, row 128, mat-vec 128, mat-mat 16x16)
+dumped 46 x 768, max tokens 1500, load 1798 ms
+# rc=0  seconds=52
+# temps at end:  amd30 amd29 GT 430=53 GT 730=28 GT 710=27    (max 52 C)

@@ -31,6 +31,7 @@ const cl11_kernel_desc cl11_kernel_table[K_COUNT] = {
     { "k_rms_norm",         CL11_CLASS_ROW },
     { "k_rms_norm_mul",     CL11_CLASS_ROW },
     { "k_add_rms_norm_mul", CL11_CLASS_ROW },
+    { "k_norm",             CL11_CLASS_ROW },
     { "k_soft_max",         CL11_CLASS_ROW },
     { "k_rope_f32",         CL11_CLASS_ROW },
     { "k_rope_f16",         CL11_CLASS_ROW },

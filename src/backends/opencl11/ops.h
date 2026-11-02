@@ -20,17 +20,36 @@
 
 // the `op` argument of k_unary (UNARY, SQR, SQRT, SCALE and CLAMP share the one kernel)
 enum cl11_unary_code {
-    CL11_UC_SILU    = 0,
-    CL11_UC_RELU    = 1,
-    CL11_UC_NEG     = 2,
-    CL11_UC_ABS     = 3,
-    CL11_UC_SIGMOID = 4,
-    CL11_UC_TANH    = 5,
-    CL11_UC_SQR     = 6,
-    CL11_UC_SQRT    = 7,
-    CL11_UC_SCALE   = 8, // p0 = scale, p1 = bias
-    CL11_UC_CLAMP   = 9, // p0 = min, p1 = max
+    CL11_UC_SILU       = 0,
+    CL11_UC_RELU       = 1,
+    CL11_UC_NEG        = 2,
+    CL11_UC_ABS        = 3,
+    CL11_UC_SIGMOID    = 4,
+    CL11_UC_TANH       = 5,
+    CL11_UC_SQR        = 6,
+    CL11_UC_SQRT       = 7,
+    CL11_UC_SCALE      = 8, // p0 = scale, p1 = bias
+    CL11_UC_CLAMP      = 9, // p0 = min, p1 = max
+    CL11_UC_GELU       = 10,
+    CL11_UC_GELU_ERF   = 11,
+    CL11_UC_GELU_QUICK = 12,
 };
+
+// the k_unary code of a scrapgpu_unary_kind (-1 for a kind the kernel does not have)
+inline int32_t cl11_unary_code_of(scrapgpu_unary_kind kind) {
+    switch (kind) {
+        case SCRAPGPU_UNARY_SILU:       return CL11_UC_SILU;
+        case SCRAPGPU_UNARY_RELU:       return CL11_UC_RELU;
+        case SCRAPGPU_UNARY_NEG:        return CL11_UC_NEG;
+        case SCRAPGPU_UNARY_ABS:        return CL11_UC_ABS;
+        case SCRAPGPU_UNARY_SIGMOID:    return CL11_UC_SIGMOID;
+        case SCRAPGPU_UNARY_TANH:       return CL11_UC_TANH;
+        case SCRAPGPU_UNARY_GELU:       return CL11_UC_GELU;
+        case SCRAPGPU_UNARY_GELU_ERF:   return CL11_UC_GELU_ERF;
+        case SCRAPGPU_UNARY_GELU_QUICK: return CL11_UC_GELU_QUICK;
+        default:                        return -1;
+    }
+}
 
 // the binary elementwise ops (k_add / k_sub / k_mul / k_div)
 enum cl11_binary_kind {
@@ -134,6 +153,8 @@ bool cl11_op_unary(cl11_device * c, const cl11_tensor & dst, const cl11_tensor &
 // GLU: s1 is the second (split) input, nullptr when the gate halves are in s0; params: kind, swapped
 bool cl11_op_glu(cl11_device * c, const cl11_tensor & dst, const cl11_tensor & s0, const cl11_tensor * s1, const scrapgpu_glu_params & p);
 bool cl11_op_rms_norm(cl11_device * c, const cl11_tensor & dst, const cl11_tensor & s0, const scrapgpu_rms_norm_params & p);
+// NORM (LayerNorm without the weight / bias): d = (s0 - mean) / sqrt(var + eps) per row
+bool cl11_op_norm(cl11_device * c, const cl11_tensor & dst, const cl11_tensor & s0, const scrapgpu_norm_params & p);
 // RMS_NORM + MUL in one kernel: d = rms_norm(s0, eps) * w (the fused form of two ops)
 bool cl11_op_rms_norm_mul(cl11_device * c, const cl11_tensor & dst, const cl11_tensor & s0, const cl11_tensor & w, const scrapgpu_rms_norm_params & p);
 // ADD + RMS_NORM + MUL in one kernel: add = a + b (one row), dst = rms_norm(add, eps) * w
@@ -183,10 +204,11 @@ bool cl11_op_mul_mat_id(cl11_device * c, const cl11_tensor & dst, const cl11_ten
 // things a descriptor does not carry (a view of a repacked tensor, the presence of extra inputs).
 
 bool cl11_supports_binary(const sgt::TensorDesc & s0, const sgt::TensorDesc & s1, const sgt::TensorDesc & d);
-// `code` a cl11_unary_code: the UNARY kinds are CL11_UC_SILU .. CL11_UC_TANH
+// `code` a cl11_unary_code: the UNARY kinds are CL11_UC_SILU .. CL11_UC_TANH, CL11_UC_GELU .. CL11_UC_GELU_QUICK
 bool cl11_supports_unary(const sgt::TensorDesc & s0, const sgt::TensorDesc & d, int32_t code);
 bool cl11_supports_glu(const sgt::TensorDesc & s0, const sgt::TensorDesc * s1, const sgt::TensorDesc & d, const scrapgpu_glu_params & p);
 bool cl11_supports_rms_norm(const sgt::TensorDesc & s0, const sgt::TensorDesc & d);
+bool cl11_supports_norm(const sgt::TensorDesc & s0, const sgt::TensorDesc & d);
 bool cl11_supports_soft_max(const sgt::TensorDesc & s0, const sgt::TensorDesc * mask, const sgt::TensorDesc * sinks,
                             const sgt::TensorDesc & d, const cl11_soft_max_params & p);
 bool cl11_supports_rope(const sgt::TensorDesc & s0, const sgt::TensorDesc * pos, const sgt::TensorDesc * ff,

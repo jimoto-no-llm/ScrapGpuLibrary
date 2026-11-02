@@ -36,7 +36,7 @@ bool cl11_op_unary(cl11_device * c, const cl11_tensor & dst, const cl11_tensor &
 }
 
 bool cl11_op_glu(cl11_device * c, const cl11_tensor & dst, const cl11_tensor & s0, const cl11_tensor * s1, const scrapgpu_glu_params & p) {
-    const int32_t code    = p.kind == SCRAPGPU_GLU_SWIGLU ? 0 : 1;
+    const int32_t code    = (int32_t) p.kind; // 0 swiglu, 1 reglu, 2 geglu, 3 geglu_erf, 4 geglu_quick (the kernel's op codes)
     const int32_t split   = s1 != nullptr ? 1 : 0;
     const int32_t swapped = p.swapped;
     const int32_t nc      = (int32_t) dst.d.ne[0];
@@ -52,6 +52,14 @@ bool cl11_op_glu(cl11_device * c, const cl11_tensor & dst, const cl11_tensor & s
 bool cl11_op_rms_norm(cl11_device * c, const cl11_tensor & dst, const cl11_tensor & s0, const scrapgpu_rms_norm_params & p) {
     const cl11_tref s = cl11_tref_of(s0), d = cl11_tref_of(dst);
     cl11_args a(c->kernels[K_RMS_NORM]);
+    a.set(s.mem).set(s.td).set(d.mem).set(d.td).set(p.eps);
+    return cl11_launch(c->queue, c->exec, a, c->cfg.wg_row, (size_t) (s0.d.ne[1] * s0.d.ne[2] * s0.d.ne[3]));
+}
+
+// NORM (F32): LayerNorm without the weight / bias, one work-group per row
+bool cl11_op_norm(cl11_device * c, const cl11_tensor & dst, const cl11_tensor & s0, const scrapgpu_norm_params & p) {
+    const cl11_tref s = cl11_tref_of(s0), d = cl11_tref_of(dst);
+    cl11_args a(c->kernels[K_NORM]);
     a.set(s.mem).set(s.td).set(d.mem).set(d.td).set(p.eps);
     return cl11_launch(c->queue, c->exec, a, c->cfg.wg_row, (size_t) (s0.d.ne[1] * s0.d.ne[2] * s0.d.ne[3]));
 }

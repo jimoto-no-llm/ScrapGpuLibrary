@@ -592,13 +592,16 @@ static int32_t cl11_unary_code(const ggml_tensor * op) {
     switch (op->op) {
         case GGML_OP_UNARY:
             switch (ggml_get_unary_op(op)) {
-                case GGML_UNARY_OP_SILU:    return CL11_UC_SILU;
-                case GGML_UNARY_OP_RELU:    return CL11_UC_RELU;
-                case GGML_UNARY_OP_NEG:     return CL11_UC_NEG;
-                case GGML_UNARY_OP_ABS:     return CL11_UC_ABS;
-                case GGML_UNARY_OP_SIGMOID: return CL11_UC_SIGMOID;
-                case GGML_UNARY_OP_TANH:    return CL11_UC_TANH;
-                default:                    return -1;
+                case GGML_UNARY_OP_SILU:       return CL11_UC_SILU;
+                case GGML_UNARY_OP_RELU:       return CL11_UC_RELU;
+                case GGML_UNARY_OP_NEG:        return CL11_UC_NEG;
+                case GGML_UNARY_OP_ABS:        return CL11_UC_ABS;
+                case GGML_UNARY_OP_SIGMOID:    return CL11_UC_SIGMOID;
+                case GGML_UNARY_OP_TANH:       return CL11_UC_TANH;
+                case GGML_UNARY_OP_GELU:       return CL11_UC_GELU;
+                case GGML_UNARY_OP_GELU_ERF:   return CL11_UC_GELU_ERF;
+                case GGML_UNARY_OP_GELU_QUICK: return CL11_UC_GELU_QUICK;
+                default:                       return -1;
             }
         case GGML_OP_SQR:   return CL11_UC_SQR;
         case GGML_OP_SQRT:  return CL11_UC_SQRT;
@@ -621,6 +624,9 @@ static scrapgpu_glu_kind cl11_glu_kind(const ggml_tensor * op) {
     switch (ggml_get_glu_op(op)) {
         case GGML_GLU_OP_SWIGLU: return SCRAPGPU_GLU_SWIGLU;
         case GGML_GLU_OP_REGLU:  return SCRAPGPU_GLU_REGLU;
+        case GGML_GLU_OP_GEGLU:       return SCRAPGPU_GLU_GEGLU;
+        case GGML_GLU_OP_GEGLU_ERF:   return SCRAPGPU_GLU_GEGLU_ERF;
+        case GGML_GLU_OP_GEGLU_QUICK: return SCRAPGPU_GLU_GEGLU_QUICK;
         default:                 return (scrapgpu_glu_kind) -1;
     }
 }
@@ -711,6 +717,8 @@ static bool cl11_supports_op_impl(const cl11_device * c, const ggml_tensor * op)
         }
         case GGML_OP_RMS_NORM:
             return cl11_supports_rms_norm(cl11_desc(src0), cl11_desc(op));
+        case GGML_OP_NORM:
+            return cl11_supports_norm(cl11_desc(src0), cl11_desc(op));
         case GGML_OP_SOFT_MAX: {
             cl11_soft_max_params p;
             memcpy(&p.scale,     (const int32_t *) op->op_params + 0, sizeof(float));
@@ -931,6 +939,10 @@ static bool cl11_compute_node(cl11_device * c, const ggml_tensor * node) {
         case GGML_OP_RMS_NORM: {
             const scrapgpu_rms_norm_params p = { sizeof(p), cl11_eps(node) };
             return cl11_op_rms_norm(c, cl11_view(node), cl11_view(node->src[0]), p);
+        }
+        case GGML_OP_NORM: {
+            const scrapgpu_norm_params p = { sizeof(p), cl11_eps(node) };
+            return cl11_op_norm(c, cl11_view(node), cl11_view(node->src[0]), p);
         }
         case GGML_OP_SOFT_MAX: {
             float scale = 1.0f;

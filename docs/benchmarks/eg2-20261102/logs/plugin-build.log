@@ -1,0 +1,10 @@
+[1/9] Building CXX object CMakeFiles/scrapgpu_opencl11.dir/home/eightman/moe-ep/eg2/ScrapGpuLibrary/src/backends/opencl11/kernels.cpp.o
+[2/9] Building CXX object CMakeFiles/scrapgpu_opencl11.dir/home/eightman/moe-ep/eg2/ScrapGpuLibrary/src/backends/opencl11/ops_matmul.cpp.o
+[3/9] Building CXX object CMakeFiles/scrapgpu_opencl11.dir/home/eightman/moe-ep/eg2/ScrapGpuLibrary/src/backends/opencl11/ops.cpp.o
+[4/9] Building CXX object CMakeFiles/scrapgpu_opencl11.dir/home/eightman/moe-ep/eg2/ScrapGpuLibrary/src/backends/opencl11/ops_support.cpp.o
+[5/9] Building CXX object CMakeFiles/scrapgpu_opencl11.dir/home/eightman/moe-ep/eg2/ScrapGpuLibrary/src/backends/opencl11/ops_moe.cpp.o
+[6/9] Linking CXX static library libscrapgpu_opencl11.a
+[7/9] Building CXX object CMakeFiles/ggml-cl11.dir/composite/pdev_cl11.cpp.o
+[8/9] Building CXX object CMakeFiles/ggml-cl11.dir/ggml-cl11.cpp.o
+[9/9] Linking CXX shared module libggml-cl11.so
+exit 0

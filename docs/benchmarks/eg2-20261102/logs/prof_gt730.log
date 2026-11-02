@@ -1,0 +1,26 @@
+# date: 2026-11-02_21:45:37  host: tb250  tag: prof_gt730
+# temps at start:  amd41 amd40 GT 430=41 GT 730=29 GT 710=30    (max 41 C)
+# env: GGML_CL11_PLATFORMS=NVIDIA EG2_BACKEND_DIR=/home/eightman/moe-ep/eg2/llama-build/bin GGML_CL11_PROFILE=1 GGML_CL11_DEVICES=GT 730 GGML_BACKEND_PATH=/home/eightman/moe-ep/eg2/build-cl11/libggml-cl11.so VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json GGML_CL11_AUTO_RPC=0 EG2_RUN_INNER=1 
+# cmd: /home/eightman/moe-ep/eg2/bin/eg2bench -m /home/eightman/moe-ep/eg2/models/eg2-Q8_0.gguf -ngl 99 --dev CL11_0 -t 2 --warm 1 --bench 128 1 3
+.................................................
+cl11_ensure_program: CL11_0: multi mat-vec (Q / K / V, FFN gate / up in one launch) enabled
+cl11_ensure_program: CL11_0: mat-mat variant: tile 64 x 64, 8 x 4 values per work-item, BK 16, unroll 16, prefetch 0, 128 work-items
+cl11_ensure_program: CL11_0: GeForce GT 730, OpenCL 1.2 CUDA, kernels built (work-group sizes: element-wise 128, row 128, mat-vec 128, mat-mat 16x16)
+cl11 profile of CL11_0: total kernel time 721.091 ms
+  MUL_MAT q8_0 mm n=128                           868 calls    530.933 ms    611.7 us/call  73.6%  weights 1.04 GB/s
+  MUL_MAT f32 mm n=128                            192 calls     44.202 ms    230.2 us/call   6.1%  weights 1.14 GB/s
+  MUL_MAT f16 mm n=128                              4 calls     32.287 ms   8071.7 us/call   4.5%  weights 1.56 GB/s
+  RMS_NORM+MUL (fused)                            680 calls     26.864 ms     39.5 us/call   3.7%
+  GEGLU                                            96 calls     15.262 ms    159.0 us/call   2.1%
+  ROPE                                            192 calls     14.748 ms     76.8 us/call   2.0%
+  CONT                                            200 calls     14.010 ms     70.0 us/call   1.9%
+  ADD                                             288 calls     13.935 ms     48.4 us/call   1.9%
+  MUL                                             196 calls      9.481 ms     48.4 us/call   1.3%
+  SOFT_MAX                                         96 calls      9.296 ms     96.8 us/call   1.3%
+  GELU                                             96 calls      3.686 ms     38.4 us/call   0.5%
+  RMS_NORM                                         96 calls      3.641 ms     37.9 us/call   0.5%
+  SCALE                                             4 calls      2.256 ms    564.0 us/call   0.3%
+  GET_ROWS f32->f32                                12 calls      0.317 ms     26.4 us/call   0.0%
+  MUL_MAT f32 mv n=1                                4 calls      0.175 ms     43.8 us/call   0.0%  weights 8.97 GB/s
+# rc=0  seconds=4
+# temps at end:  amd41 amd39 GT 430=41 GT 730=30 GT 710=30    (max 41 C)

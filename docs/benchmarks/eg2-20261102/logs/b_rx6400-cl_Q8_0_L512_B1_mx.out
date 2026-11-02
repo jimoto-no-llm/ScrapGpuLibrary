@@ -1,0 +1,1 @@
+RESULT L=512 B=1 reps=5 mean_ms=169.96 sd_ms=1.33 med_ms=169.66 min_ms=168.23 emb_per_s_mean=5.88 emb_per_s_med=5.89 tok_per_s=3012.5 load_ms=1189
