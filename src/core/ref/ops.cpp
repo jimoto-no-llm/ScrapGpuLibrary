@@ -370,6 +370,15 @@ scrapgpu_status exec_unary(scrapgpu_op op, const RTensor & s, const WTensor & d,
                     case SCRAPGPU_UNARY_ABS:     y = std::fabs(x); break;
                     case SCRAPGPU_UNARY_SIGMOID: y = 1.0f / (1.0f + std::exp(-x)); break;
                     case SCRAPGPU_UNARY_TANH:    y = std::tanh(x); break;
+                    case SCRAPGPU_UNARY_GELU:
+                        y = 0.5f * x * (1.0f + std::tanh(0.79788456080286535587989211986876f * x * (1.0f + 0.044715f * x * x)));
+                        break;
+                    case SCRAPGPU_UNARY_GELU_ERF:
+                        y = 0.5f * x * (1.0f + std::erf(0.70710678118654752440084436210484f * x));
+                        break;
+                    case SCRAPGPU_UNARY_GELU_QUICK:
+                        y = x * (1.0f / (1.0f + std::exp(-1.702f * x)));
+                        break;
                     default: return ref_unsupported("unary kind is not implemented");
                 }
                 break;
@@ -403,7 +412,9 @@ scrapgpu_status exec_glu(const RTensor & s0, const RTensor & s1, bool has_s1, co
             return ref_invalid("GLU: src0 dim 0 must be twice the dst dim 0");
         }
     }
-    const bool swiglu = p->kind == SCRAPGPU_GLU_SWIGLU;
+    if (p->kind < SCRAPGPU_GLU_SWIGLU || p->kind > SCRAPGPU_GLU_GEGLU_QUICK) {
+        return ref_invalid("GLU: unknown kind");
+    }
     for (int64_t i3 = 0; i3 < d.ne(3); ++i3) {
         for (int64_t i2 = 0; i2 < d.ne(2); ++i2) {
             for (int64_t i1 = 0; i1 < d.ne(1); ++i1) {
@@ -417,7 +428,14 @@ scrapgpu_status exec_glu(const RTensor & s0, const RTensor & s1, bool has_s1, co
                         x = ld_f32(s0.ptr(i0 + (p->swapped ? nc : 0), i1, i2, i3));
                         g = ld_f32(s0.ptr(i0 + (p->swapped ? 0 : nc), i1, i2, i3));
                     }
-                    const float a = swiglu ? x / (1.0f + std::exp(-x)) : std::max(x, 0.0f);
+                    float a;
+                    switch (p->kind) {
+                        case SCRAPGPU_GLU_SWIGLU:     a = x / (1.0f + std::exp(-x)); break;
+                        case SCRAPGPU_GLU_REGLU:      a = std::max(x, 0.0f); break;
+                        case SCRAPGPU_GLU_GEGLU:      a = 0.5f * x * (1.0f + std::tanh(0.79788456080286535588f * x * (1.0f + 0.044715f * x * x))); break;
+                        case SCRAPGPU_GLU_GEGLU_ERF:  a = 0.5f * x * (1.0f + std::erf(0.70710678118654752440f * x)); break;
+                        default:                      a = x * (1.0f / (1.0f + std::exp(-1.702f * x))); break;
+                    }
                     st_f32(d.ptr(i0, i1, i2, i3), a * g);
                 }
             }
@@ -486,6 +504,38 @@ scrapgpu_status exec_rms_norm_mul(const RTensor & s, const RTensor & w, const WT
                 const float scale = 1.0f / std::sqrt(static_cast<float>(sum / static_cast<double>(s.ne(0))) + eps);
                 for (int64_t i0 = 0; i0 < s.ne(0); ++i0) {
                     st_f32(d.ptr(i0, i1, i2, i3), (ld_f32(s.ptr(i0, i1, i2, i3)) * scale) * ld_f32(w.ptr(i0)));
+                }
+            }
+        }
+    }
+    return SCRAPGPU_STATUS_OK;
+}
+
+// NORM (LayerNorm without the weight / bias): per row, dst = (x - mean) / sqrt(var + eps)
+scrapgpu_status exec_norm(const RTensor & s, const WTensor & d, float eps) {
+    const scrapgpu_status st = require_f32(s, "NORM expects F32 tensors");
+    if (st != SCRAPGPU_STATUS_OK) return st;
+    const scrapgpu_status st2 = require_f32(d, "NORM expects F32 tensors");
+    if (st2 != SCRAPGPU_STATUS_OK) return st2;
+    if (!same_ne(s, d)) {
+        return ref_invalid("NORM: src0 must have the shape of dst");
+    }
+    for (int64_t i3 = 0; i3 < s.ne(3); ++i3) {
+        for (int64_t i2 = 0; i2 < s.ne(2); ++i2) {
+            for (int64_t i1 = 0; i1 < s.ne(1); ++i1) {
+                double sum = 0.0;
+                for (int64_t i0 = 0; i0 < s.ne(0); ++i0) {
+                    sum += static_cast<double>(ld_f32(s.ptr(i0, i1, i2, i3)));
+                }
+                const float mean = static_cast<float>(sum / static_cast<double>(s.ne(0)));
+                double var = 0.0;
+                for (int64_t i0 = 0; i0 < s.ne(0); ++i0) {
+                    const double v = static_cast<double>(ld_f32(s.ptr(i0, i1, i2, i3))) - static_cast<double>(mean);
+                    var += v * v;
+                }
+                const float scale = 1.0f / std::sqrt(static_cast<float>(var / static_cast<double>(s.ne(0))) + eps);
+                for (int64_t i0 = 0; i0 < s.ne(0); ++i0) {
+                    st_f32(d.ptr(i0, i1, i2, i3), (ld_f32(s.ptr(i0, i1, i2, i3)) - mean) * scale);
                 }
             }
         }
@@ -1319,6 +1369,13 @@ scrapgpu_status scrapgpu_ref_execute(const scrapgpu_op_desc * desc, void * const
                 return st;
             }
             return exec_rms_norm(input(0), output(0), eps);
+        }
+        case SCRAPGPU_OP_NORM: {
+            if (desc->params == nullptr || desc->params_size < sizeof(scrapgpu_norm_params)) {
+                return ref_invalid("NORM needs scrapgpu_norm_params");
+            }
+            const auto * p = static_cast<const scrapgpu_norm_params *>(desc->params);
+            return exec_norm(input(0), output(0), p->eps);
         }
         case SCRAPGPU_OP_RMS_NORM_MUL: {
             if (desc->input_count != 2 || desc->output_count != 1) {

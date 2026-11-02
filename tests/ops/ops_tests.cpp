@@ -465,8 +465,8 @@ void test_unary_family() {
     tfill(sp, frand_vec(97, true));
     test_op("SQRT", SCRAPGPU_OP_SQRT, {sp}, {tmake(tdesc(SCRAPGPU_DTYPE_F32, 97))}, nullptr, 0);
 
-    static const char * const kinds[] = {"SILU", "RELU", "NEG", "ABS", "SIGMOID", "TANH"};
-    for (int k = SCRAPGPU_UNARY_SILU; k <= SCRAPGPU_UNARY_TANH; ++k) {
+    static const char * const kinds[] = {"SILU", "RELU", "NEG", "ABS", "SIGMOID", "TANH", "GELU", "GELU_ERF", "GELU_QUICK"};
+    for (int k = SCRAPGPU_UNARY_SILU; k <= SCRAPGPU_UNARY_GELU_QUICK; ++k) {
         scrapgpu_unary_params p{sizeof(p), (scrapgpu_unary_kind) k};
         char name[40];
         snprintf(name, sizeof(name), "UNARY/%s", kinds[k]);
@@ -476,24 +476,25 @@ void test_unary_family() {
 
 void test_glu() {
     for (int swapped = 0; swapped < 2; ++swapped) {
-        for (scrapgpu_glu_kind kind : {SCRAPGPU_GLU_SWIGLU, SCRAPGPU_GLU_REGLU}) {
+        for (scrapgpu_glu_kind kind : {SCRAPGPU_GLU_SWIGLU, SCRAPGPU_GLU_REGLU, SCRAPGPU_GLU_GEGLU, SCRAPGPU_GLU_GEGLU_ERF, SCRAPGPU_GLU_GEGLU_QUICK}) {
             TT s0 = tmake(tdesc(SCRAPGPU_DTYPE_F32, 2 * 33, 9));
             tfill(s0, frand_vec(tn(s0.rdesc)));
             TT d = tmake(tdesc(SCRAPGPU_DTYPE_F32, 33, 9));
             scrapgpu_glu_params p{sizeof(p), kind, 0, swapped};
             char name[48];
-            snprintf(name, sizeof(name), "GLU fused %s sw=%d", kind == SCRAPGPU_GLU_SWIGLU ? "swiglu" : "reglu", swapped);
+            snprintf(name, sizeof(name), "GLU fused kind=%d sw=%d", (int) kind, swapped);
             test_op(name, SCRAPGPU_OP_GLU, {s0}, {d}, &p, sizeof(p));
         }
     }
-    for (scrapgpu_glu_kind kind : {SCRAPGPU_GLU_SWIGLU, SCRAPGPU_GLU_REGLU}) {
+    for (scrapgpu_glu_kind kind : {SCRAPGPU_GLU_SWIGLU, SCRAPGPU_GLU_REGLU, SCRAPGPU_GLU_GEGLU, SCRAPGPU_GLU_GEGLU_ERF, SCRAPGPU_GLU_GEGLU_QUICK}) {
         TT s0 = tmake(tdesc(SCRAPGPU_DTYPE_F32, 33, 9));
         TT s1 = tmake(tdesc(SCRAPGPU_DTYPE_F32, 33, 9));
         tfill(s0, frand_vec(tn(s0.rdesc)));
         tfill(s1, frand_vec(tn(s1.rdesc)));
         TT d = tmake(tdesc(SCRAPGPU_DTYPE_F32, 33, 9));
         scrapgpu_glu_params p{sizeof(p), kind, 1, 0};
-        test_op(kind == SCRAPGPU_GLU_SWIGLU ? "GLU split swiglu" : "GLU split reglu", SCRAPGPU_OP_GLU, {s0, s1}, {d}, &p, sizeof(p));
+        char nm[40]; snprintf(nm, sizeof(nm), "GLU split kind=%d", (int) kind);
+        test_op(nm, SCRAPGPU_OP_GLU, {s0, s1}, {d}, &p, sizeof(p));
     }
 }
 
@@ -506,6 +507,9 @@ void test_rms_family() {
 
     test_op("RMS_NORM", SCRAPGPU_OP_RMS_NORM, {x}, {tmake(tdesc(SCRAPGPU_DTYPE_F32, 37, 9))}, &eps, sizeof(eps));
     test_op("RMS_NORM_MUL", SCRAPGPU_OP_RMS_NORM_MUL, {x, w}, {tmake(tdesc(SCRAPGPU_DTYPE_F32, 37, 9))}, &eps, sizeof(eps));
+
+    scrapgpu_norm_params neps{sizeof(neps), 1e-5f};
+    test_op("NORM", SCRAPGPU_OP_NORM, {x}, {tmake(tdesc(SCRAPGPU_DTYPE_F32, 37, 9))}, &neps, sizeof(neps));
 
     // the ADD + RMS_NORM * w fusion works on a single row
     TT a = tmake(tdesc(SCRAPGPU_DTYPE_F32, 37));

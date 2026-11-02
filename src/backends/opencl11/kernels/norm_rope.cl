@@ -1,5 +1,5 @@
 #ifndef CL11_NO_BASE
-// CL11 backend: RMS_NORM, SOFT_MAX and ROPE.
+// CL11 backend: NORM, RMS_NORM, SOFT_MAX and ROPE.
 
 // ---------------------------------------------------------------------------------------------
 // RMS_NORM (F32): one work-group per row. The elements of a row are contiguous (nb0 == 4).
@@ -100,6 +100,56 @@ kernel void k_add_rms_norm_mul(global uchar * pa, tdesc ta, global uchar * pb, t
     const float scale = 1.0f / sqrt(sh[0] / (float)ta.ne0 + eps);
     for (int i = lid; i < ta.ne0; i += WG_ROW) {
         y[i] = (s[i] * scale) * w[i];   // s[i] was written by this work-item (same index): no barrier needed
+    }
+}
+
+// NORM (F32): LayerNorm without the weight / bias, one work-group per row. The elements of a row are
+// contiguous (nb0 == 4). Two reductions per row: the mean, then the variance of x - mean.
+kernel void k_norm(global uchar * ps, tdesc ts, global uchar * pd, tdesc td, float eps) {
+    local float sh[WG_ROW];
+
+    const int lid = (int)get_local_id(0);
+    const int row = LGID();
+    const int nrows = ts.ne1 * ts.ne2 * ts.ne3;
+    if (row >= nrows) return; // uniform for the whole group
+
+    int i1, i2, i3;
+    { int q = FDIV(row, ts, 1); i1 = row - q * ts.ne1; i3 = FDIV(q, ts, 2); i2 = q - i3 * ts.ne2; }
+
+    global const float * x = (global const float *)(ps + OFF4(ts, 0, i1, i2, i3));
+    global       float * y = (global       float *)(pd + OFF4(td, 0, i1, i2, i3));
+
+    float sum = 0.0f;
+    for (int i = lid; i < ts.ne0; i += WG_ROW) {
+        sum += x[i];
+    }
+    sh[lid] = sum;
+    barrier(CLK_LOCAL_MEM_FENCE);
+    for (int s = WG_ROW / 2; s > 0; s >>= 1) {
+        if (lid < s) {
+            sh[lid] += sh[lid + s];
+        }
+        barrier(CLK_LOCAL_MEM_FENCE);
+    }
+    const float mean = sh[0] / (float)ts.ne0;
+    barrier(CLK_LOCAL_MEM_FENCE); // sh is reused below
+
+    float var = 0.0f;
+    for (int i = lid; i < ts.ne0; i += WG_ROW) {
+        const float v = x[i] - mean;
+        var += v * v;
+    }
+    sh[lid] = var;
+    barrier(CLK_LOCAL_MEM_FENCE);
+    for (int s = WG_ROW / 2; s > 0; s >>= 1) {
+        if (lid < s) {
+            sh[lid] += sh[lid + s];
+        }
+        barrier(CLK_LOCAL_MEM_FENCE);
+    }
+    const float scale = 1.0f / sqrt(sh[0] / (float)ts.ne0 + eps);
+    for (int i = lid; i < ts.ne0; i += WG_ROW) {
+        y[i] = (x[i] - mean) * scale;
     }
 }
 

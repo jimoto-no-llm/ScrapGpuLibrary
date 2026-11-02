@@ -24,7 +24,8 @@ DEF_BIN(k_div, a / b)
 
 // ---------------------------------------------------------------------------------------------
 // unary ops (F32). op codes must match the host:
-//   0 silu, 1 relu, 2 neg, 3 abs, 4 sigmoid, 5 tanh, 6 sqr, 7 sqrt, 8 scale (x*p0 + p1), 9 clamp(p0, p1)
+//   0 silu, 1 relu, 2 neg, 3 abs, 4 sigmoid, 5 tanh, 6 sqr, 7 sqrt, 8 scale (x*p0 + p1), 9 clamp(p0, p1),
+//   10 gelu (tanh approximation), 11 gelu_erf (0.5*x*(1 + erf(x/sqrt(2)))), 12 gelu_quick (x*sigmoid(1.702*x))
 // ---------------------------------------------------------------------------------------------
 kernel void k_unary(global uchar * ps, tdesc ts, global uchar * pd, tdesc td, int n, int op, float p0, float p1) {
     const int idx = LGID() * WG_EW + (int)get_local_id(0);
@@ -43,13 +44,17 @@ kernel void k_unary(global uchar * ps, tdesc ts, global uchar * pd, tdesc td, in
         case 6:  y = x * x; break;
         case 7:  y = sqrt(x); break;
         case 8:  y = x * p0 + p1; break;
-        default: y = fmin(fmax(x, p0), p1); break;
+        case 9:  y = fmin(fmax(x, p0), p1); break;
+        case 10: y = 0.5f * x * (1.0f + tanh(0.79788456080286535587989211986876f * x * (1.0f + 0.044715f * x * x))); break;
+        case 11: y = 0.5f * x * (1.0f + erf(0.70710678118654752440084436210484f * x)); break;
+        default: y = x * (1.0f / (1.0f + exp(-1.702f * x))); break;
     }
     ST_F32(pd + OFF4(td, i0, i1, i2, i3), y);
 }
 
 // ---------------------------------------------------------------------------------------------
-// gated linear units (F32): dst = act(x) * g, act = silu (op 0, SWIGLU) or relu (op 1, REGLU).
+// gated linear units (F32): dst = act(x) * g, act = silu (op 0, SWIGLU), relu (op 1, REGLU), gelu tanh (op 2, GEGLU),
+// gelu erf (op 3, GEGLU_ERF) or gelu quick (op 4, GEGLU_QUICK).
 // split != 0: x = src0, g = src1. Otherwise x and g are the two halves of the rows of src0
 // (the halves are swapped when `swapped` is set).
 // nc is the number of columns of dst.
@@ -68,7 +73,14 @@ kernel void k_glu(global uchar * p0, tdesc t0, global uchar * p1, tdesc t1, glob
         x = LD_F32(p0 + OFF4(t0, i0 + (swapped ? nc : 0), i1, i2, i3));
         g = LD_F32(p0 + OFF4(t0, i0 + (swapped ? 0 : nc), i1, i2, i3));
     }
-    const float a = (op == 0) ? x / (1.0f + exp(-x)) : fmax(x, 0.0f);
+    float a;
+    switch (op) {
+        case 0:  a = x / (1.0f + exp(-x)); break;
+        case 1:  a = fmax(x, 0.0f); break;
+        case 2:  a = 0.5f * x * (1.0f + tanh(0.79788456080286535587989211986876f * x * (1.0f + 0.044715f * x * x))); break;
+        case 3:  a = 0.5f * x * (1.0f + erf(0.70710678118654752440084436210484f * x)); break;
+        default: a = x * (1.0f / (1.0f + exp(-1.702f * x))); break;
+    }
     ST_F32(pd + OFF4(td, i0, i1, i2, i3), a * g);
 }
 
