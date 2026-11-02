@@ -1,0 +1,8 @@
+# date: 2026-11-02_18:14:06  host: tb250  tag: corr_wx2100-vk_F16
+# temps at start:  amd31 amd36 GT 430=47 GT 730=29 GT 710=28    (max 47 C)
+# env: GGML_VK_VISIBLE_DEVICES=1 EG2_BACKEND_DIR=/home/eightman/moe-ep/eg2/llama-build/bin VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json EG2_RUN_INNER=1 
+# cmd: /home/eightman/moe-ep/eg2/bin/eg2bench -m /home/eightman/moe-ep/eg2/models/eg2-F16.gguf -ngl 99 --dev Vulkan0 -t 2 --max-tokens 1500 --dump /home/eightman/moe-ep/eg2/task/texts_corr.txt /home/eightman/moe-ep/eg2/dumps/wx2100-vk_F16_corr.bin
+...................................................
+dumped 46 x 768, max tokens 1500, load 1671 ms
+# rc=0  seconds=12
+# temps at end:  amd31 amd41 GT 430=47 GT 730=29 GT 710=28    (max 47 C)

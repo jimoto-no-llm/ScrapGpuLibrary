@@ -1,0 +1,6 @@
+# combo rx6400-vk+wx2100-vk+gt730_pin_L32  members: rx6400-vk:Q8_0:32:16 wx2100-vk:Q8_0:32:16 gt730:Q8_0:32:16  duration 30s  start 1793636876  temp at start 46 C  2026-11-03_01:26:26
+rx6400-vk Q8_0 WINDOW L=32 B=16 start=1793636876.001 dur=30.04 embeddings=5920 emb_per_s=197.088 load_ms=1013
+wx2100-vk Q8_0 WINDOW L=32 B=16 start=1793636876.001 dur=30.23 embeddings=1200 emb_per_s=39.698 load_ms=2456
+gt730 Q8_0 WINDOW L=32 B=16 start=1793636876.004 dur=30.42 embeddings=592 emb_per_s=19.461 load_ms=2093
+SUM emb_per_s=256.247  start_spread_s=0.00
+# temp at end 50 C

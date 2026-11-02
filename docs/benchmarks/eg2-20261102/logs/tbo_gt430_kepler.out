@@ -1,0 +1,197 @@
+Testing 4 devices
+
+Backend 1/4: Vulkan0
+  Skipping
+Backend 2/4: Vulkan1
+  Skipping
+Backend 3/4: CPU
+  Skipping
+Backend 4/4: CL11_0
+  Device description: GeForce GT 430
+  Device memory: 964 MB (836 MB free)
+
+  GELU(type=f16,ne_a=[128,2,2,2],v=0): not supported [CL11_0] 
+  GELU(type=f16,ne_a=[5,7,11,13],v=0): not supported [CL11_0] 
+  GELU(type=f16,ne_a=[128,2,2,2],v=1): not supported [CL11_0] 
+  GELU(type=f16,ne_a=[5,7,11,13],v=1): not supported [CL11_0] 
+  GELU(type=f32,ne_a=[128,2,2,2],v=0): [1;32mOK[0m
+  GELU(type=f32,ne_a=[5,7,11,13],v=0): [1;32mOK[0m
+  GELU(type=f32,ne_a=[128,2,2,2],v=1): [1;32mOK[0m
+  GELU(type=f32,ne_a=[5,7,11,13],v=1): [1;32mOK[0m
+  GELU(type=bf16,ne_a=[128,2,2,2],v=0): not supported [CL11_0] 
+  GELU(type=bf16,ne_a=[5,7,11,13],v=0): not supported [CL11_0] 
+  GELU(type=bf16,ne_a=[128,2,2,2],v=1): not supported [CL11_0] 
+  GELU(type=bf16,ne_a=[5,7,11,13],v=1): not supported [CL11_0] 
+  GEGLU(type=f16,ne_a=[128,2,2,2],v=0,swapped=0): not supported [CL11_0] 
+  GEGLU(type=f16,ne_a=[5,7,11,13],v=0,swapped=0): not supported [CL11_0] 
+  GEGLU(type=f16,ne_a=[128,2,2,2],v=0,swapped=1): not supported [CL11_0] 
+  GEGLU(type=f16,ne_a=[5,7,11,13],v=0,swapped=1): not supported [CL11_0] 
+  GEGLU(type=f16,ne_a=[128,2,2,2],v=0,split): not supported [CL11_0] 
+  GEGLU(type=f16,ne_a=[5,7,11,13],v=0,split): not supported [CL11_0] 
+  GEGLU_ERF(type=f16,ne_a=[128,2,2,2],v=0,swapped=0): not supported [CL11_0] 
+  GEGLU_ERF(type=f16,ne_a=[5,7,11,13],v=0,swapped=0): not supported [CL11_0] 
+  GEGLU_ERF(type=f16,ne_a=[128,2,2,2],v=0,swapped=1): not supported [CL11_0] 
+  GEGLU_ERF(type=f16,ne_a=[5,7,11,13],v=0,swapped=1): not supported [CL11_0] 
+  GEGLU_ERF(type=f16,ne_a=[128,2,2,2],v=0,split): not supported [CL11_0] 
+  GEGLU_ERF(type=f16,ne_a=[5,7,11,13],v=0,split): not supported [CL11_0] 
+  GEGLU_QUICK(type=f16,ne_a=[128,2,2,2],v=0,swapped=0): not supported [CL11_0] 
+  GEGLU_QUICK(type=f16,ne_a=[5,7,11,13],v=0,swapped=0): not supported [CL11_0] 
+  GEGLU_QUICK(type=f16,ne_a=[128,2,2,2],v=0,swapped=1): not supported [CL11_0] 
+  GEGLU_QUICK(type=f16,ne_a=[5,7,11,13],v=0,swapped=1): not supported [CL11_0] 
+  GEGLU_QUICK(type=f16,ne_a=[128,2,2,2],v=0,split): not supported [CL11_0] 
+  GEGLU_QUICK(type=f16,ne_a=[5,7,11,13],v=0,split): not supported [CL11_0] 
+  GEGLU(type=f16,ne_a=[128,2,2,2],v=1,swapped=0): not supported [CL11_0] 
+  GEGLU(type=f16,ne_a=[5,7,11,13],v=1,swapped=0): not supported [CL11_0] 
+  GEGLU(type=f16,ne_a=[128,2,2,2],v=1,swapped=1): not supported [CL11_0] 
+  GEGLU(type=f16,ne_a=[5,7,11,13],v=1,swapped=1): not supported [CL11_0] 
+  GEGLU(type=f16,ne_a=[128,2,2,2],v=1,split): not supported [CL11_0] 
+  GEGLU(type=f16,ne_a=[5,7,11,13],v=1,split): not supported [CL11_0] 
+  GEGLU_ERF(type=f16,ne_a=[128,2,2,2],v=1,swapped=0): not supported [CL11_0] 
+  GEGLU_ERF(type=f16,ne_a=[5,7,11,13],v=1,swapped=0): not supported [CL11_0] 
+  GEGLU_ERF(type=f16,ne_a=[128,2,2,2],v=1,swapped=1): not supported [CL11_0] 
+  GEGLU_ERF(type=f16,ne_a=[5,7,11,13],v=1,swapped=1): not supported [CL11_0] 
+  GEGLU_ERF(type=f16,ne_a=[128,2,2,2],v=1,split): not supported [CL11_0] 
+  GEGLU_ERF(type=f16,ne_a=[5,7,11,13],v=1,split): not supported [CL11_0] 
+  GEGLU_QUICK(type=f16,ne_a=[128,2,2,2],v=1,swapped=0): not supported [CL11_0] 
+  GEGLU_QUICK(type=f16,ne_a=[5,7,11,13],v=1,swapped=0): not supported [CL11_0] 
+  GEGLU_QUICK(type=f16,ne_a=[128,2,2,2],v=1,swapped=1): not supported [CL11_0] 
+  GEGLU_QUICK(type=f16,ne_a=[5,7,11,13],v=1,swapped=1): not supported [CL11_0] 
+  GEGLU_QUICK(type=f16,ne_a=[128,2,2,2],v=1,split): not supported [CL11_0] 
+  GEGLU_QUICK(type=f16,ne_a=[5,7,11,13],v=1,split): not supported [CL11_0] 
+  GEGLU(type=f32,ne_a=[128,2,2,2],v=0,swapped=0): [1;32mOK[0m
+  GEGLU(type=f32,ne_a=[5,7,11,13],v=0,swapped=0): not supported [CL11_0] 
+  GEGLU(type=f32,ne_a=[128,2,2,2],v=0,swapped=1): [1;32mOK[0m
+  GEGLU(type=f32,ne_a=[5,7,11,13],v=0,swapped=1): not supported [CL11_0] 
+  GEGLU(type=f32,ne_a=[128,2,2,2],v=0,split): [1;32mOK[0m
+  GEGLU(type=f32,ne_a=[5,7,11,13],v=0,split): [1;32mOK[0m
+  GEGLU_ERF(type=f32,ne_a=[128,2,2,2],v=0,swapped=0): [1;32mOK[0m
+  GEGLU_ERF(type=f32,ne_a=[5,7,11,13],v=0,swapped=0): not supported [CL11_0] 
+  GEGLU_ERF(type=f32,ne_a=[128,2,2,2],v=0,swapped=1): [1;32mOK[0m
+  GEGLU_ERF(type=f32,ne_a=[5,7,11,13],v=0,swapped=1): not supported [CL11_0] 
+  GEGLU_ERF(type=f32,ne_a=[128,2,2,2],v=0,split): [1;32mOK[0m
+  GEGLU_ERF(type=f32,ne_a=[5,7,11,13],v=0,split): [1;32mOK[0m
+  GEGLU_QUICK(type=f32,ne_a=[128,2,2,2],v=0,swapped=0): [1;32mOK[0m
+  GEGLU_QUICK(type=f32,ne_a=[5,7,11,13],v=0,swapped=0): not supported [CL11_0] 
+  GEGLU_QUICK(type=f32,ne_a=[128,2,2,2],v=0,swapped=1): [1;32mOK[0m
+  GEGLU_QUICK(type=f32,ne_a=[5,7,11,13],v=0,swapped=1): not supported [CL11_0] 
+  GEGLU_QUICK(type=f32,ne_a=[128,2,2,2],v=0,split): [1;32mOK[0m
+  GEGLU_QUICK(type=f32,ne_a=[5,7,11,13],v=0,split): [1;32mOK[0m
+  GEGLU(type=f32,ne_a=[128,2,2,2],v=1,swapped=0): [1;32mOK[0m
+  GEGLU(type=f32,ne_a=[5,7,11,13],v=1,swapped=0): not supported [CL11_0] 
+  GEGLU(type=f32,ne_a=[128,2,2,2],v=1,swapped=1): [1;32mOK[0m
+  GEGLU(type=f32,ne_a=[5,7,11,13],v=1,swapped=1): not supported [CL11_0] 
+  GEGLU(type=f32,ne_a=[128,2,2,2],v=1,split): [1;32mOK[0m
+  GEGLU(type=f32,ne_a=[5,7,11,13],v=1,split): [1;32mOK[0m
+  GEGLU_ERF(type=f32,ne_a=[128,2,2,2],v=1,swapped=0): [1;32mOK[0m
+  GEGLU_ERF(type=f32,ne_a=[5,7,11,13],v=1,swapped=0): not supported [CL11_0] 
+  GEGLU_ERF(type=f32,ne_a=[128,2,2,2],v=1,swapped=1): [1;32mOK[0m
+  GEGLU_ERF(type=f32,ne_a=[5,7,11,13],v=1,swapped=1): not supported [CL11_0] 
+  GEGLU_ERF(type=f32,ne_a=[128,2,2,2],v=1,split): [1;32mOK[0m
+  GEGLU_ERF(type=f32,ne_a=[5,7,11,13],v=1,split): [1;32mOK[0m
+  GEGLU_QUICK(type=f32,ne_a=[128,2,2,2],v=1,swapped=0): [1;32mOK[0m
+  GEGLU_QUICK(type=f32,ne_a=[5,7,11,13],v=1,swapped=0): not supported [CL11_0] 
+  GEGLU_QUICK(type=f32,ne_a=[128,2,2,2],v=1,swapped=1): [1;32mOK[0m
+  GEGLU_QUICK(type=f32,ne_a=[5,7,11,13],v=1,swapped=1): not supported [CL11_0] 
+  GEGLU_QUICK(type=f32,ne_a=[128,2,2,2],v=1,split): [1;32mOK[0m
+  GEGLU_QUICK(type=f32,ne_a=[5,7,11,13],v=1,split): [1;32mOK[0m
+  GEGLU(type=bf16,ne_a=[128,2,2,2],v=0,swapped=0): not supported [CL11_0] 
+  GEGLU(type=bf16,ne_a=[5,7,11,13],v=0,swapped=0): not supported [CL11_0] 
+  GEGLU(type=bf16,ne_a=[128,2,2,2],v=0,swapped=1): not supported [CL11_0] 
+  GEGLU(type=bf16,ne_a=[5,7,11,13],v=0,swapped=1): not supported [CL11_0] 
+  GEGLU(type=bf16,ne_a=[128,2,2,2],v=0,split): not supported [CL11_0] 
+  GEGLU(type=bf16,ne_a=[5,7,11,13],v=0,split): not supported [CL11_0] 
+  GEGLU_ERF(type=bf16,ne_a=[128,2,2,2],v=0,swapped=0): not supported [CL11_0] 
+  GEGLU_ERF(type=bf16,ne_a=[5,7,11,13],v=0,swapped=0): not supported [CL11_0] 
+  GEGLU_ERF(type=bf16,ne_a=[128,2,2,2],v=0,swapped=1): not supported [CL11_0] 
+  GEGLU_ERF(type=bf16,ne_a=[5,7,11,13],v=0,swapped=1): not supported [CL11_0] 
+  GEGLU_ERF(type=bf16,ne_a=[128,2,2,2],v=0,split): not supported [CL11_0] 
+  GEGLU_ERF(type=bf16,ne_a=[5,7,11,13],v=0,split): not supported [CL11_0] 
+  GEGLU_QUICK(type=bf16,ne_a=[128,2,2,2],v=0,swapped=0): not supported [CL11_0] 
+  GEGLU_QUICK(type=bf16,ne_a=[5,7,11,13],v=0,swapped=0): not supported [CL11_0] 
+  GEGLU_QUICK(type=bf16,ne_a=[128,2,2,2],v=0,swapped=1): not supported [CL11_0] 
+  GEGLU_QUICK(type=bf16,ne_a=[5,7,11,13],v=0,swapped=1): not supported [CL11_0] 
+  GEGLU_QUICK(type=bf16,ne_a=[128,2,2,2],v=0,split): not supported [CL11_0] 
+  GEGLU_QUICK(type=bf16,ne_a=[5,7,11,13],v=0,split): not supported [CL11_0] 
+  GEGLU(type=bf16,ne_a=[128,2,2,2],v=1,swapped=0): not supported [CL11_0] 
+  GEGLU(type=bf16,ne_a=[5,7,11,13],v=1,swapped=0): not supported [CL11_0] 
+  GEGLU(type=bf16,ne_a=[128,2,2,2],v=1,swapped=1): not supported [CL11_0] 
+  GEGLU(type=bf16,ne_a=[5,7,11,13],v=1,swapped=1): not supported [CL11_0] 
+  GEGLU(type=bf16,ne_a=[128,2,2,2],v=1,split): not supported [CL11_0] 
+  GEGLU(type=bf16,ne_a=[5,7,11,13],v=1,split): not supported [CL11_0] 
+  GEGLU_ERF(type=bf16,ne_a=[128,2,2,2],v=1,swapped=0): not supported [CL11_0] 
+  GEGLU_ERF(type=bf16,ne_a=[5,7,11,13],v=1,swapped=0): not supported [CL11_0] 
+  GEGLU_ERF(type=bf16,ne_a=[128,2,2,2],v=1,swapped=1): not supported [CL11_0] 
+  GEGLU_ERF(type=bf16,ne_a=[5,7,11,13],v=1,swapped=1): not supported [CL11_0] 
+  GEGLU_ERF(type=bf16,ne_a=[128,2,2,2],v=1,split): not supported [CL11_0] 
+  GEGLU_ERF(type=bf16,ne_a=[5,7,11,13],v=1,split): not supported [CL11_0] 
+  GEGLU_QUICK(type=bf16,ne_a=[128,2,2,2],v=1,swapped=0): not supported [CL11_0] 
+  GEGLU_QUICK(type=bf16,ne_a=[5,7,11,13],v=1,swapped=0): not supported [CL11_0] 
+  GEGLU_QUICK(type=bf16,ne_a=[128,2,2,2],v=1,swapped=1): not supported [CL11_0] 
+  GEGLU_QUICK(type=bf16,ne_a=[5,7,11,13],v=1,swapped=1): not supported [CL11_0] 
+  GEGLU_QUICK(type=bf16,ne_a=[128,2,2,2],v=1,split): not supported [CL11_0] 
+  GEGLU_QUICK(type=bf16,ne_a=[5,7,11,13],v=1,split): not supported [CL11_0] 
+  NORM(type=f32,ne=[64,5,4,3],v=0,eps=0.000000,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[64,5,4,3],v=1,eps=0.000000,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[64,5,4,3],v=0,eps=0.000000,noncontig_rows=1): not supported [CL11_0] 
+  NORM(type=f32,ne=[1025,5,4,3],v=0,eps=0.000000,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[1025,5,4,3],v=1,eps=0.000000,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[1025,5,4,3],v=0,eps=0.000000,noncontig_rows=1): not supported [CL11_0] 
+  NORM(type=f32,ne=[33,5,4,3],v=0,eps=0.000000,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[33,5,4,3],v=1,eps=0.000000,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[132,5,4,3],v=0,eps=0.000000,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[132,5,4,3],v=1,eps=0.000000,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[260,5,4,3],v=0,eps=0.000000,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[260,5,4,3],v=1,eps=0.000000,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[64,5,4,3],v=0,eps=0.000001,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[64,5,4,3],v=1,eps=0.000001,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[64,5,4,3],v=0,eps=0.000001,noncontig_rows=1): not supported [CL11_0] 
+  NORM(type=f32,ne=[1025,5,4,3],v=0,eps=0.000001,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[1025,5,4,3],v=1,eps=0.000001,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[1025,5,4,3],v=0,eps=0.000001,noncontig_rows=1): not supported [CL11_0] 
+  NORM(type=f32,ne=[33,5,4,3],v=0,eps=0.000001,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[33,5,4,3],v=1,eps=0.000001,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[132,5,4,3],v=0,eps=0.000001,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[132,5,4,3],v=1,eps=0.000001,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[260,5,4,3],v=0,eps=0.000001,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[260,5,4,3],v=1,eps=0.000001,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[64,5,4,3],v=0,eps=0.000100,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[64,5,4,3],v=1,eps=0.000100,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[64,5,4,3],v=0,eps=0.000100,noncontig_rows=1): not supported [CL11_0] 
+  NORM(type=f32,ne=[1025,5,4,3],v=0,eps=0.000100,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[1025,5,4,3],v=1,eps=0.000100,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[1025,5,4,3],v=0,eps=0.000100,noncontig_rows=1): not supported [CL11_0] 
+  NORM(type=f32,ne=[33,5,4,3],v=0,eps=0.000100,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[33,5,4,3],v=1,eps=0.000100,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[132,5,4,3],v=0,eps=0.000100,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[132,5,4,3],v=1,eps=0.000100,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[260,5,4,3],v=0,eps=0.000100,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[260,5,4,3],v=1,eps=0.000100,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[64,5,4,3],v=0,eps=0.100000,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[64,5,4,3],v=1,eps=0.100000,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[64,5,4,3],v=0,eps=0.100000,noncontig_rows=1): not supported [CL11_0] 
+  NORM(type=f32,ne=[1025,5,4,3],v=0,eps=0.100000,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[1025,5,4,3],v=1,eps=0.100000,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[1025,5,4,3],v=0,eps=0.100000,noncontig_rows=1): not supported [CL11_0] 
+  NORM(type=f32,ne=[33,5,4,3],v=0,eps=0.100000,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[33,5,4,3],v=1,eps=0.100000,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[132,5,4,3],v=0,eps=0.100000,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[132,5,4,3],v=1,eps=0.100000,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[260,5,4,3],v=0,eps=0.100000,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[260,5,4,3],v=1,eps=0.100000,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[64,5,4,3],v=0,eps=10.000000,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[64,5,4,3],v=1,eps=10.000000,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[64,5,4,3],v=0,eps=10.000000,noncontig_rows=1): not supported [CL11_0] 
+  NORM(type=f32,ne=[1025,5,4,3],v=0,eps=10.000000,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[1025,5,4,3],v=1,eps=10.000000,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[1025,5,4,3],v=0,eps=10.000000,noncontig_rows=1): not supported [CL11_0] 
+  NORM(type=f32,ne=[33,5,4,3],v=0,eps=10.000000,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[33,5,4,3],v=1,eps=10.000000,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[132,5,4,3],v=0,eps=10.000000,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[132,5,4,3],v=1,eps=10.000000,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[260,5,4,3],v=0,eps=10.000000,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[260,5,4,3],v=1,eps=10.000000,noncontig_rows=0): [1;32mOK[0m
+  NORM(type=f32,ne=[4,1,65536,1],v=0,eps=0.000001,noncontig_rows=0): [1;32mOK[0m
+  79/79 tests passed
+  Backend CL11_0: [1;32mOK[0m
+4/4 backends passed
+[1;32mOK[0m

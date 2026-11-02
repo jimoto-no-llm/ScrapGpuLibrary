@@ -1,0 +1,15 @@
+# date: 2026-11-02_17:47:59  host: tb250  tag: b_gt730_Q8_0_L128_B1
+# temps at start:  amd32 amd29 GT 430=40 GT 730=28 GT 710=28    (max 39 C)
+# env: GGML_CL11_PLATFORMS=NVIDIA EG2_BACKEND_DIR=/home/eightman/moe-ep/eg2/llama-build/bin GGML_CL11_DEVICES=GT 730 GGML_CL11_LOG_UNSUPPORTED=1 GGML_BACKEND_PATH=/home/eightman/moe-ep/eg2/build-cl11/libggml-cl11.so VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json GGML_CL11_AUTO_RPC=0 EG2_RUN_INNER=1 
+# cmd: /home/eightman/moe-ep/eg2/bin/eg2bench -m /home/eightman/moe-ep/eg2/models/eg2-Q8_0.gguf -ngl 99 --dev CL11_0 -t 2 --warm 2 --bench 128 1 2
+cl11: not supported: MUL_MAT f32 [12288,512,1,1] src0 bf16 ()
+.................................................
+cl11: not supported: MUL_MAT f32 [12288,1,1,1] src0 bf16 (node_46)
+cl11: not supported: GEGLU f32 [2048,1,1,1] src0 f32 (ffn_geglu-0)
+cl11_ensure_program: CL11_0: multi mat-vec (Q / K / V, FFN gate / up in one launch) enabled
+cl11_ensure_program: CL11_0: mat-mat variant: tile 64 x 64, 8 x 4 values per work-item, BK 16, unroll 16, prefetch 0, 128 work-items
+cl11_ensure_program: CL11_0: GeForce GT 730, OpenCL 1.2 CUDA, kernels built (work-group sizes: element-wise 128, row 128, mat-vec 128, mat-mat 16x16)
+cl11: not supported: MUL_MAT f32 [12288,128,1,1] src0 bf16 (node_46)
+cl11: not supported: GEGLU f32 [2048,128,1,1] src0 f32 (ffn_geglu-0)
+# rc=0  seconds=9
+# temps at end:  amd32 amd29 GT 430=39 GT 730=29 GT 710=28    (max 39 C)

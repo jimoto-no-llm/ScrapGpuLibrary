@@ -1,0 +1,10 @@
+# date: 2026-11-02_21:51:25  host: tb250  tag: b_gt710_Q8_0_L128_B1_mm_x84p
+# temps at start:  amd41 amd30 GT 430=40 GT 730=29 GT 710=30    (max 40 C)
+# env: GGML_CL11_MM_VARIANT=x84p GGML_CL11_PLATFORMS=NVIDIA EG2_BACKEND_DIR=/home/eightman/moe-ep/eg2/llama-build/bin GGML_CL11_DEVICES=GT 710 GGML_BACKEND_PATH=/home/eightman/moe-ep/eg2/build-cl11/libggml-cl11.so VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json GGML_CL11_AUTO_RPC=0 EG2_RUN_INNER=1 
+# cmd: /home/eightman/moe-ep/eg2/bin/eg2bench -m /home/eightman/moe-ep/eg2/models/eg2-Q8_0.gguf -ngl 99 --dev CL11_0 -t 2 --warm 2 --bench 128 1 5
+.................................................
+cl11_ensure_program: CL11_0: multi mat-vec (Q / K / V, FFN gate / up in one launch) enabled
+cl11_ensure_program: CL11_0: mat-mat variant: tile 64 x 64, 8 x 4 values per work-item, BK 16, unroll 16, prefetch 1, 128 work-items
+cl11_ensure_program: CL11_0: GeForce GT 710, OpenCL 1.2 CUDA, kernels built (work-group sizes: element-wise 128, row 128, mat-vec 128, mat-mat 16x16)
+# rc=0  seconds=12
+# temps at end:  amd41 amd30 GT 430=41 GT 730=30 GT 710=30    (max 41 C)

@@ -1,0 +1,4 @@
+# combo rx6400-vk_bb_L32  members: rx6400-vk:Q8_0:32:16  duration 30s  start 1793630862  temp at start 46 C  2026-11-02_23:46:12
+rx6400-vk Q8_0 WINDOW L=32 B=16 start=1793630862.002 dur=30.09 embeddings=5104 emb_per_s=169.625 load_ms=1004
+SUM emb_per_s=169.625  start_spread_s=0.00
+# temp at end 44 C

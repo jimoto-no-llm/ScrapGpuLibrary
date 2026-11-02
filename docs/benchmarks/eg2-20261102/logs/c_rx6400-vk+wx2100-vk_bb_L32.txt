@@ -1,0 +1,5 @@
+# combo rx6400-vk+wx2100-vk_bb_L32  members: rx6400-vk:Q8_0:32:16 wx2100-vk:Q8_0:32:16  duration 30s  start 1793630987  temp at start 43 C  2026-11-02_23:48:17
+rx6400-vk Q8_0 WINDOW L=32 B=16 start=1793630987.000 dur=30.03 embeddings=5360 emb_per_s=178.469 load_ms=1271
+wx2100-vk Q8_0 WINDOW L=32 B=16 start=1793630987.000 dur=30.17 embeddings=1280 emb_per_s=42.422 load_ms=1345
+SUM emb_per_s=220.891  start_spread_s=0.00
+# temp at end 50 C

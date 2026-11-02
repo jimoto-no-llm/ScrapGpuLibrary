@@ -1,0 +1,6 @@
+# combo gt730+gt710+gt430_best_L128B1  members: gt730:Q8_0:128:1 gt710:Q8_0:128:1 gt430:Q4_0:128:1  duration 30s  start 1793628533  temp at start 39 C  2026-11-02_23:07:23
+gt730 Q8_0 WINDOW L=128 B=1 start=1793628533.003 dur=30.12 embeddings=163 emb_per_s=5.412 load_ms=2517
+gt710 Q8_0 WINDOW L=128 B=1 start=1793628533.003 dur=30.12 embeddings=83 emb_per_s=2.756 load_ms=2042
+gt430 Q4_0 WINDOW L=128 B=1 start=1793628533.000 dur=30.33 embeddings=64 emb_per_s=2.110 load_ms=2053
+SUM emb_per_s=10.278  start_spread_s=0.00
+# temp at end 41 C

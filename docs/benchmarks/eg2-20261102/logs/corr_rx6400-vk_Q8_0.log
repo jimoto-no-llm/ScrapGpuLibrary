@@ -1,0 +1,8 @@
+# date: 2026-11-02_18:12:15  host: tb250  tag: corr_rx6400-vk_Q8_0
+# temps at start:  amd29 amd29 GT 430=51 GT 730=28 GT 710=27    (max 51 C)
+# env: GGML_VK_VISIBLE_DEVICES=0 EG2_BACKEND_DIR=/home/eightman/moe-ep/eg2/llama-build/bin VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json EG2_RUN_INNER=1 
+# cmd: /home/eightman/moe-ep/eg2/bin/eg2bench -m /home/eightman/moe-ep/eg2/models/eg2-Q8_0.gguf -ngl 99 --dev Vulkan0 -t 2 --max-tokens 1500 --dump /home/eightman/moe-ep/eg2/task/texts_corr.txt /home/eightman/moe-ep/eg2/dumps/rx6400-vk_Q8_0_corr.bin
+..................................................
+dumped 46 x 768, max tokens 1500, load 1013 ms
+# rc=0  seconds=5
+# temps at end:  amd32 amd29 GT 430=50 GT 730=28 GT 710=28    (max 50 C)

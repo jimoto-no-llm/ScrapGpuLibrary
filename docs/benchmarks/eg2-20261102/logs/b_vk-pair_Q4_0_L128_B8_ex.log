@@ -1,0 +1,7 @@
+# date: 2026-11-02_23:33:57  host: tb250  tag: b_vk-pair_Q4_0_L128_B8_ex
+# temps at start:  amd37 amd30 GT 430=46 GT 730=28 GT 710=28    (max 47 C)
+# env: EG2_BACKEND_DIR=/home/eightman/moe-ep/eg2/llama-build/bin VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json EG2_RUN_INNER=1 
+# cmd: /home/eightman/moe-ep/eg2/bin/eg2bench -m /home/eightman/moe-ep/eg2/models/eg2-Q4_0.gguf -ngl 99 --dev Vulkan0,Vulkan1 -t 2 --warm 2 --bench 128 8 3 --ts 3,1
+................................................
+# rc=0  seconds=3
+# temps at end:  amd37 amd33 GT 430=46 GT 730=29 GT 710=28    (max 46 C)

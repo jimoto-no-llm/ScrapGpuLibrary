@@ -1,0 +1,7 @@
+# date: 2026-11-02_22:05:22  host: tb250  tag: b_wx2100-vk_Q4_0_L32_B16_mx
+# temps at start:  amd44 amd37 GT 430=40 GT 730=28 GT 710=28    (max 40 C)
+# env: GGML_VK_VISIBLE_DEVICES=1 EG2_BACKEND_DIR=/home/eightman/moe-ep/eg2/llama-build/bin VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.json EG2_RUN_INNER=1 
+# cmd: /home/eightman/moe-ep/eg2/bin/eg2bench -m /home/eightman/moe-ep/eg2/models/eg2-Q4_0.gguf -ngl 99 --dev Vulkan0 -t 2 --warm 2 --bench 32 16 5
+................................................
+# rc=0  seconds=4
+# temps at end:  amd44 amd41 GT 430=40 GT 730=28 GT 710=28    (max 40 C)
